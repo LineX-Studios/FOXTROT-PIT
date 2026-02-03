@@ -1,5 +1,6 @@
 package com.linexstudios.foxtrot.Enemy;
 
+import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
@@ -27,7 +28,7 @@ public class EnemyESP {
     }
 
     private boolean isTarget(String name) {
-        return EnemyHUD.targetList.stream().anyMatch(name::equalsIgnoreCase);
+        return EnemyHUD.targetList.stream().anyMatch(target -> target.equalsIgnoreCase(name));
     }
 
     private void renderFilledBox(EntityPlayer player, float partialTicks) {
@@ -37,7 +38,7 @@ public class EnemyESP {
 
         float expand = 0.13f;
         float expandy = 0.11f;
-        
+
         AxisAlignedBB bb = new AxisAlignedBB(
                 x - player.width / 2.0 - expand, y - expandy, z - player.width / 2.0 - expand,
                 x + player.width / 2.0 + expand, y + player.height + expandy, z + player.width / 2.0 + expand
@@ -52,7 +53,8 @@ public class EnemyESP {
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDepthMask(false);
 
-        drawFilledBoundingBox(bb, 0.7F, 0.0F, 0.0F, 0.4F);
+        // Force all enemies to render in light red
+        drawFilledBoundingBox(bb, 1.0F, 0.3F, 0.3F, 0.4F);
 
         GL11.glPopAttrib();
         GL11.glPopMatrix();

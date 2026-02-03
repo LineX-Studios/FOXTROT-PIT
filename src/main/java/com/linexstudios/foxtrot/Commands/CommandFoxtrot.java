@@ -169,10 +169,25 @@ public class CommandFoxtrot extends CommandBase {
         }
     }
 
-    @Override
+        @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
                     "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud");
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("add") || args
+        if (args.length == 2 && (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("denick"))) {
+            return getListOfStringsMatchingLastWord(args,
+                    Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap().stream()
+                            .map(info -> info.getGameProfile().getName())
+                            .collect(Collectors.toList()));
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("remove")) {
+            return getListOfStringsMatchingLastWord(args, EnemyHUD.targetList);
+        }
+        return null;
+    }
+
+    private void sendMessage(ICommandSender sender, String msg) {
+        sender.addChatMessage(new ChatComponentText(msg));
+    }
+}

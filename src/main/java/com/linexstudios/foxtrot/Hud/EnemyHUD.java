@@ -14,10 +14,11 @@ import java.util.List;
 public class EnemyHUD {
     private final Minecraft mc = Minecraft.getMinecraft();
     
-    public static List<String> targetList = new ArrayList<>();
     public static boolean enabled = true;
+    public static boolean dragMode = false;
     public static boolean debugMode = false;
     public static boolean notificationsEnabled = true;
+    public static java.util.List<String> targetList = new java.util.ArrayList<>();
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {

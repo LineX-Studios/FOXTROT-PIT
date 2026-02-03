@@ -13,8 +13,11 @@ import java.util.Set;
 
 public class WhoGotBanned {
     private final Minecraft mc = Minecraft.getMinecraft();
-    private Set<String> prevPlayers = new HashSet<String>();
-    private Set<String> currentPlayers = new HashSet<String>();
+    private Set<String> prevPlayers = new HashSet<>();
+    private Set<String> currentPlayers = new HashSet<>();
+
+    // optional local debug flag
+    private static final boolean debugMode = false;
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
@@ -22,7 +25,7 @@ public class WhoGotBanned {
 
         if (mc.thePlayer.ticksExisted % 20 == 0) {
             if (mc.getNetHandler() == null) return;
-            prevPlayers = new HashSet<String>(currentPlayers);
+            prevPlayers = new HashSet<>(currentPlayers);
             currentPlayers.clear();
             for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
                 if (info.getGameProfile() != null) {
@@ -35,22 +38,22 @@ public class WhoGotBanned {
     @SubscribeEvent
     public void onChatMessage(ClientChatReceivedEvent event) {
         String unformatted = event.message.getUnformattedText();
-        
-        // Improved detection: Checks for "removed" and "lobby" to be more universal
+
         if (unformatted.contains("removed") && unformatted.contains("lobby")) {
             boolean found = false;
             for (String name : prevPlayers) {
-                // If they were in our 'prev' list but aren't in 'current', they are the one who was removed
                 if (!currentPlayers.contains(name)) {
                     mc.thePlayer.addChatMessage(new ChatComponentText(
                         EnumChatFormatting.DARK_GRAY + "[" + EnumChatFormatting.RED + "BANNED" + EnumChatFormatting.DARK_GRAY + "] " +
-                        EnemyHUD.getFormattedName(name) + EnumChatFormatting.YELLOW + " was removed from the lobby!"
+                        EnumChatFormatting.RED + name + EnumChatFormatting.YELLOW + " was removed from the lobby!"
                     ));
                     found = true;
                 }
             }
-            if (!found && EnemyHUD.debugMode) {
-                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Foxtrot] A player was banned, but they weren't in your tab list."));
+            if (!found && debugMode) {
+                mc.thePlayer.addChatMessage(new ChatComponentText(
+                    EnumChatFormatting.RED + "[Foxtrot] A player was banned, but they weren't in your tab list."
+                ));
             }
         }
     }
