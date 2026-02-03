@@ -1,0 +1,16 @@
+[
+{
+  "modid": "foxtrot",
+  "name": "Foxtrot PIT",
+  "description": "Hypixel PIT MOD - MAJOR MOD OVERHULL BETA OF AUTO DENICKER AUTODENICK VER 0.0.1 MOD VER 0.2.3",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["Linex Studios"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
