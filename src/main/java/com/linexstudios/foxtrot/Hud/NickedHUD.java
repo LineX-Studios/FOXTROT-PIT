@@ -49,10 +49,10 @@ public class NickedHUD {
                 if (info == null) continue;
 
                 EntityOtherPlayerMP other = new EntityOtherPlayerMP(mc.theWorld, info.getGameProfile());
-                if (other.getUniqueID().version() != 2) continue; // only nicked players
+                if (other.getUniqueID().version() != 2) continue;
 
                 if (!foundNicked) {
-                    String header = EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Nicked Players:";
+                    String header = EnumChatFormatting.GOLD + "" + EnumChatFormatting.BOLD + "Nicked Players:";
                     fr.drawStringWithShadow(header, xPos, yPos, 16777215);
                     yPos += fr.FONT_HEIGHT + 1;
                     foundNicked = true;
@@ -61,13 +61,9 @@ public class NickedHUD {
                 String nickedName = other.getName();
                 String realIGN = NickedManager.getResolvedIGN(nickedName);
 
-                // Nicked name always shown in white
-                String formattedName = EnumChatFormatting.WHITE + nickedName;
-                // Once resolved, append revealed IGN in yellow
+                String formattedName = nickedName;
                 if (realIGN != null && !realIGN.isEmpty()) {
-                    formattedName += EnumChatFormatting.GRAY + " (" +
-                            EnumChatFormatting.YELLOW + realIGN +
-                            EnumChatFormatting.GRAY + ")";
+                    formattedName += EnumChatFormatting.YELLOW + " (" + realIGN + ")" + EnumChatFormatting.RESET;
                 }
 
                 String gear = getMainGear(other);
@@ -82,7 +78,6 @@ public class NickedHUD {
             }
         }
 
-        // Local drag handling (still works if HUDController isn’t forwarding)
         if (dragMode) {
             if (Mouse.isButtonDown(0)) {
                 if (!dragging) {
@@ -99,19 +94,13 @@ public class NickedHUD {
     }
 
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        // Improved spawn detection: check Y and region bounds
-        if (player.posY > 113.0D || isInSpawnRegion(player)) {
+        if (player.posY > 113.0D) {
             return EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GREEN + "SPAWN" + EnumChatFormatting.GRAY + "]";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);
         String distStr = String.format("%.2f", dist);
         if (dist < 15.0F) return EnumChatFormatting.RED + distStr;
         return EnumChatFormatting.GREEN + distStr;
-    }
-
-    private boolean isInSpawnRegion(EntityOtherPlayerMP player) {
-        // Example bounds for Hypixel Pit spawn platform, adjust if needed
-        return player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20;
     }
 
     private String getMainGear(EntityOtherPlayerMP player) {
@@ -124,21 +113,5 @@ public class NickedHUD {
             if (nbt.contains("Evil") || nbt.contains("Dark")) return EnumChatFormatting.DARK_PURPLE + "Darks";
         }
         return EnumChatFormatting.GRAY + "SHOP";
-    }
-
-    // New method so HUDController can forward drag events
-    public void handleDrag(int mouseX, int mouseY) {
-        if (!dragMode) return;
-        if (Mouse.isButtonDown(0)) {
-            if (!dragging) {
-                dragging = true;
-                dragOffsetX = mouseX - hudX;
-                dragOffsetY = mouseY - hudY;
-            }
-            hudX = mouseX - dragOffsetX;
-            hudY = mouseY - dragOffsetY;
-        } else {
-            dragging = false;
-        }
     }
 }
