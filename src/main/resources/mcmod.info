@@ -2,7 +2,7 @@
 {
   "modid": "foxtrot",
   "name": "Foxtrot PIT",
-  "description": "Hypixel PIT MOD - MAJOR MOD OVERHULL BETA OF AUTO DENICKER AUTODENICK VER 0.0.1 - SCRAPPED EVENT - ADDED NICKED PLAYER LIST IN HUD - MOD VER 0.2.3",
+  "description": "HHypixel PIT MOD - FIXED HUDCONTROLLER - FIXED ENEMYHUD - FIXED NICKEDHUD - FIXED ENEMYESP - AUTODENICK "WIP" - MOD VER 0.2.4",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",

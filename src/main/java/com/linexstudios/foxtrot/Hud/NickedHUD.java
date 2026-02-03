@@ -41,6 +41,7 @@ public class NickedHUD {
 
         Scoreboard scoreboard = mc.theWorld.getScoreboard();
         NetHandlerPlayClient netHandler = mc.getNetHandler();
+        if (scoreboard == null || netHandler == null) return;
 
         for (ScorePlayerTeam team : scoreboard.getTeams()) {
             Collection<String> members = team.getMembershipCollection();
@@ -49,10 +50,10 @@ public class NickedHUD {
                 if (info == null) continue;
 
                 EntityOtherPlayerMP other = new EntityOtherPlayerMP(mc.theWorld, info.getGameProfile());
-                if (other.getUniqueID().version() != 2) continue;
+                if (other.getUniqueID().version() != 2) continue; // only nicked players
 
                 if (!foundNicked) {
-                    String header = EnumChatFormatting.GOLD + "" + EnumChatFormatting.BOLD + "Nicked Players:";
+                    String header = EnumChatFormatting.RED.toString() + EnumChatFormatting.BOLD.toString() + "Nicked Players:";
                     fr.drawStringWithShadow(header, xPos, yPos, 16777215);
                     yPos += fr.FONT_HEIGHT + 1;
                     foundNicked = true;
@@ -61,16 +62,20 @@ public class NickedHUD {
                 String nickedName = other.getName();
                 String realIGN = NickedManager.getResolvedIGN(nickedName);
 
-                String formattedName = nickedName;
+                // Nicked name always shown in white
+                String formattedName = EnumChatFormatting.WHITE.toString() + nickedName;
+                // Once resolved, append revealed IGN in yellow with gray brackets
                 if (realIGN != null && !realIGN.isEmpty()) {
-                    formattedName += EnumChatFormatting.YELLOW + " (" + realIGN + ")" + EnumChatFormatting.RESET;
+                    formattedName += EnumChatFormatting.GRAY.toString() + " (" +
+                            EnumChatFormatting.YELLOW.toString() + realIGN +
+                            EnumChatFormatting.GRAY.toString() + ")";
                 }
 
                 String gear = getMainGear(other);
                 String distanceDisplay = getDistanceOrSpawn(other);
 
-                String fullLine = formattedName + EnumChatFormatting.WHITE + " in " +
-                        gear + EnumChatFormatting.RESET + EnumChatFormatting.GRAY + " - " +
+                String fullLine = formattedName + EnumChatFormatting.WHITE.toString() + " in " +
+                        gear + EnumChatFormatting.RESET.toString() + EnumChatFormatting.GRAY.toString() + " - " +
                         distanceDisplay;
 
                 fr.drawStringWithShadow(fullLine, xPos, yPos, 16777215);
@@ -78,6 +83,7 @@ public class NickedHUD {
             }
         }
 
+        // Local drag handling (works if HUDController doesn't forward)
         if (dragMode) {
             if (Mouse.isButtonDown(0)) {
                 if (!dragging) {
@@ -94,24 +100,46 @@ public class NickedHUD {
     }
 
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player.posY > 113.0D) {
-            return EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GREEN + "SPAWN" + EnumChatFormatting.GRAY + "]";
+        // Check Y level or spawn region bounds
+        if (player.posY > 113.0D || isInSpawnRegion(player)) {
+            return EnumChatFormatting.GRAY.toString() + "[" + EnumChatFormatting.GREEN.toString() + "SPAWN" + EnumChatFormatting.GRAY.toString() + "]";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);
         String distStr = String.format("%.2f", dist);
-        if (dist < 15.0F) return EnumChatFormatting.RED + distStr;
-        return EnumChatFormatting.GREEN + distStr;
+        if (dist < 15.0F) return EnumChatFormatting.RED.toString() + distStr;
+        return EnumChatFormatting.GREEN.toString() + distStr;
+    }
+
+    private boolean isInSpawnRegion(EntityOtherPlayerMP player) {
+        // Example bounds for Hypixel Pit spawn platform; adjust if needed
+        return player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20;
     }
 
     private String getMainGear(EntityOtherPlayerMP player) {
         ItemStack legs = player.inventory.armorInventory[1];
         if (legs != null && legs.hasTagCompound()) {
             String nbt = legs.getTagCompound().toString();
-            if (nbt.contains("Regularity")) return EnumChatFormatting.DARK_RED + "Regularities";
-            if (nbt.contains("Mind Assault")) return EnumChatFormatting.DARK_PURPLE + "Mind Assault";
-            if (nbt.contains("Venom")) return EnumChatFormatting.DARK_PURPLE + "Venom";
-            if (nbt.contains("Evil") || nbt.contains("Dark")) return EnumChatFormatting.DARK_PURPLE + "Darks";
+            if (nbt.contains("Regularity")) return EnumChatFormatting.DARK_RED.toString() + "Regularities";
+            if (nbt.contains("Mind Assault")) return EnumChatFormatting.DARK_PURPLE.toString() + "Mind Assault";
+            if (nbt.contains("Venom")) return EnumChatFormatting.DARK_PURPLE.toString() + "Venom";
+            if (nbt.contains("Evil") || nbt.contains("Dark")) return EnumChatFormatting.DARK_PURPLE.toString() + "Darks";
         }
-        return EnumChatFormatting.GRAY + "SHOP";
+        return EnumChatFormatting.GRAY.toString() + "SHOP";
+    }
+
+    // Called by HUDController to forward drag events
+    public void handleDrag(int mouseX, int mouseY) {
+        if (!dragMode) return;
+        if (Mouse.isButtonDown(0)) {
+            if (!dragging) {
+                dragging = true;
+                dragOffsetX = mouseX - hudX;
+                dragOffsetY = mouseY - hudY;
+            }
+            hudX = mouseX - dragOffsetX;
+            hudY = mouseY - dragOffsetY;
+        } else {
+            dragging = false;
+        }
     }
 }
