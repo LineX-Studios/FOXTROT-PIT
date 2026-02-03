@@ -3,17 +3,13 @@ package com.linexstudios.foxtrot.Hud;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
-import net.minecraft.client.network.NetHandlerPlayClient;
-import net.minecraft.client.network.NetworkPlayerInfo;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
-import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import org.lwjgl.input.Mouse;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class EnemyHUD {
@@ -21,10 +17,8 @@ public class EnemyHUD {
 
     public static boolean enabled = true;
     public static boolean dragMode = false;
-    public static boolean debugMode = false;
-    public static boolean notificationsEnabled = true;
 
-    // Position and dragging state
+    // Position state
     public static int hudX = 200;
     public static int hudY = 80;
 
@@ -32,14 +26,10 @@ public class EnemyHUD {
     private static int dragOffsetX;
     private static int dragOffsetY;
 
-    // Public target list used by commands and other classes
     public static List<String> targetList = new ArrayList<>();
 
-    public EnemyHUD() {
-        // default constructor
-    }
-
     public void onRender(RenderGameOverlayEvent.Post event) {
+        // Essential: Only render during the TEXT phase
         if (!enabled || event.type != RenderGameOverlayEvent.ElementType.TEXT || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
@@ -48,116 +38,98 @@ public class EnemyHUD {
 
         boolean foundEnemy = false;
 
-        Scoreboard scoreboard = mc.theWorld.getScoreboard();
-        NetHandlerPlayClient netHandler = mc.getNetHandler();
-        if (scoreboard == null || netHandler == null) return;
+        // Iterate through all loaded players in the world
+        for (EntityPlayer player : mc.theWorld.playerEntities) {
+            if (!(player instanceof EntityOtherPlayerMP)) continue;
+            
+            EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
+            if (!isTarget(other.getName())) continue;
 
-        for (ScorePlayerTeam team : scoreboard.getTeams()) {
-            Collection<String> members = team.getMembershipCollection();
-            for (String member : members) {
-                NetworkPlayerInfo info = netHandler.getPlayerInfo(member);
-                if (info == null) continue;
-
-                EntityOtherPlayerMP other = new EntityOtherPlayerMP(mc.theWorld, info.getGameProfile());
-                if (!isTarget(other.getName())) continue;
-
-                if (!foundEnemy) {
-                    String header = EnumChatFormatting.RED.toString() + EnumChatFormatting.BOLD.toString() + "Enemies List:";
-                    fr.drawStringWithShadow(header, xPos, yPos, 0xFFFFFF);
-                    yPos += fr.FONT_HEIGHT + 1;
-                    foundEnemy = true;
-                }
-
-                String formattedName = getFormattedName(other.getName());
-
-                String gear = getMainGear(other);
-                String distanceDisplay = getDistanceOrSpawn(other);
-
-                String fullLine = formattedName + EnumChatFormatting.WHITE.toString() + " in " +
-                        gear + EnumChatFormatting.RESET.toString() + EnumChatFormatting.GRAY.toString() + " - " +
-                        distanceDisplay;
-
-                fr.drawStringWithShadow(fullLine, xPos, yPos, 0xFFFFFF);
-                yPos += fr.FONT_HEIGHT;
+            // Draw Header once if an enemy is found
+            if (!foundEnemy) {
+                String header = EnumChatFormatting.RED.toString() + EnumChatFormatting.BOLD.toString() + "Enemies List:";
+                fr.drawStringWithShadow(header, xPos, yPos, 0xFFFFFF);
+                yPos += fr.FONT_HEIGHT + 1;
+                foundEnemy = true;
             }
+
+            String formattedName = getFormattedName(other.getName());
+            String gear = getMainGear(other);
+            String distanceDisplay = getDistanceOrSpawn(other);
+
+            String fullLine = formattedName + EnumChatFormatting.WHITE + " in " +
+                    gear + EnumChatFormatting.RESET + EnumChatFormatting.GRAY + " - " +
+                    distanceDisplay;
+
+            fr.drawStringWithShadow(fullLine, xPos, yPos, 0xFFFFFF);
+            yPos += fr.FONT_HEIGHT;
         }
-
-        // Local drag handling (works if HUDController doesn't forward)
-        if (dragMode) {
-            if (Mouse.isButtonDown(0)) {
-                if (!dragging) {
-                    dragging = true;
-                    dragOffsetX = Mouse.getX() - hudX;
-                    dragOffsetY = mc.displayHeight - Mouse.getY() - hudY;
-                }
-                hudX = Mouse.getX() - dragOffsetX;
-                hudY = mc.displayHeight - Mouse.getY() - dragOffsetY;
-            } else {
-                dragging = false;
-            }
+        
+        // If no enemies are online, but we are in DRAG MODE, show a placeholder so the user can see where it is
+        if (!foundEnemy && dragMode) {
+            fr.drawStringWithShadow(EnumChatFormatting.GRAY + "[EnemyHUD Position]", xPos, yPos, 0xFFFFFF);
         }
     }
 
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player == null || mc.thePlayer == null) return EnumChatFormatting.GRAY.toString() + "[?]";
+        if (player == null || mc.thePlayer == null) return EnumChatFormatting.GRAY + "[?]";
 
-        // Spawn detection: Y level or spawn region bounds
+        // Spawn detection logic
         if (player.posY > 113.0D || isInSpawnRegion(player)) {
-            return EnumChatFormatting.GRAY.toString() + "[" + EnumChatFormatting.GREEN.toString() + "SPAWN" + EnumChatFormatting.GRAY.toString() + "]";
+            return EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GREEN + "SPAWN" + EnumChatFormatting.GRAY + "]";
         }
 
         float dist = player.getDistanceToEntity(mc.thePlayer);
-        String distStr = String.format("%.2f", dist);
-        if (dist < 15.0F) return EnumChatFormatting.RED.toString() + distStr;
-        return EnumChatFormatting.GREEN.toString() + distStr;
+        String distStr = String.format("%.1f", dist);
+        
+        if (dist < 15.0F) return EnumChatFormatting.RED + distStr + "m";
+        return EnumChatFormatting.GREEN + distStr + "m";
     }
 
     private boolean isInSpawnRegion(EntityOtherPlayerMP player) {
-        // Example bounds for Hypixel Pit spawn platform; adjust to your server's coordinates if needed
         return player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20;
     }
 
     private String getMainGear(EntityOtherPlayerMP player) {
-        if (player == null) return EnumChatFormatting.GRAY.toString() + "SHOP";
-        ItemStack legs = player.inventory.armorInventory[1];
+        ItemStack legs = player.inventory.armorInventory[1]; // Leggings slot
         if (legs != null && legs.hasTagCompound()) {
             String nbt = legs.getTagCompound().toString();
-            if (nbt.contains("Regularity")) return EnumChatFormatting.DARK_RED.toString() + "Regularities";
-            if (nbt.contains("Mind Assault")) return EnumChatFormatting.DARK_PURPLE.toString() + "Mind Assault";
-            if (nbt.contains("Venom")) return EnumChatFormatting.DARK_PURPLE.toString() + "Venom";
-            if (nbt.contains("Evil") || nbt.contains("Dark")) return EnumChatFormatting.DARK_PURPLE.toString() + "Darks";
+            if (nbt.contains("Regularity")) return EnumChatFormatting.DARK_RED + "Regularities";
+            if (nbt.contains("Mind Assault")) return EnumChatFormatting.DARK_PURPLE + "Mind Assault";
+            if (nbt.contains("Venom")) return EnumChatFormatting.DARK_PURPLE + "Venom";
+            if (nbt.contains("Evil") || nbt.contains("Dark")) return EnumChatFormatting.DARK_PURPLE + "Darks";
         }
-        return EnumChatFormatting.GRAY.toString() + "SHOP";
+        return EnumChatFormatting.GRAY + "SHOP";
     }
 
-    // Called by HUDController to forward drag events
     public void handleDrag(int mouseX, int mouseY) {
         if (!dragMode) return;
+        
+        // Check if mouse is within the general area of the HUD to start dragging
         if (Mouse.isButtonDown(0)) {
             if (!dragging) {
-                dragging = true;
-                dragOffsetX = mouseX - hudX;
-                dragOffsetY = mouseY - hudY;
+                // Check if mouse is roughly over the HUD (Header area)
+                if (mouseX >= hudX && mouseX <= hudX + 100 && mouseY >= hudY && mouseY <= hudY + 20) {
+                    dragging = true;
+                    dragOffsetX = mouseX - hudX;
+                    dragOffsetY = mouseY - hudY;
+                }
             }
-            hudX = mouseX - dragOffsetX;
-            hudY = mouseY - dragOffsetY;
+            if (dragging) {
+                hudX = mouseX - dragOffsetX;
+                hudY = mouseY - dragOffsetY;
+            }
         } else {
             dragging = false;
         }
     }
 
-    // Utility: check if a name is in the target list (case-insensitive)
     public static boolean isTarget(String name) {
         if (name == null) return false;
-        for (String t : targetList) {
-            if (t != null && t.equalsIgnoreCase(name)) return true;
-        }
-        return false;
+        return targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
     }
 
-    // Utility: format a name for chat/HUD (red + reset)
     public static String getFormattedName(String name) {
-        if (name == null) return EnumChatFormatting.RED.toString() + "null" + EnumChatFormatting.RESET.toString();
-        return EnumChatFormatting.RED.toString() + name + EnumChatFormatting.RESET.toString();
+        return EnumChatFormatting.RED + (name == null ? "null" : name) + EnumChatFormatting.RESET;
     }
 }
