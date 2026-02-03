@@ -11,7 +11,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 
-@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.2.3", acceptedMinecraftVersions = "[1.8.9]")
+@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.2.4", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
@@ -32,6 +32,6 @@ public class Foxtrot {
         // Register commands
         ClientCommandHandler.instance.registerCommand(new CommandFoxtrot());
 
-        System.out.println("[Foxtrot] Version 0.2.3 Loaded.");
+        System.out.println("[Foxtrot] Version 0.2.4 Loaded.");
     }
 }

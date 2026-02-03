@@ -23,6 +23,7 @@ public class EnemyESP {
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (player != mc.thePlayer && isTarget(player.getName())) {
                 renderFilledBox(player, event.partialTicks);
+                renderOutlineBox(player, event.partialTicks);
             }
         }
     }
@@ -32,17 +33,7 @@ public class EnemyESP {
     }
 
     private void renderFilledBox(EntityPlayer player, float partialTicks) {
-        double x = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks - mc.getRenderManager().viewerPosX;
-        double y = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks - mc.getRenderManager().viewerPosY;
-        double z = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks - mc.getRenderManager().viewerPosZ;
-
-        float expand = 0.13f;
-        float expandy = 0.11f;
-
-        AxisAlignedBB bb = new AxisAlignedBB(
-                x - player.width / 2.0 - expand, y - expandy, z - player.width / 2.0 - expand,
-                x + player.width / 2.0 + expand, y + player.height + expandy, z + player.width / 2.0 + expand
-        );
+        AxisAlignedBB bb = getInterpolatedBB(player, partialTicks);
 
         GL11.glPushMatrix();
         GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
@@ -53,11 +44,43 @@ public class EnemyESP {
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDepthMask(false);
 
-        // Force all enemies to render in light red
+        // Light red translucent fill
         drawFilledBoundingBox(bb, 1.0F, 0.3F, 0.3F, 0.4F);
 
         GL11.glPopAttrib();
         GL11.glPopMatrix();
+    }
+
+    private void renderOutlineBox(EntityPlayer player, float partialTicks) {
+        AxisAlignedBB bb = getInterpolatedBB(player, partialTicks);
+
+        GL11.glPushMatrix();
+        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+
+        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glDepthMask(false);
+
+        // Solid light red outline
+        GlStateManager.color(1.0F, 0.3F, 0.3F, 1.0F);
+        drawBoundingBoxOutline(bb);
+
+        GL11.glPopAttrib();
+        GL11.glPopMatrix();
+    }
+
+    private AxisAlignedBB getInterpolatedBB(EntityPlayer player, float partialTicks) {
+        double x = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks - mc.getRenderManager().viewerPosX;
+        double y = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks - mc.getRenderManager().viewerPosY;
+        double z = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks - mc.getRenderManager().viewerPosZ;
+
+        float expand = 0.13f;
+        float expandy = 0.11f;
+
+        return new AxisAlignedBB(
+                x - player.width / 2.0 - expand, y - expandy, z - player.width / 2.0 - expand,
+                x + player.width / 2.0 + expand, y + player.height + expandy, z + player.width / 2.0 + expand
+        );
     }
 
     public static void drawFilledBoundingBox(AxisAlignedBB bb, float r, float g, float b, float a) {
@@ -96,6 +119,52 @@ public class EnemyESP {
         worldrenderer.pos(bb.maxX, bb.maxY, bb.minZ).endVertex();
         worldrenderer.pos(bb.maxX, bb.maxY, bb.maxZ).endVertex();
         worldrenderer.pos(bb.maxX, bb.minY, bb.maxZ).endVertex();
+
+        tessellator.draw();
+    }
+
+    public static void drawBoundingBoxOutline(AxisAlignedBB bb) {
+        Tessellator tessellator = Tessellator.getInstance();
+        WorldRenderer worldrenderer = tessellator.getWorldRenderer();
+
+        worldrenderer.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION);
+
+        // 12 edges of the box
+        worldrenderer.pos(bb.minX, bb.minY, bb.minZ).endVertex();
+        worldrenderer.pos(bb.maxX, bb.minY, bb.minZ).endVertex();
+
+        worldrenderer.pos(bb.maxX, bb.minY, bb.minZ).endVertex();
+        worldrenderer.pos(bb.maxX, bb.minY, bb.maxZ).endVertex();
+
+        worldrenderer.pos(bb.maxX, bb.minY, bb.maxZ).endVertex();
+        worldrenderer.pos(bb.minX, bb.minY, bb.maxZ).endVertex();
+
+        worldrenderer.pos(bb.minX, bb.minY, bb.maxZ).endVertex();
+        worldrenderer.pos(bb.minX, bb.minY, bb.minZ).endVertex();
+
+        worldrenderer.pos(bb.minX, bb.maxY, bb.minZ).endVertex();
+        worldrenderer.pos(bb.maxX, bb.maxY, bb.minZ).endVertex();
+
+        worldrenderer.pos(bb.maxX, bb.maxY, bb.minZ).endVertex();
+        worldrenderer.pos(bb.maxX, bb.maxY, bb.maxZ).endVertex();
+
+        worldrenderer.pos(bb.maxX, bb.maxY, bb.maxZ).endVertex();
+        worldrenderer.pos(bb.minX, bb.maxY, bb.maxZ).endVertex();
+
+        worldrenderer.pos(bb.minX, bb.maxY, bb.maxZ).endVertex();
+        worldrenderer.pos(bb.minX, bb.maxY, bb.minZ).endVertex();
+
+        worldrenderer.pos(bb.minX, bb.minY, bb.minZ).endVertex();
+        worldrenderer.pos(bb.minX, bb.maxY, bb.minZ).endVertex();
+
+        worldrenderer.pos(bb.maxX, bb.minY, bb.minZ).endVertex();
+        worldrenderer.pos(bb.maxX, bb.maxY, bb.minZ).endVertex();
+
+        worldrenderer.pos(bb.maxX, bb.minY, bb.maxZ).endVertex();
+        worldrenderer.pos(bb.maxX, bb.maxY, bb.maxZ).endVertex();
+
+        worldrenderer.pos(bb.minX, bb.minY, bb.maxZ).endVertex();
+        worldrenderer.pos(bb.minX, bb.maxY, bb.maxZ).endVertex();
 
         tessellator.draw();
     }
