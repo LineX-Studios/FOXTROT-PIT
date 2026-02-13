@@ -34,14 +34,17 @@ public class ConfigHandler {
                 props.load(in);
                 in.close();
 
-                // HUD position
-                NickedHUD.hudX = Integer.parseInt(props.getProperty("hudX", "10"));
-                NickedHUD.hudY = Integer.parseInt(props.getProperty("hudY", "80"));
+                // FIX: Load both HUD positions separately
+                NickedHUD.hudX = Integer.parseInt(props.getProperty("nickedHudX", "10"));
+                NickedHUD.hudY = Integer.parseInt(props.getProperty("nickedHudY", "80"));
+                
+                EnemyHUD.hudX = Integer.parseInt(props.getProperty("enemyHudX", "200"));
+                EnemyHUD.hudY = Integer.parseInt(props.getProperty("enemyHudY", "80"));
 
                 // AutoDenick toggle
                 AutoDenick.enabled = Boolean.parseBoolean(props.getProperty("autoDenick", "false"));
 
-                // HUD enabled/disabled
+                // HUD enabled/disabled settings
                 EnemyHUD.enabled = Boolean.parseBoolean(props.getProperty("enemyHudEnabled", "true"));
                 EnemyHUD.notificationsEnabled = Boolean.parseBoolean(props.getProperty("enemyHudAlerts", "true"));
                 EnemyHUD.debugMode = Boolean.parseBoolean(props.getProperty("enemyHudDebug", "false"));
@@ -66,8 +69,14 @@ public class ConfigHandler {
 
             // Save Settings
             Properties props = new Properties();
-            props.setProperty("hudX", String.valueOf(NickedHUD.hudX));
-            props.setProperty("hudY", String.valueOf(NickedHUD.hudY));
+            
+            // FIX: Save both HUD positions separately
+            props.setProperty("nickedHudX", String.valueOf(NickedHUD.hudX));
+            props.setProperty("nickedHudY", String.valueOf(NickedHUD.hudY));
+            
+            props.setProperty("enemyHudX", String.valueOf(EnemyHUD.hudX));
+            props.setProperty("enemyHudY", String.valueOf(EnemyHUD.hudY));
+            
             props.setProperty("autoDenick", String.valueOf(AutoDenick.enabled));
             props.setProperty("enemyHudEnabled", String.valueOf(EnemyHUD.enabled));
             props.setProperty("enemyHudAlerts", String.valueOf(EnemyHUD.notificationsEnabled));

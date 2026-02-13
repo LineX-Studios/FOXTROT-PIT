@@ -1,5 +1,6 @@
 package com.linexstudios.foxtrot.Hud;
 
+import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import net.minecraft.client.gui.GuiScreen;
 import java.io.IOException;
 
@@ -10,10 +11,10 @@ public class EditHUDGui extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        // Natively creates that darkened gray background from your screenshot
         this.drawDefaultBackground(); 
+        this.fontRendererObj.drawStringWithShadow("§6§lFoxtrot HUD Editor", this.width / 2 - 55, 20, 0xFFFFFF);
+        this.fontRendererObj.drawStringWithShadow("§7Click and drag the boxes. Press ESC to save.", this.width / 2 - 110, 35, 0xFFFFFF);
 
-        // Force the HUDs to render in "Edit Mode" so you can drag them even if empty
         if (EnemyHUD.enabled) EnemyHUD.instance.render(true);
         if (NickedHUD.enabled) NickedHUD.instance.render(true);
 
@@ -23,7 +24,7 @@ public class EditHUDGui extends GuiScreen {
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         super.mouseClicked(mouseX, mouseY, mouseButton);
-        if (mouseButton == 0) { // Left Click
+        if (mouseButton == 0) {
             if (EnemyHUD.enabled && EnemyHUD.instance.isHovered(mouseX, mouseY)) {
                 draggingEnemy = true;
                 lastX = mouseX; lastY = mouseY;
@@ -37,7 +38,6 @@ public class EditHUDGui extends GuiScreen {
     @Override
     protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
         super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
-        // Smoothly move the HUDs based on mouse movement
         if (draggingEnemy) {
             EnemyHUD.hudX += (mouseX - lastX);
             EnemyHUD.hudY += (mouseY - lastY);
@@ -56,14 +56,14 @@ public class EditHUDGui extends GuiScreen {
         draggingNicked = false;
     }
 
+    // THIS TRIGGERS THE SAVE WHEN YOU HIT ESC
     @Override
     public void onGuiClosed() {
-        // Automatically turns off drag mode when you press ESC to save & exit
-        HUDController.dragMode = false;
+        ConfigHandler.saveConfig();
     }
 
     @Override
     public boolean doesGuiPauseGame() {
-        return false; // Keeps the world active in the background
+        return false;
     }
 }

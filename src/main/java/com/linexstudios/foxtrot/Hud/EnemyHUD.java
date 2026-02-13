@@ -59,7 +59,7 @@ public class EnemyHUD {
                 foundEnemy = true;
             }
 
-            // BUG FIX: Naturally grabs the prestige bracket and rank color natively from Hypixel
+            // Grabs prestige bracket and rank color natively from Hypixel
             String displayName;
             String rawFormatted = other.getDisplayName().getFormattedText();
             int nameIndex = rawFormatted.indexOf(other.getName());
@@ -108,7 +108,7 @@ public class EnemyHUD {
 
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
         if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
-            return EnumChatFormatting.GREEN + "Spawn";
+            return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);
         return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
@@ -136,7 +136,6 @@ public class EnemyHUD {
         return EnumChatFormatting.GRAY + "Shop";
     }
 
-    // STRICT WHITELIST: Only the EXACT enchants you provided are checked. The rest return null.
     public static String formatEnchant(String key) {
         if (key == null) return null;
         switch (key.toLowerCase()) {

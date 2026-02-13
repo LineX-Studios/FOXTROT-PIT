@@ -34,9 +34,9 @@ public class NickedHUD {
 
     public static List<String> nickedPlayers = new ArrayList<>();
 
-    // Regex to match Hypixel Ranks like [VIP], [MVP+], [MVP++], [YOUTUBE], [ADMIN], etc.
-    // It looks for uppercase letters and plus signs inside brackets.
-    private static final Pattern RANK_PATTERN = Pattern.compile("\\[(VIP|MVP|YOUTUBE|OWNER|ADMIN|HELPER|MOD|EVENTS|BUILD TEAM|ALUMNI|GM|APPLE|MOJANG)[+]*\\] ");
+    // Updated Regex to strip EVERYTHING in brackets (Prestige and Ranks)
+    // Matches patterns like [120], [XX-95], [MVP++], [YOUTUBE] followed by a space
+    private static final Pattern PREFIX_STRIP_PATTERN = Pattern.compile("^\\[.*?\\]\\s+");
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
@@ -82,20 +82,20 @@ public class NickedHUD {
                         }
                     }
 
-                    String fullPrefixAndName;
+                    // Get the nicked identity display
+                    String nickDisplay;
                     if (other != null) {
-                        fullPrefixAndName = other.getDisplayName().getFormattedText();
+                        nickDisplay = other.getDisplayName().getFormattedText();
                     } else if (info.getDisplayName() != null) {
-                        fullPrefixAndName = info.getDisplayName().getFormattedText();
+                        nickDisplay = info.getDisplayName().getFormattedText();
                     } else {
-                        fullPrefixAndName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
+                        nickDisplay = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
                     }
 
-                    // BUG FIX: Strip the MVP++/YOUTUBER ranks but keep the Prestige
-                    fullPrefixAndName = stripRank(fullPrefixAndName);
-
-                    String displayRealIGN = (realIGN != null && !realIGN.isEmpty()) ? realIGN : "Scraping...";
-                    String finalDisplayName = fullPrefixAndName + EnumChatFormatting.GRAY + " (" + EnumChatFormatting.YELLOW + displayRealIGN + EnumChatFormatting.GRAY + ")";
+                    // Format the Real IGN result to remove prestige/ranks in brackets
+                    String cleanedRealIGN = (realIGN != null && !realIGN.isEmpty()) ? stripAllPrefixes(realIGN) : "Scraping...";
+                    
+                    String finalDisplayName = nickDisplay + EnumChatFormatting.GRAY + " (" + EnumChatFormatting.YELLOW + cleanedRealIGN + EnumChatFormatting.GRAY + ")";
 
                     String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
                     String dist = other != null ? getDistanceOrSpawn(other) : EnumChatFormatting.GRAY + "Far";
@@ -133,18 +133,23 @@ public class NickedHUD {
     }
 
     /**
-     * Removes Hypixel rank prefixes (like [MVP++]) from the string while keeping Prestige.
+     * Specifically cleans the Real IGN to remove any bracketed prefixes.
+     * Example: "[XX-95] [VIP] BadBoyCody" -> "BadBoyCody"
      */
-    private String stripRank(String name) {
-        if (name == null || name.isEmpty()) return name;
-        // Strip color codes temporarily to check for rank words, or just use regex on the raw string
-        Matcher matcher = RANK_PATTERN.matcher(EnumChatFormatting.getTextWithoutFormattingCodes(name));
-        if (matcher.find()) {
-            String rankFound = matcher.group();
-            // We find the rank in the unformatted text, then remove it from the formatted text
-            return name.replace(rankFound, "");
+    private String stripAllPrefixes(String input) {
+        if (input == null || input.isEmpty()) return input;
+        
+        // Remove color codes to work with plain text first
+        String plain = EnumChatFormatting.getTextWithoutFormattingCodes(input);
+        
+        // Use regex to keep stripping brackets until none are left at the start
+        Matcher matcher = PREFIX_STRIP_PATTERN.matcher(plain);
+        while (matcher.find()) {
+            plain = plain.substring(matcher.end());
+            matcher = PREFIX_STRIP_PATTERN.matcher(plain);
         }
-        return name;
+        
+        return plain.trim();
     }
 
     public boolean isHovered(int mouseX, int mouseY) {
@@ -153,7 +158,7 @@ public class NickedHUD {
 
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
         if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
-            return EnumChatFormatting.GREEN + "Spawn";
+            return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);
         return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
