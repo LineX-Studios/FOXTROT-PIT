@@ -39,8 +39,8 @@ public class WhoGotBanned {
             // Extract the banned player's name (Removes "[-] " from the start and " left!" from the end)
             String playerName = message.substring(4, message.length() - 6);
             
-            // Format: [Foxtrot] (IGN) has been banned!
-            String prefix = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + "Foxtrot" + EnumChatFormatting.GRAY + "] ";
+            // Format: [PIT] (IGN) has been banned!
+            String prefix = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "PIT" + EnumChatFormatting.GRAY + "] ";
             String alert = EnumChatFormatting.GREEN + playerName + " has been banned!";
             
             mc.thePlayer.addChatMessage(new ChatComponentText(prefix + alert));

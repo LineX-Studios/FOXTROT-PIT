@@ -48,7 +48,6 @@ public class DenickRunnable implements Runnable {
 
         if (target == null) {
             sendMessage(EnumChatFormatting.RED + "Player not found in render distance.");
-            // Tell NickedManager we failed so the HUD doesn't stay stuck on "Scraping..."
             NickedManager.addNicked(guyToDenick, EnumChatFormatting.RED + "Not in range");
             return;
         }
@@ -89,12 +88,12 @@ public class DenickRunnable implements Runnable {
             if (result != null) {
                 sendMessage(EnumChatFormatting.GREEN + "Denicked! " + EnumChatFormatting.WHITE + result);
                 
-                // INTEGRATION: Immediately saves the real name to be displayed on NickedHUD
+                // INTEGRATION: Immediately saves the valid real name to be displayed on NickedHUD
                 NickedManager.addNicked(targetName, result);
             } else {
                 sendClickableManualLink(finalNonce);
                 
-                // Updates the HUD to show it failed to find a match
+                // Updates the HUD to show it failed to find a valid match
                 NickedManager.addNicked(targetName, EnumChatFormatting.RED + "Failed");
             }
         });
@@ -130,7 +129,7 @@ public class DenickRunnable implements Runnable {
 
             JSONObject root = new JSONObject(response);
 
-            // Handle both "items" and "data"
+            // Handle both "items" and "data" arrays based on PitPal's formatting
             JSONArray itemsArr = null;
             if (root.has("items") && !root.isNull("items")) {
                 itemsArr = root.getJSONArray("items");
@@ -150,7 +149,6 @@ public class DenickRunnable implements Runnable {
                         ownerName = raw.replaceAll("§.", "").replaceAll("\\$.", "").trim();
                     }
 
-                    // Handle both "ownerId" and "ownerid"
                     if (itemObj.has("ownerId") && !itemObj.isNull("ownerId")) {
                         ownerId = itemObj.getString("ownerId").trim();
                     } else if (itemObj.has("ownerid") && !itemObj.isNull("ownerid")) {
@@ -158,19 +156,26 @@ public class DenickRunnable implements Runnable {
                     }
 
                     if (ownerName != null && !ownerName.isEmpty()) {
-                        sendDebug("Resolved owner: " + ownerName);
-                        return ownerName;
+                        sendDebug("Found potential owner: " + ownerName + ". Verifying existence...");
+                        
+                        // VALIDATION PATCH: Checks if it's a fake/junk name like "weaponlies"
+                        if (isValidMinecraftName(ownerName)) {
+                            sendDebug("Resolved valid owner: " + ownerName);
+                            return ownerName;
+                        } else {
+                            sendDebug("Invalid/Non-existent name found: " + ownerName);
+                            // Set to null so the code falls back to checking the UUID instead
+                            ownerName = null;
+                        }
                     }
 
                     if (ownerId != null && !ownerId.isEmpty()) {
                         String resolvedName = resolveUsernameFromUUID(ownerId);
                         if (resolvedName != null) {
                             sendDebug("Resolved UUID " + ownerId + " to IGN: " + resolvedName);
-                            // Cleaned up for HUD display
                             return resolvedName; 
                         } else {
                             sendDebug("Could not resolve UUID: " + ownerId);
-                            // Return null instead of UUID so the HUD registers it as a failure
                             return null;
                         }
                     }
@@ -182,6 +187,28 @@ public class DenickRunnable implements Runnable {
             if (conn != null) conn.disconnect();
         }
         return null;
+    }
+
+    /**
+     * Pings the official Mojang API. If Mojang returns a 204 (No Content), 
+     * the account does not exist, meaning it's corrupted API junk.
+     */
+    private boolean isValidMinecraftName(String name) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + name);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+
+            // Mojang returns 200 for valid names, and 204 or 404 for fake/non-existent ones
+            return conn.getResponseCode() == 200;
+        } catch (Exception e) {
+            return false; // Prevent junk names if the network fails
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private String resolveUsernameFromUUID(String uuid) {
@@ -254,5 +281,3 @@ public class DenickRunnable implements Runnable {
         });
     }
 }
-
-// MUST CREDIT VIXY - OMI IN ANY SORT OF USE COMMERCIAL OR PERSONAL.

@@ -11,7 +11,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 
-@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.3.1", acceptedMinecraftVersions = "[1.8.9]")
+@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.3.3", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
