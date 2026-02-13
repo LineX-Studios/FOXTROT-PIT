@@ -5,6 +5,8 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import org.lwjgl.input.Mouse;
@@ -17,8 +19,9 @@ public class EnemyHUD {
 
     public static boolean enabled = true;
     public static boolean dragMode = false;
+    public static boolean debugMode = false;
+    public static boolean notificationsEnabled = true;
 
-    // Position state
     public static int hudX = 200;
     public static int hudY = 80;
 
@@ -29,91 +32,120 @@ public class EnemyHUD {
     public static List<String> targetList = new ArrayList<>();
 
     public void onRender(RenderGameOverlayEvent.Post event) {
-        // Essential: Only render during the TEXT phase
         if (!enabled || event.type != RenderGameOverlayEvent.ElementType.TEXT || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
         int xPos = hudX;
         int yPos = hudY;
-
         boolean foundEnemy = false;
 
-        // Iterate through all loaded players in the world
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
-            
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
             if (!isTarget(other.getName())) continue;
 
-            // Draw Header once if an enemy is found
             if (!foundEnemy) {
-                String header = EnumChatFormatting.RED.toString() + EnumChatFormatting.BOLD.toString() + "Enemies List:";
-                fr.drawStringWithShadow(header, xPos, yPos, 0xFFFFFF);
-                yPos += fr.FONT_HEIGHT + 1;
+                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "EnemY List:", xPos, yPos, 0xFFFFFF);
+                yPos += fr.FONT_HEIGHT + 2;
                 foundEnemy = true;
             }
 
-            String formattedName = getFormattedName(other.getName());
-            String gear = getMainGear(other);
-            String distanceDisplay = getDistanceOrSpawn(other);
+            String prefix = getPlayerPrefix(other);
+            String name = EnumChatFormatting.RED + other.getName() + EnumChatFormatting.RESET;
+            String gear = getShortEnchants(other);
+            String dist = getDistanceOrSpawn(other);
 
-            String fullLine = formattedName + EnumChatFormatting.WHITE + " in " +
-                    gear + EnumChatFormatting.RESET + EnumChatFormatting.GRAY + " - " +
-                    distanceDisplay;
+            // Format: [120] PlayerName - Reg/Abs/Mirror - 14m
+            String fullLine = prefix + " " + name + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
 
             fr.drawStringWithShadow(fullLine, xPos, yPos, 0xFFFFFF);
             yPos += fr.FONT_HEIGHT;
         }
-        
-        // If no enemies are online, but we are in DRAG MODE, show a placeholder so the user can see where it is
+
         if (!foundEnemy && dragMode) {
-            fr.drawStringWithShadow(EnumChatFormatting.GRAY + "[EnemyHUD Position]", xPos, yPos, 0xFFFFFF);
+            fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", xPos, yPos, 0xFFFFFF);
+            fr.drawStringWithShadow(EnumChatFormatting.GRAY + "[Enemy list Hud Position]", xPos, yPos + fr.FONT_HEIGHT + 2, 0xFFFFFF);
         }
+    }
+
+    // Extracts the [120] prestige bracket that Hypixel sends automatically
+    private String getPlayerPrefix(EntityOtherPlayerMP player) {
+        String formatted = player.getDisplayName().getFormattedText();
+        int index = formatted.indexOf(player.getName());
+        if (index > 0) {
+            return formatted.substring(0, index).trim();
+        }
+        return EnumChatFormatting.GRAY + "[?]";
     }
 
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player == null || mc.thePlayer == null) return EnumChatFormatting.GRAY + "[?]";
-
-        // Spawn detection logic
-        if (player.posY > 113.0D || isInSpawnRegion(player)) {
-            return EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GREEN + "SPAWN" + EnumChatFormatting.GRAY + "]";
+        if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
+            return EnumChatFormatting.RED + "Spawn";
         }
-
         float dist = player.getDistanceToEntity(mc.thePlayer);
-        String distStr = String.format("%.1f", dist);
-        
-        if (dist < 15.0F) return EnumChatFormatting.RED + distStr + "m";
-        return EnumChatFormatting.GREEN + distStr + "m";
+        return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
     }
 
-    private boolean isInSpawnRegion(EntityOtherPlayerMP player) {
-        return player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20;
-    }
-
-    private String getMainGear(EntityOtherPlayerMP player) {
-        ItemStack legs = player.inventory.armorInventory[1]; // Leggings slot
-        if (legs != null && legs.hasTagCompound()) {
-            String nbt = legs.getTagCompound().toString();
-            if (nbt.contains("Regularity")) return EnumChatFormatting.DARK_RED + "Regularities";
-            if (nbt.contains("Mind Assault")) return EnumChatFormatting.DARK_PURPLE + "Mind Assault";
-            if (nbt.contains("Venom")) return EnumChatFormatting.DARK_PURPLE + "Venom";
-            if (nbt.contains("Evil") || nbt.contains("Dark")) return EnumChatFormatting.DARK_PURPLE + "Darks";
+    private String getShortEnchants(EntityOtherPlayerMP player) {
+        ItemStack pants = player.inventory.armorInventory[1]; // Leggings
+        if (pants != null && pants.hasTagCompound()) {
+            NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
+            if (extra != null && extra.hasKey("CustomEnchants")) {
+                NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
+                List<String> shortNames = new ArrayList<>();
+                
+                for (int i = 0; i < enchants.tagCount(); i++) {
+                    String key = enchants.getCompoundTagAt(i).getString("Key");
+                    shortNames.add(formatEnchant(key));
+                }
+                
+                if (!shortNames.isEmpty()) {
+                    // Joins them with a white slash: Reg/Mirror/Abs
+                    return String.join(EnumChatFormatting.WHITE + "/", shortNames);
+                }
+            }
+            if (pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
         }
-        return EnumChatFormatting.GRAY + "SHOP";
+        return EnumChatFormatting.GRAY + "Shop";
+    }
+
+    // Maps the NBT ID to the Short Name and Color
+    public static String formatEnchant(String key) {
+        if (key == null) return "";
+        switch (key.toLowerCase()) {
+            case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
+            case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
+            case "mirror": return EnumChatFormatting.WHITE + "Mirror";
+            case "critically_funky": return EnumChatFormatting.AQUA + "Crit Funky";
+            case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
+            case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
+            case "executioner": return EnumChatFormatting.RED + "Exec";
+            case "billionaire": return EnumChatFormatting.GOLD + "Bill";
+            case "gamble": return EnumChatFormatting.LIGHT_PURPLE + "Gam";
+            case "solitude": return EnumChatFormatting.DARK_GREEN + "Soli";
+            case "protection": return EnumChatFormatting.BLUE + "Prot";
+            case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
+            case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
+            default:
+                // If enchant isn't recognized, just grab the first word
+                String[] words = key.split("_");
+                if (words.length > 0 && words[0].length() > 0) {
+                    String first = words[0];
+                    return EnumChatFormatting.GRAY + first.substring(0, 1).toUpperCase() + first.substring(1);
+                }
+                return EnumChatFormatting.GRAY + key;
+        }
     }
 
     public void handleDrag(int mouseX, int mouseY) {
         if (!dragMode) return;
-        
-        // Check if mouse is within the general area of the HUD to start dragging
+        boolean isHovered = mouseX >= hudX && mouseX <= hudX + 100 && mouseY >= hudY && mouseY <= hudY + 20;
+
         if (Mouse.isButtonDown(0)) {
-            if (!dragging) {
-                // Check if mouse is roughly over the HUD (Header area)
-                if (mouseX >= hudX && mouseX <= hudX + 100 && mouseY >= hudY && mouseY <= hudY + 20) {
-                    dragging = true;
-                    dragOffsetX = mouseX - hudX;
-                    dragOffsetY = mouseY - hudY;
-                }
+            if (!dragging && isHovered) {
+                dragging = true;
+                dragOffsetX = mouseX - hudX;
+                dragOffsetY = mouseY - hudY;
             }
             if (dragging) {
                 hudX = mouseX - dragOffsetX;
@@ -125,11 +157,6 @@ public class EnemyHUD {
     }
 
     public static boolean isTarget(String name) {
-        if (name == null) return false;
-        return targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
-    }
-
-    public static String getFormattedName(String name) {
-        return EnumChatFormatting.RED + (name == null ? "null" : name) + EnumChatFormatting.RESET;
+        return name != null && targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
     }
 }

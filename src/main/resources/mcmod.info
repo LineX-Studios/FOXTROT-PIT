@@ -1,8 +1,8 @@
 [
 {
   "modid": "foxtrot",
-  "name": "Foxtrot PIT",
-  "description": "HHypixel PIT MOD - FIXED HUDCONTROLLER - FIXED ENEMYHUD - FIXED NICKEDHUD - FIXED ENEMYESP - AUTODENICK "WIP" - MOD VER 0.2.4",
+  "name": "Foxtrot",
+  "description": "VER 0.2.5",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",
