@@ -45,7 +45,8 @@ public class EnemyHUD {
             if (!isTarget(other.getName())) continue;
 
             if (!foundEnemy) {
-                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "EnemY List:", xPos, yPos, 0xFFFFFF);
+                // Fixed Typo: "EnemY List" -> "Enemy List"
+                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", xPos, yPos, 0xFFFFFF);
                 yPos += fr.FONT_HEIGHT + 2;
                 foundEnemy = true;
             }
@@ -64,7 +65,7 @@ public class EnemyHUD {
 
         if (!foundEnemy && dragMode) {
             fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", xPos, yPos, 0xFFFFFF);
-            fr.drawStringWithShadow(EnumChatFormatting.GRAY + "[Enemy list Hud Position]", xPos, yPos + fr.FONT_HEIGHT + 2, 0xFFFFFF);
+            fr.drawStringWithShadow(EnumChatFormatting.GRAY + "[Enemy HUD Position]", xPos, yPos + fr.FONT_HEIGHT + 2, 0xFFFFFF);
         }
     }
 
@@ -104,7 +105,10 @@ public class EnemyHUD {
                     return String.join(EnumChatFormatting.WHITE + "/", shortNames);
                 }
             }
-            if (pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
+            // Bug Fix: Added hasDisplayName() check to prevent NullPointerExceptions
+            if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) {
+                return EnumChatFormatting.DARK_PURPLE + "Darks";
+            }
         }
         return EnumChatFormatting.GRAY + "Shop";
     }
@@ -119,9 +123,6 @@ public class EnemyHUD {
             case "critically_funky": return EnumChatFormatting.AQUA + "Crit Funky";
             case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
             case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
-            case "executioner": return EnumChatFormatting.RED + "Exec";
-            case "billionaire": return EnumChatFormatting.GOLD + "Bill";
-            case "gamble": return EnumChatFormatting.LIGHT_PURPLE + "Gam";
             case "solitude": return EnumChatFormatting.DARK_GREEN + "Soli";
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
@@ -158,5 +159,10 @@ public class EnemyHUD {
 
     public static boolean isTarget(String name) {
         return name != null && targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
+    }
+
+    // Bug Fix: Re-added this method required for CommandFoxtrot.java to compile
+    public static String getFormattedName(String name) {
+        return EnumChatFormatting.RED + (name == null ? "null" : name) + EnumChatFormatting.RESET;
     }
 }
