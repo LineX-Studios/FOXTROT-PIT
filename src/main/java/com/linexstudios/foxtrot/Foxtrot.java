@@ -4,8 +4,10 @@ import com.linexstudios.foxtrot.Commands.CommandFoxtrot;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
+import com.linexstudios.foxtrot.Handler.KeybindHandler;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
+import com.linexstudios.foxtrot.Hud.NameTags;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
@@ -19,16 +21,25 @@ public class Foxtrot {
         // Load saved configuration
         ConfigHandler.loadConfig();
 
-        // Register HUDs and ESP overlays (MUST use .instance so the HUD Editor dragging works!)
+        // 1. Initialize the Keybinds so they appear in your ESC -> Controls menu
+        KeybindHandler.init();
+
+        // Register HUDs and ESP overlays
         MinecraftForge.EVENT_BUS.register(EnemyHUD.instance);
         MinecraftForge.EVENT_BUS.register(NickedHUD.instance);
         MinecraftForge.EVENT_BUS.register(new EnemyESP()); 
+        
+        // Register the new NameTags module
+        MinecraftForge.EVENT_BUS.register(NameTags.instance);
 
         // Register ban detection
         MinecraftForge.EVENT_BUS.register(new WhoGotBanned());
 
-        // Register AutoDenick listener (MUST use .instance to link properly)
+        // Register AutoDenick listener
         MinecraftForge.EVENT_BUS.register(AutoDenick.instance);
+        
+        // 2. Register the KeybindHandler to listen for when you actually press 'X'
+        MinecraftForge.EVENT_BUS.register(new KeybindHandler());
 
         // Register commands
         ClientCommandHandler.instance.registerCommand(new CommandFoxtrot());

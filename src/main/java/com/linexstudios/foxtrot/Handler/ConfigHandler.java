@@ -50,6 +50,7 @@ public class ConfigHandler {
                 EnemyHUD.debugMode = Boolean.parseBoolean(props.getProperty("enemyHudDebug", "false"));
 
                 NickedHUD.enabled = Boolean.parseBoolean(props.getProperty("nickedHudEnabled", "true"));
+                NameTags.enabled = Boolean.parseBoolean(props.getProperty("nameTagsEnabled", "false"));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -82,6 +83,7 @@ public class ConfigHandler {
             props.setProperty("enemyHudAlerts", String.valueOf(EnemyHUD.notificationsEnabled));
             props.setProperty("enemyHudDebug", String.valueOf(EnemyHUD.debugMode));
             props.setProperty("nickedHudEnabled", String.valueOf(NickedHUD.enabled));
+            props.setProperty("nameTagsEnabled", String.valueOf(NameTags.enabled));
 
             FileOutputStream out = new FileOutputStream(settingsFile);
             props.store(out, "Foxtrot Settings");
