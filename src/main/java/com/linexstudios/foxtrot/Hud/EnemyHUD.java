@@ -84,7 +84,7 @@ public class EnemyHUD {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.GRAY + "[Enemy HUD Position]";
+                String placeholder = EnumChatFormatting.GRAY + "[Enemy list HUD Position]";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));

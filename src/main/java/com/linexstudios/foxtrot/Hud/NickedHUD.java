@@ -23,15 +23,16 @@ public class NickedHUD {
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
-    public static boolean dragMode = false;
     public static boolean debugMode = false;
-    public static boolean notificationsEnabled = true;
 
     public static int hudX = 10;
     public static int hudY = 80;
     
     public int width = 0;
     public int height = 0;
+
+    // Stores players manually targeted by /fx denick
+    public static List<String> nickedPlayers = new ArrayList<>();
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
@@ -52,11 +53,18 @@ public class NickedHUD {
         NetHandlerPlayClient netHandler = mc.getNetHandler();
         if (netHandler != null) {
             for (NetworkPlayerInfo info : netHandler.getPlayerInfoMap()) {
+                
+                // BUG FIX: v2 UUIDs are Hypixel NPCs (Quest Master, etc). Skip them entirely!
+                if (info.getGameProfile().getId().version() == 2) continue;
+                
                 String nickedName = info.getGameProfile().getName();
-                boolean isV2 = info.getGameProfile().getId().version() == 2;
-                String realIGN = NickedManager.getResolvedIGN(nickedName);
+                if (nickedName.startsWith("§")) continue; // Skip color-coded system names
 
-                if (isV2 || (realIGN != null && !realIGN.isEmpty())) {
+                String realIGN = NickedManager.getResolvedIGN(nickedName);
+                boolean isManuallyScraped = nickedPlayers.contains(nickedName.toLowerCase());
+
+                // Only show if they are confirmed nicked, or if you forced a scrape with /fx denick
+                if ((realIGN != null && !realIGN.isEmpty()) || isManuallyScraped) {
                     if (!foundNicked) {
                         fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
                         currentY += fr.FONT_HEIGHT + 2;
@@ -74,28 +82,36 @@ public class NickedHUD {
                         }
                     }
 
-                    // BUG FIX: Naturally grabs the prestige bracket and rank color natively from Hypixel
-                    String displayName;
+                    // BUG FIX: Preserves natural Hypixel Rank and Prestige colors!
+                    String fullPrefixAndName;
                     if (other != null) {
                         String rawFormatted = other.getDisplayName().getFormattedText();
                         int nameIndex = rawFormatted.indexOf(nickedName);
                         if (nameIndex >= 0) {
-                            displayName = rawFormatted.substring(0, nameIndex + nickedName.length());
+                            fullPrefixAndName = rawFormatted.substring(0, nameIndex + nickedName.length());
                         } else {
-                            displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
+                            fullPrefixAndName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
+                        }
+                    } else if (info.getDisplayName() != null) {
+                        String rawFormatted = info.getDisplayName().getFormattedText();
+                        int nameIndex = rawFormatted.indexOf(nickedName);
+                        if (nameIndex >= 0) {
+                            fullPrefixAndName = rawFormatted.substring(0, nameIndex + nickedName.length());
+                        } else {
+                            fullPrefixAndName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
                         }
                     } else {
-                        displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
+                        fullPrefixAndName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
                     }
 
-                    if (realIGN != null && !realIGN.isEmpty()) {
-                        displayName += EnumChatFormatting.GRAY + " (" + EnumChatFormatting.YELLOW + realIGN + EnumChatFormatting.GRAY + ")";
-                    }
+                    // Shows (Scraping...) if the API is still loading the name
+                    String displayRealIGN = (realIGN != null && !realIGN.isEmpty()) ? realIGN : "Scraping...";
+                    String finalDisplayName = fullPrefixAndName + EnumChatFormatting.GRAY + " (" + EnumChatFormatting.YELLOW + displayRealIGN + EnumChatFormatting.GRAY + ")";
 
                     String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
                     String dist = other != null ? getDistanceOrSpawn(other) : EnumChatFormatting.GRAY + "Far";
 
-                    String fullLine = displayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
+                    String fullLine = finalDisplayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
                     fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
                     
                     int lineWidth = fr.getStringWidth(fullLine);
@@ -107,9 +123,9 @@ public class NickedHUD {
 
         if (!foundNicked) {
             if (isEditing) {
-                fr.drawStringWithShadow(EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.GRAY + "[NickedHUD Position]";
+                String placeholder = EnumChatFormatting.GRAY + "[Nicked Players HUD Position]";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -164,7 +180,6 @@ public class NickedHUD {
         return EnumChatFormatting.GRAY + "Shop";
     }
 
-    // STRICT WHITELIST: Only the EXACT enchants you provided are checked. The rest return null.
     public static String formatEnchant(String key) {
         if (key == null) return null;
         switch (key.toLowerCase()) {

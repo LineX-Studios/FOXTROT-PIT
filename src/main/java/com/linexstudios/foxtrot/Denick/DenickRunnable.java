@@ -1,5 +1,6 @@
 package com.linexstudios.foxtrot.Denick;
 
+import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.event.ClickEvent;
@@ -47,8 +48,12 @@ public class DenickRunnable implements Runnable {
 
         if (target == null) {
             sendMessage(EnumChatFormatting.RED + "Player not found in render distance.");
+            // Tell NickedManager we failed so the HUD doesn't stay stuck on "Scraping..."
+            NickedManager.addNicked(guyToDenick, EnumChatFormatting.RED + "Not in range");
             return;
         }
+
+        final String targetName = target.getName();
 
         // Step 2: Extract Nonce (Main Thread)
         int foundNonce = -1;
@@ -70,7 +75,8 @@ public class DenickRunnable implements Runnable {
         }
 
         if (foundNonce == -1) {
-            sendMessage(EnumChatFormatting.RED + "No PIT item with a valid nonce found on " + target.getName());
+            sendMessage(EnumChatFormatting.RED + "No PIT item with a valid nonce found on " + targetName);
+            NickedManager.addNicked(targetName, EnumChatFormatting.RED + "No Nonce");
             return;
         }
 
@@ -82,8 +88,14 @@ public class DenickRunnable implements Runnable {
             String result = resolveOwnerFromNonce(finalNonce);
             if (result != null) {
                 sendMessage(EnumChatFormatting.GREEN + "Denicked! " + EnumChatFormatting.WHITE + result);
+                
+                // INTEGRATION: Immediately saves the real name to be displayed on NickedHUD
+                NickedManager.addNicked(targetName, result);
             } else {
                 sendClickableManualLink(finalNonce);
+                
+                // Updates the HUD to show it failed to find a match
+                NickedManager.addNicked(targetName, EnumChatFormatting.RED + "Failed");
             }
         });
     }
@@ -154,10 +166,12 @@ public class DenickRunnable implements Runnable {
                         String resolvedName = resolveUsernameFromUUID(ownerId);
                         if (resolvedName != null) {
                             sendDebug("Resolved UUID " + ownerId + " to IGN: " + resolvedName);
-                            return resolvedName + " (UUID: " + ownerId + ")";
+                            // Cleaned up for HUD display
+                            return resolvedName; 
                         } else {
                             sendDebug("Could not resolve UUID: " + ownerId);
-                            return "UUID: " + ownerId;
+                            // Return null instead of UUID so the HUD registers it as a failure
+                            return null;
                         }
                     }
                 }
@@ -226,7 +240,10 @@ public class DenickRunnable implements Runnable {
     }
 
     private void sendDebug(String msg) {
-        addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[DEBUG] " + msg));
+        // Only spams chat with debug info if you have /fx debug turned ON
+        if (EnemyHUD.debugMode) {
+            addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[DEBUG] " + msg));
+        }
     }
 
     private void addChatMessage(IChatComponent component) {

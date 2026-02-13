@@ -71,7 +71,16 @@ public class CommandFoxtrot extends CommandBase {
 
             case "denick":
                 if (args.length > 1) {
-                    new Thread(new DenickRunnable(args[1])).start();
+                    String target = args[1];
+                    // Start the scrape
+                    new Thread(new DenickRunnable(target)).start();
+                    
+                    // Instantly force them onto the Nicked HUD
+                    if (!NickedHUD.nickedPlayers.contains(target.toLowerCase())) {
+                        NickedHUD.nickedPlayers.add(target.toLowerCase());
+                    }
+                    
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Scraping " + target + " and added to NickedHUD."));
                 } else {
                     sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Usage: /fx denick [name]"));
                 }
@@ -148,8 +157,6 @@ public class CommandFoxtrot extends CommandBase {
                 break;
 
             case "hud":
-                // FIX: Minecraft instantly closes the chat right AFTER processing this command.
-                // We add a tiny 100ms delay so the GUI opens safely *after* the chat goes away!
                 new Thread(() -> {
                     try {
                         Thread.sleep(100);
