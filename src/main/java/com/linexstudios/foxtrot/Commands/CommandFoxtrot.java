@@ -3,6 +3,7 @@ package com.linexstudios.foxtrot.Commands;
 import com.linexstudios.foxtrot.Denick.DenickRunnable;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
+import com.linexstudios.foxtrot.Hud.EditHUDGui;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.HUDController;
@@ -51,7 +52,7 @@ public class CommandFoxtrot extends CommandBase {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot esp " + EnumChatFormatting.GRAY + "- Toggle ESP"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot denick [name] " + EnumChatFormatting.GRAY + "- Scrape Player"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot autodenick " + EnumChatFormatting.GRAY + "- Toggle automatic denicking"));
-            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot hud " + EnumChatFormatting.GRAY + "- Toggle HUD drag mode"));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot hud " + EnumChatFormatting.GRAY + "- Open HUD Editor"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot nickhud " + EnumChatFormatting.GRAY + "- Toggle NickedHUD"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot enemyhud " + EnumChatFormatting.GRAY + "- Toggle EnemyHUD"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot clear " + EnumChatFormatting.GRAY + "- Clear enemy list"));
@@ -147,9 +148,16 @@ public class CommandFoxtrot extends CommandBase {
                 break;
 
             case "hud":
-                // FIX: Removed the chat output, and simply flipped the boolean.
-                // The HUDController TickEvent will automatically open the Editor GUI once the chat closes!
-                HUDController.dragMode = true;
+                // FIX: Minecraft instantly closes the chat right AFTER processing this command.
+                // We add a tiny 100ms delay so the GUI opens safely *after* the chat goes away!
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(100);
+                        Minecraft.getMinecraft().addScheduledTask(() -> {
+                            Minecraft.getMinecraft().displayGuiScreen(new EditHUDGui());
+                        });
+                    } catch (Exception ignored) {}
+                }).start();
                 break;
 
             case "nickhud":

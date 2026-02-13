@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class EnemyHUD {
-    // Allows EditHUDGui to access this specific instance's rendering
     public static final EnemyHUD instance = new EnemyHUD();
     
     private final Minecraft mc = Minecraft.getMinecraft();
@@ -33,17 +32,14 @@ public class EnemyHUD {
 
     public static List<String> targetList = new ArrayList<>();
 
-    // NORMAL IN-GAME RENDER (Triggers automatically so the HUD stays visible)
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
-        // Don't render normally if the Editor GUI is open (it renders itself)
-        if (mc.currentScreen instanceof EditHUDGui) return;
+        if (mc.currentScreen instanceof EditHUDGui) return; 
         
         render(false);
     }
 
-    // SHARED RENDER LOGIC
     public void render(boolean isEditing) {
         if (!enabled || mc.theWorld == null) return;
 
@@ -63,12 +59,20 @@ public class EnemyHUD {
                 foundEnemy = true;
             }
 
-            String prefix = getPlayerPrefix(other);
-            String name = EnumChatFormatting.RED + other.getName() + EnumChatFormatting.RESET;
+            // BUG FIX: Naturally grabs the prestige bracket and rank color natively from Hypixel
+            String displayName;
+            String rawFormatted = other.getDisplayName().getFormattedText();
+            int nameIndex = rawFormatted.indexOf(other.getName());
+            if (nameIndex >= 0) {
+                displayName = rawFormatted.substring(0, nameIndex + other.getName().length());
+            } else {
+                displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.RED + other.getName();
+            }
+
             String gear = getShortEnchants(other);
             String dist = getDistanceOrSpawn(other);
 
-            String fullLine = prefix + " " + name + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
+            String fullLine = displayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
             fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
 
             int lineWidth = fr.getStringWidth(fullLine);
@@ -94,7 +98,6 @@ public class EnemyHUD {
         this.height = currentY - hudY;
 
         if (isEditing) {
-            // Draws the purple bounding box like in your screenshot to show draggable area
             Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x55A020F0);
         }
     }
@@ -103,16 +106,9 @@ public class EnemyHUD {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
-    private String getPlayerPrefix(EntityOtherPlayerMP player) {
-        String formatted = player.getDisplayName().getFormattedText();
-        int index = formatted.indexOf(player.getName());
-        if (index > 0) return formatted.substring(0, index).trim();
-        return EnumChatFormatting.GRAY + "[?]";
-    }
-
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
         if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
-            return EnumChatFormatting.RED + "Spawn";
+            return EnumChatFormatting.GREEN + "Spawn";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);
         return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
@@ -126,7 +122,10 @@ public class EnemyHUD {
                 NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
                 List<String> shortNames = new ArrayList<>();
                 for (int i = 0; i < enchants.tagCount(); i++) {
-                    shortNames.add(formatEnchant(enchants.getCompoundTagAt(i).getString("Key")));
+                    String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
+                    if (formatted != null) {
+                        shortNames.add(formatted);
+                    }
                 }
                 if (!shortNames.isEmpty()) {
                     return String.join(EnumChatFormatting.WHITE + "/", shortNames);
@@ -137,26 +136,22 @@ public class EnemyHUD {
         return EnumChatFormatting.GRAY + "Shop";
     }
 
+    // STRICT WHITELIST: Only the EXACT enchants you provided are checked. The rest return null.
     public static String formatEnchant(String key) {
-        if (key == null) return "";
+        if (key == null) return null;
         switch (key.toLowerCase()) {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
             case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
             case "mirror": return EnumChatFormatting.WHITE + "Mirror";
-            case "critically_funky": return EnumChatFormatting.AQUA + "Crit Funky";
+            case "critically_funky": return EnumChatFormatting.DARK_BLUE + "Crit Funky";
             case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
             case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
-            case "solitude": return EnumChatFormatting.DARK_GREEN + "Soli";
+            case "solitude": return EnumChatFormatting.RED + "Soli";
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
             case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
             default:
-                String[] words = key.split("_");
-                if (words.length > 0 && words[0].length() > 0) {
-                    String first = words[0];
-                    return EnumChatFormatting.GRAY + first.substring(0, 1).toUpperCase() + first.substring(1);
-                }
-                return EnumChatFormatting.GRAY + key;
+                return null;
         }
     }
 

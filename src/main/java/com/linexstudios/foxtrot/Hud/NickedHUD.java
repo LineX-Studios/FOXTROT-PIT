@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class NickedHUD {
-    // Added instance so the Drag GUI can access this exact HUD
     public static final NickedHUD instance = new NickedHUD();
 
     private final Minecraft mc = Minecraft.getMinecraft();
@@ -31,15 +30,12 @@ public class NickedHUD {
     public static int hudX = 10;
     public static int hudY = 80;
     
-    // Hitbox dimensions for the new Drag GUI
     public int width = 0;
     public int height = 0;
 
-    // BUG FIX: Added the Forge Event Subscriber so it actually renders in-game
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
-        // Don't render normally if the Editor GUI is open (it renders itself)
         if (mc.currentScreen instanceof EditHUDGui) return;
         
         render(false);
@@ -62,7 +58,7 @@ public class NickedHUD {
 
                 if (isV2 || (realIGN != null && !realIGN.isEmpty())) {
                     if (!foundNicked) {
-                        fr.drawStringWithShadow(EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
+                        fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
                         currentY += fr.FONT_HEIGHT + 2;
                         foundNicked = true;
                     }
@@ -78,16 +74,28 @@ public class NickedHUD {
                         }
                     }
 
-                    String prefix = other != null ? getPlayerPrefix(other) : EnumChatFormatting.GRAY + "[?]";
-                    String displayName = EnumChatFormatting.AQUA + nickedName;
-                    if (realIGN != null) {
+                    // BUG FIX: Naturally grabs the prestige bracket and rank color natively from Hypixel
+                    String displayName;
+                    if (other != null) {
+                        String rawFormatted = other.getDisplayName().getFormattedText();
+                        int nameIndex = rawFormatted.indexOf(nickedName);
+                        if (nameIndex >= 0) {
+                            displayName = rawFormatted.substring(0, nameIndex + nickedName.length());
+                        } else {
+                            displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
+                        }
+                    } else {
+                        displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
+                    }
+
+                    if (realIGN != null && !realIGN.isEmpty()) {
                         displayName += EnumChatFormatting.GRAY + " (" + EnumChatFormatting.YELLOW + realIGN + EnumChatFormatting.GRAY + ")";
                     }
 
                     String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
                     String dist = other != null ? getDistanceOrSpawn(other) : EnumChatFormatting.GRAY + "Far";
 
-                    String fullLine = prefix + " " + displayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
+                    String fullLine = displayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
                     fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
                     
                     int lineWidth = fr.getStringWidth(fullLine);
@@ -97,7 +105,6 @@ public class NickedHUD {
             }
         }
 
-        // Render Placeholder if empty but we are in Edit Mode
         if (!foundNicked) {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
@@ -116,9 +123,8 @@ public class NickedHUD {
         this.width = maxWidth;
         this.height = currentY - hudY;
 
-        // Draw a subtle white box around it while dragging so you see the hitbox
         if (isEditing) {
-            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x33FFFFFF);
+            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x55A020F0);
         }
     }
 
@@ -126,16 +132,9 @@ public class NickedHUD {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
-    private String getPlayerPrefix(EntityOtherPlayerMP player) {
-        String formatted = player.getDisplayName().getFormattedText();
-        int index = formatted.indexOf(player.getName());
-        if (index > 0) return formatted.substring(0, index).trim();
-        return EnumChatFormatting.GRAY + "[?]";
-    }
-
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
         if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
-            return EnumChatFormatting.RED + "Spawn";
+            return EnumChatFormatting.GREEN + "Spawn";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);
         return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
@@ -149,7 +148,10 @@ public class NickedHUD {
                 NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
                 List<String> shortNames = new ArrayList<>();
                 for (int i = 0; i < enchants.tagCount(); i++) {
-                    shortNames.add(formatEnchant(enchants.getCompoundTagAt(i).getString("Key")));
+                    String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
+                    if (formatted != null) {
+                        shortNames.add(formatted);
+                    }
                 }
                 if (!shortNames.isEmpty()) {
                     return String.join(EnumChatFormatting.WHITE + "/", shortNames);
@@ -162,26 +164,22 @@ public class NickedHUD {
         return EnumChatFormatting.GRAY + "Shop";
     }
 
+    // STRICT WHITELIST: Only the EXACT enchants you provided are checked. The rest return null.
     public static String formatEnchant(String key) {
-        if (key == null) return "";
+        if (key == null) return null;
         switch (key.toLowerCase()) {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
             case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
             case "mirror": return EnumChatFormatting.WHITE + "Mirror";
-            case "critically_funky": return EnumChatFormatting.AQUA + "Crit Funky";
+            case "critically_funky": return EnumChatFormatting.DARK_BLUE + "Crit Funky";
             case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
             case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
-            case "solitude": return EnumChatFormatting.DARK_GREEN + "Soli";
+            case "solitude": return EnumChatFormatting.RED + "Soli";
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
             case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
             default:
-                String[] words = key.split("_");
-                if (words.length > 0 && words[0].length() > 0) {
-                    String first = words[0];
-                    return EnumChatFormatting.GRAY + first.substring(0, 1).toUpperCase() + first.substring(1);
-                }
-                return EnumChatFormatting.GRAY + key;
+                return null;
         }
     }
 }
