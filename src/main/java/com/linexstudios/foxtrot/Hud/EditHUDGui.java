@@ -10,15 +10,12 @@ public class EditHUDGui extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        // This natively grays out the background!
+        // Natively creates that darkened gray background from your screenshot
         this.drawDefaultBackground(); 
 
-        this.fontRendererObj.drawStringWithShadow("§6§lFoxtrot HUD Editor", this.width / 2 - 55, 20, 0xFFFFFF);
-        this.fontRendererObj.drawStringWithShadow("§7Click and drag the boxes. Press ESC to save.", this.width / 2 - 110, 35, 0xFFFFFF);
-
-        // Tell the HUDs to render in "Edit Mode" so you can see their hitboxes
-        if (EnemyHUD.enabled) HUDController.enemyHUD.render(true);
-        if (NickedHUD.enabled) HUDController.nickedHUD.render(true);
+        // Force the HUDs to render in "Edit Mode" so you can drag them even if empty
+        if (EnemyHUD.enabled) EnemyHUD.instance.render(true);
+        if (NickedHUD.enabled) NickedHUD.instance.render(true);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
@@ -27,10 +24,10 @@ public class EditHUDGui extends GuiScreen {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         super.mouseClicked(mouseX, mouseY, mouseButton);
         if (mouseButton == 0) { // Left Click
-            if (EnemyHUD.enabled && HUDController.enemyHUD.isHovered(mouseX, mouseY)) {
+            if (EnemyHUD.enabled && EnemyHUD.instance.isHovered(mouseX, mouseY)) {
                 draggingEnemy = true;
                 lastX = mouseX; lastY = mouseY;
-            } else if (NickedHUD.enabled && HUDController.nickedHUD.isHovered(mouseX, mouseY)) {
+            } else if (NickedHUD.enabled && NickedHUD.instance.isHovered(mouseX, mouseY)) {
                 draggingNicked = true;
                 lastX = mouseX; lastY = mouseY;
             }
@@ -40,7 +37,7 @@ public class EditHUDGui extends GuiScreen {
     @Override
     protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
         super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
-        // Move the HUDs smoothly based on mouse movement
+        // Smoothly move the HUDs based on mouse movement
         if (draggingEnemy) {
             EnemyHUD.hudX += (mouseX - lastX);
             EnemyHUD.hudY += (mouseY - lastY);
@@ -60,7 +57,13 @@ public class EditHUDGui extends GuiScreen {
     }
 
     @Override
+    public void onGuiClosed() {
+        // Automatically turns off drag mode when you press ESC to save & exit
+        HUDController.dragMode = false;
+    }
+
+    @Override
     public boolean doesGuiPauseGame() {
-        return false; // Keeps the world rendering behind the menu
+        return false; // Keeps the world active in the background
     }
 }

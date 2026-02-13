@@ -11,11 +11,16 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class NickedHUD {
+    // Added instance so the Drag GUI can access this exact HUD
+    public static final NickedHUD instance = new NickedHUD();
+
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
@@ -29,6 +34,16 @@ public class NickedHUD {
     // Hitbox dimensions for the new Drag GUI
     public int width = 0;
     public int height = 0;
+
+    // BUG FIX: Added the Forge Event Subscriber so it actually renders in-game
+    @SubscribeEvent
+    public void onRender(RenderGameOverlayEvent.Post event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
+        // Don't render normally if the Editor GUI is open (it renders itself)
+        if (mc.currentScreen instanceof EditHUDGui) return;
+        
+        render(false);
+    }
 
     public void render(boolean isEditing) {
         if (!enabled || mc.theWorld == null) return;

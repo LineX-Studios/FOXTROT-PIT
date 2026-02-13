@@ -9,11 +9,16 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class EnemyHUD {
+    // Allows EditHUDGui to access this specific instance's rendering
+    public static final EnemyHUD instance = new EnemyHUD();
+    
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
@@ -23,12 +28,22 @@ public class EnemyHUD {
     public static int hudX = 200;
     public static int hudY = 80;
     
-    // Bounding box for dragging
     public int width = 0;
     public int height = 0;
 
     public static List<String> targetList = new ArrayList<>();
 
+    // NORMAL IN-GAME RENDER (Triggers automatically so the HUD stays visible)
+    @SubscribeEvent
+    public void onRender(RenderGameOverlayEvent.Post event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
+        // Don't render normally if the Editor GUI is open (it renders itself)
+        if (mc.currentScreen instanceof EditHUDGui) return;
+        
+        render(false);
+    }
+
+    // SHARED RENDER LOGIC
     public void render(boolean isEditing) {
         if (!enabled || mc.theWorld == null) return;
 
@@ -61,7 +76,6 @@ public class EnemyHUD {
             currentY += fr.FONT_HEIGHT;
         }
 
-        // Render Placeholder if empty but we are in Edit Mode
         if (!foundEnemy) {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
@@ -79,9 +93,9 @@ public class EnemyHUD {
         this.width = maxWidth;
         this.height = currentY - hudY;
 
-        // Draw a subtle white box around it while dragging so you see the hitbox
         if (isEditing) {
-            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x33FFFFFF);
+            // Draws the purple bounding box like in your screenshot to show draggable area
+            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x55A020F0);
         }
     }
 

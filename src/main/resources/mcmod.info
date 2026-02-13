@@ -2,7 +2,7 @@
 {
   "modid": "foxtrot",
   "name": "Foxtrot",
-  "description": "VER 0.2.6",
+  "description": "",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",

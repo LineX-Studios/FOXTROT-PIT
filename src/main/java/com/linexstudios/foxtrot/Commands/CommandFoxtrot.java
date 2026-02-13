@@ -147,8 +147,9 @@ public class CommandFoxtrot extends CommandBase {
                 break;
 
             case "hud":
-                HUDController.toggleDragMode();
-                sendMessage(sender, EnumChatFormatting.YELLOW + "HUD Drag Mode: " + (HUDController.dragMode ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF"));
+                // FIX: Removed the chat output, and simply flipped the boolean.
+                // The HUDController TickEvent will automatically open the Editor GUI once the chat closes!
+                HUDController.dragMode = true;
                 break;
 
             case "nickhud":
@@ -169,7 +170,7 @@ public class CommandFoxtrot extends CommandBase {
         }
     }
 
-        @Override
+    @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
