@@ -13,21 +13,22 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 
 @Mod(modid = "foxtrot", name = "Foxtrot", version = "0.3.3", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
+    
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         // Load saved configuration
         ConfigHandler.loadConfig();
 
-        // Register HUDs and ESP overlays
-        MinecraftForge.EVENT_BUS.register(new EnemyHUD());
-        MinecraftForge.EVENT_BUS.register(new NickedHUD());
-        MinecraftForge.EVENT_BUS.register(new EnemyESP());
+        // Register HUDs and ESP overlays (MUST use .instance so the HUD Editor dragging works!)
+        MinecraftForge.EVENT_BUS.register(EnemyHUD.instance);
+        MinecraftForge.EVENT_BUS.register(NickedHUD.instance);
+        MinecraftForge.EVENT_BUS.register(new EnemyESP()); 
 
         // Register ban detection
         MinecraftForge.EVENT_BUS.register(new WhoGotBanned());
 
-        // Register AutoDenick listener
-        MinecraftForge.EVENT_BUS.register(new AutoDenick());
+        // Register AutoDenick listener (MUST use .instance to link properly)
+        MinecraftForge.EVENT_BUS.register(AutoDenick.instance);
 
         // Register commands
         ClientCommandHandler.instance.registerCommand(new CommandFoxtrot());
