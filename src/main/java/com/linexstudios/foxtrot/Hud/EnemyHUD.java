@@ -2,14 +2,13 @@ package com.linexstudios.foxtrot.Hud;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import org.lwjgl.input.Mouse;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,25 +17,24 @@ public class EnemyHUD {
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
-    public static boolean dragMode = false;
     public static boolean debugMode = false;
     public static boolean notificationsEnabled = true;
 
     public static int hudX = 200;
     public static int hudY = 80;
-
-    private static boolean dragging = false;
-    private static int dragOffsetX;
-    private static int dragOffsetY;
+    
+    // Bounding box for dragging
+    public int width = 0;
+    public int height = 0;
 
     public static List<String> targetList = new ArrayList<>();
 
-    public void onRender(RenderGameOverlayEvent.Post event) {
-        if (!enabled || event.type != RenderGameOverlayEvent.ElementType.TEXT || mc.theWorld == null) return;
+    public void render(boolean isEditing) {
+        if (!enabled || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
-        int xPos = hudX;
-        int yPos = hudY;
+        int currentY = hudY;
+        int maxWidth = fr.getStringWidth("Enemy List:");
         boolean foundEnemy = false;
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
@@ -45,9 +43,8 @@ public class EnemyHUD {
             if (!isTarget(other.getName())) continue;
 
             if (!foundEnemy) {
-                // Fixed Typo: "EnemY List" -> "Enemy List"
-                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", xPos, yPos, 0xFFFFFF);
-                yPos += fr.FONT_HEIGHT + 2;
+                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
+                currentY += fr.FONT_HEIGHT + 2;
                 foundEnemy = true;
             }
 
@@ -56,26 +53,46 @@ public class EnemyHUD {
             String gear = getShortEnchants(other);
             String dist = getDistanceOrSpawn(other);
 
-            // Format: [120] PlayerName - Reg/Abs/Mirror - 14m
             String fullLine = prefix + " " + name + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
+            fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
 
-            fr.drawStringWithShadow(fullLine, xPos, yPos, 0xFFFFFF);
-            yPos += fr.FONT_HEIGHT;
+            int lineWidth = fr.getStringWidth(fullLine);
+            if (lineWidth > maxWidth) maxWidth = lineWidth;
+            currentY += fr.FONT_HEIGHT;
         }
 
-        if (!foundEnemy && dragMode) {
-            fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", xPos, yPos, 0xFFFFFF);
-            fr.drawStringWithShadow(EnumChatFormatting.GRAY + "[Enemy HUD Position]", xPos, yPos + fr.FONT_HEIGHT + 2, 0xFFFFFF);
+        // Render Placeholder if empty but we are in Edit Mode
+        if (!foundEnemy) {
+            if (isEditing) {
+                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
+                currentY += fr.FONT_HEIGHT + 2;
+                String placeholder = EnumChatFormatting.GRAY + "[Enemy HUD Position]";
+                fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
+                currentY += fr.FONT_HEIGHT;
+                maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
+            } else {
+                this.width = 0; this.height = 0;
+                return; 
+            }
+        }
+
+        this.width = maxWidth;
+        this.height = currentY - hudY;
+
+        // Draw a subtle white box around it while dragging so you see the hitbox
+        if (isEditing) {
+            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x33FFFFFF);
         }
     }
 
-    // Extracts the [120] prestige bracket that Hypixel sends automatically
+    public boolean isHovered(int mouseX, int mouseY) {
+        return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
+    }
+
     private String getPlayerPrefix(EntityOtherPlayerMP player) {
         String formatted = player.getDisplayName().getFormattedText();
         int index = formatted.indexOf(player.getName());
-        if (index > 0) {
-            return formatted.substring(0, index).trim();
-        }
+        if (index > 0) return formatted.substring(0, index).trim();
         return EnumChatFormatting.GRAY + "[?]";
     }
 
@@ -88,32 +105,24 @@ public class EnemyHUD {
     }
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
-        ItemStack pants = player.inventory.armorInventory[1]; // Leggings
+        ItemStack pants = player.inventory.armorInventory[1]; 
         if (pants != null && pants.hasTagCompound()) {
             NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
             if (extra != null && extra.hasKey("CustomEnchants")) {
                 NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
                 List<String> shortNames = new ArrayList<>();
-                
                 for (int i = 0; i < enchants.tagCount(); i++) {
-                    String key = enchants.getCompoundTagAt(i).getString("Key");
-                    shortNames.add(formatEnchant(key));
+                    shortNames.add(formatEnchant(enchants.getCompoundTagAt(i).getString("Key")));
                 }
-                
                 if (!shortNames.isEmpty()) {
-                    // Joins them with a white slash: Reg/Mirror/Abs
                     return String.join(EnumChatFormatting.WHITE + "/", shortNames);
                 }
             }
-            // Bug Fix: Added hasDisplayName() check to prevent NullPointerExceptions
-            if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) {
-                return EnumChatFormatting.DARK_PURPLE + "Darks";
-            }
+            if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
         }
         return EnumChatFormatting.GRAY + "Shop";
     }
 
-    // Maps the NBT ID to the Short Name and Color
     public static String formatEnchant(String key) {
         if (key == null) return "";
         switch (key.toLowerCase()) {
@@ -128,7 +137,6 @@ public class EnemyHUD {
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
             case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
             default:
-                // If enchant isn't recognized, just grab the first word
                 String[] words = key.split("_");
                 if (words.length > 0 && words[0].length() > 0) {
                     String first = words[0];
@@ -138,30 +146,10 @@ public class EnemyHUD {
         }
     }
 
-    public void handleDrag(int mouseX, int mouseY) {
-        if (!dragMode) return;
-        boolean isHovered = mouseX >= hudX && mouseX <= hudX + 100 && mouseY >= hudY && mouseY <= hudY + 20;
-
-        if (Mouse.isButtonDown(0)) {
-            if (!dragging && isHovered) {
-                dragging = true;
-                dragOffsetX = mouseX - hudX;
-                dragOffsetY = mouseY - hudY;
-            }
-            if (dragging) {
-                hudX = mouseX - dragOffsetX;
-                hudY = mouseY - dragOffsetY;
-            }
-        } else {
-            dragging = false;
-        }
-    }
-
     public static boolean isTarget(String name) {
         return name != null && targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
     }
 
-    // Bug Fix: Re-added this method required for CommandFoxtrot.java to compile
     public static String getFormattedName(String name) {
         return EnumChatFormatting.RED + (name == null ? "null" : name) + EnumChatFormatting.RESET;
     }
