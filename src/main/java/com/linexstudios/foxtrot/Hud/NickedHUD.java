@@ -16,10 +16,11 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class NickedHUD {
     public static final NickedHUD instance = new NickedHUD();
-
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
@@ -31,14 +32,16 @@ public class NickedHUD {
     public int width = 0;
     public int height = 0;
 
-    // Stores players manually targeted by /fx denick
     public static List<String> nickedPlayers = new ArrayList<>();
+
+    // Regex to match Hypixel Ranks like [VIP], [MVP+], [MVP++], [YOUTUBE], [ADMIN], etc.
+    // It looks for uppercase letters and plus signs inside brackets.
+    private static final Pattern RANK_PATTERN = Pattern.compile("\\[(VIP|MVP|YOUTUBE|OWNER|ADMIN|HELPER|MOD|EVENTS|BUILD TEAM|ALUMNI|GM|APPLE|MOJANG)[+]*\\] ");
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return;
-        
         render(false);
     }
 
@@ -53,17 +56,14 @@ public class NickedHUD {
         NetHandlerPlayClient netHandler = mc.getNetHandler();
         if (netHandler != null) {
             for (NetworkPlayerInfo info : netHandler.getPlayerInfoMap()) {
-                
-                // BUG FIX: v2 UUIDs are Hypixel NPCs (Quest Master, etc). Skip them entirely!
                 if (info.getGameProfile().getId().version() == 2) continue;
                 
                 String nickedName = info.getGameProfile().getName();
-                if (nickedName.startsWith("§")) continue; // Skip color-coded system names
+                if (nickedName.startsWith("§")) continue;
 
                 String realIGN = NickedManager.getResolvedIGN(nickedName);
                 boolean isManuallyScraped = nickedPlayers.contains(nickedName.toLowerCase());
 
-                // Only show if they are confirmed nicked, or if you forced a scrape with /fx denick
                 if ((realIGN != null && !realIGN.isEmpty()) || isManuallyScraped) {
                     if (!foundNicked) {
                         fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
@@ -82,29 +82,18 @@ public class NickedHUD {
                         }
                     }
 
-                    // BUG FIX: Preserves natural Hypixel Rank and Prestige colors!
                     String fullPrefixAndName;
                     if (other != null) {
-                        String rawFormatted = other.getDisplayName().getFormattedText();
-                        int nameIndex = rawFormatted.indexOf(nickedName);
-                        if (nameIndex >= 0) {
-                            fullPrefixAndName = rawFormatted.substring(0, nameIndex + nickedName.length());
-                        } else {
-                            fullPrefixAndName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
-                        }
+                        fullPrefixAndName = other.getDisplayName().getFormattedText();
                     } else if (info.getDisplayName() != null) {
-                        String rawFormatted = info.getDisplayName().getFormattedText();
-                        int nameIndex = rawFormatted.indexOf(nickedName);
-                        if (nameIndex >= 0) {
-                            fullPrefixAndName = rawFormatted.substring(0, nameIndex + nickedName.length());
-                        } else {
-                            fullPrefixAndName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
-                        }
+                        fullPrefixAndName = info.getDisplayName().getFormattedText();
                     } else {
                         fullPrefixAndName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
                     }
 
-                    // Shows (Scraping...) if the API is still loading the name
+                    // BUG FIX: Strip the MVP++/YOUTUBER ranks but keep the Prestige
+                    fullPrefixAndName = stripRank(fullPrefixAndName);
+
                     String displayRealIGN = (realIGN != null && !realIGN.isEmpty()) ? realIGN : "Scraping...";
                     String finalDisplayName = fullPrefixAndName + EnumChatFormatting.GRAY + " (" + EnumChatFormatting.YELLOW + displayRealIGN + EnumChatFormatting.GRAY + ")";
 
@@ -130,8 +119,7 @@ public class NickedHUD {
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
             } else {
-                this.width = 0; 
-                this.height = 0;
+                this.width = 0; this.height = 0;
                 return;
             }
         }
@@ -142,6 +130,21 @@ public class NickedHUD {
         if (isEditing) {
             Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x55A020F0);
         }
+    }
+
+    /**
+     * Removes Hypixel rank prefixes (like [MVP++]) from the string while keeping Prestige.
+     */
+    private String stripRank(String name) {
+        if (name == null || name.isEmpty()) return name;
+        // Strip color codes temporarily to check for rank words, or just use regex on the raw string
+        Matcher matcher = RANK_PATTERN.matcher(EnumChatFormatting.getTextWithoutFormattingCodes(name));
+        if (matcher.find()) {
+            String rankFound = matcher.group();
+            // We find the rank in the unformatted text, then remove it from the formatted text
+            return name.replace(rankFound, "");
+        }
+        return name;
     }
 
     public boolean isHovered(int mouseX, int mouseY) {
@@ -165,17 +168,11 @@ public class NickedHUD {
                 List<String> shortNames = new ArrayList<>();
                 for (int i = 0; i < enchants.tagCount(); i++) {
                     String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
-                    if (formatted != null) {
-                        shortNames.add(formatted);
-                    }
+                    if (formatted != null) shortNames.add(formatted);
                 }
-                if (!shortNames.isEmpty()) {
-                    return String.join(EnumChatFormatting.WHITE + "/", shortNames);
-                }
+                if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
             }
-            if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) {
-                return EnumChatFormatting.DARK_PURPLE + "Darks";
-            }
+            if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
         }
         return EnumChatFormatting.GRAY + "Shop";
     }
@@ -193,8 +190,7 @@ public class NickedHUD {
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
             case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
-            default:
-                return null;
+            default: return null;
         }
     }
 }
