@@ -1,18 +1,18 @@
 package com.linexstudios.foxtrot.Combat;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.item.ItemAxe;
 import net.minecraft.item.ItemSword;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
 import java.awt.Robot;
-import java.awt.event.InputEvent;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,113 +24,136 @@ public class AutoClicker {
     private final Random rand = new Random();
     private Robot robot;
 
-    public AutoClicker() {
-        try { this.robot = new Robot(); } catch (Exception ignored) {}
-    }
+    // Reflection Methods to force clicks
+    private Method leftClickMethod;
+    private Method rightClickMethod;
 
-    // Main Toggle
+    // Toggles
     public static boolean enabled = false;
+    public static int bind = Keyboard.KEY_NONE; // Custom Hotkey Binding
+    public static boolean leftClick = true;
+    public static boolean rightClick = false;
 
-    // Vape V4 Settings
+    // Settings
     public static boolean holdToClick = true;
-    public static boolean triggerMode = false;
-    
-    // Inventory Fill
     public static boolean inventoryFill = true;
     public static float inventoryFillCps = 15.0F;
     private long lastInvClick = 0L;
 
-    // World CPS
     public static float minCps = 9.0F;
     public static float maxCps = 13.0F;
-    public static int randomMode = 1; // 0=Normal, 1=Extra, 2=Extra+
+    public static int randomMode = 1; 
     
-    // Add-ons
-    public static boolean jitter = false;
     public static boolean breakBlocks = true;
-    public static float breakBlocksDelay = 2.0F; // Converted to slider format
     private int blockHitTicks = 0;
 
-    // Whitelist
-    public static boolean limitItems = true;
+    public static boolean limitItems = false;
     public static List<String> itemWhitelist = new ArrayList<>(Arrays.asList("sword", "axe"));
 
-    private long lastClickTime = 0L;
-    private long nextDelay = 0L;
+    private long lastLeftClickTime = 0L;
+    private long nextLeftDelay = 0L;
+    private long lastRightClickTime = 0L;
+    private long nextRightDelay = 0L;
+
+    public AutoClicker() {
+        try { this.robot = new Robot(); } catch (Exception ignored) {}
+        
+        // Setup Reflection to bypass Minecraft's input handler and guarantee clicks
+        try {
+            leftClickMethod = Minecraft.class.getDeclaredMethod("clickMouse"); // Dev Environment
+        } catch (NoSuchMethodException e) {
+            try { leftClickMethod = Minecraft.class.getDeclaredMethod("func_147116_af"); } catch (NoSuchMethodException ex) {} // Obfuscated
+        }
+        if (leftClickMethod != null) leftClickMethod.setAccessible(true);
+
+        try {
+            rightClickMethod = Minecraft.class.getDeclaredMethod("rightClickMouse"); // Dev Environment
+        } catch (NoSuchMethodException e) {
+            try { rightClickMethod = Minecraft.class.getDeclaredMethod("func_147121_ag"); } catch (NoSuchMethodException ex) {} // Obfuscated
+        }
+        if (rightClickMethod != null) rightClickMethod.setAccessible(true);
+    }
+
+    // --- HOTKEY LISTENER ---
+    @SubscribeEvent
+    public void onKeyInput(net.minecraftforge.fml.common.gameevent.InputEvent.KeyInputEvent event) {
+        if (bind != Keyboard.KEY_NONE && Keyboard.isKeyDown(bind)) {
+            // Ensure we only toggle once per press, not spam it
+            if (mc.currentScreen == null) {
+                enabled = !enabled;
+            }
+        }
+    }
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
         if (!enabled || mc.thePlayer == null || mc.theWorld == null) return;
 
-        // --- INVENTORY FILL LOGIC ---
+        // Inventory Fill Logic
         if (mc.currentScreen instanceof net.minecraft.client.gui.inventory.GuiContainer) {
             if (inventoryFill && Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)) {
                 long invDelay = inventoryFillCps >= 20.0F ? 0 : (long)(1000.0F / inventoryFillCps);
                 if (System.currentTimeMillis() - lastInvClick >= invDelay) {
-                    // Uses Java Robot to simulate a real hardware click in the GUI
                     if (robot != null) {
-                        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
-                        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+                        robot.mousePress(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
+                        robot.mouseRelease(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
                     }
                     lastInvClick = System.currentTimeMillis();
                 }
             }
-            return; // Don't run world combat logic if in inventory
+            return; 
         }
 
-        // --- WORLD COMBAT LOGIC ---
-        if (holdToClick && !Mouse.isButtonDown(0)) {
-            blockHitTicks = 0;
-            return;
-        }
+        // Do not click if a menu (like chat or escape menu) is open
+        if (mc.currentScreen != null) return;
 
-        if (limitItems && !isHoldingWhitelistedItem()) return;
-
-        if (breakBlocks && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            blockHitTicks++;
-            if (blockHitTicks > (breakBlocksDelay * 20)) return; // Convert seconds/slider value to ticks
-        } else {
-            blockHitTicks = 0;
-        }
-
-        if (triggerMode && (mc.objectMouseOver == null || mc.objectMouseOver.entityHit == null)) return;
-
-        if (System.currentTimeMillis() - lastClickTime >= nextDelay) {
-            int attackKey = mc.gameSettings.keyBindAttack.getKeyCode();
-            KeyBinding.setKeyBindState(attackKey, true);
-            KeyBinding.onTick(attackKey);
-            KeyBinding.setKeyBindState(attackKey, false);
-
-            if (jitter) {
-                mc.thePlayer.rotationYaw += (rand.nextFloat() - 0.5F);
-                mc.thePlayer.rotationPitch += (rand.nextFloat() - 0.5F);
+        // --- LEFT CLICK LOGIC ---
+        if (leftClick) {
+            boolean shouldLeftClick = !holdToClick || Mouse.isButtonDown(0);
+            
+            if (breakBlocks && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+                blockHitTicks++;
+                if (blockHitTicks > 10) shouldLeftClick = false; 
+            } else {
+                blockHitTicks = 0;
             }
 
-            lastClickTime = System.currentTimeMillis();
-            generateNextDelay();
+            if (limitItems && !isHoldingWhitelistedItem()) shouldLeftClick = false;
+
+            if (shouldLeftClick && System.currentTimeMillis() - lastLeftClickTime >= nextLeftDelay) {
+                try {
+                    if (leftClickMethod != null) leftClickMethod.invoke(mc); // Force the click
+                } catch (Exception e) {}
+                lastLeftClickTime = System.currentTimeMillis();
+                nextLeftDelay = generateNextDelay();
+            }
+        }
+
+        // --- RIGHT CLICK LOGIC ---
+        if (rightClick) {
+            boolean shouldRightClick = !holdToClick || Mouse.isButtonDown(1);
+            
+            if (shouldRightClick && System.currentTimeMillis() - lastRightClickTime >= nextRightDelay) {
+                try {
+                    if (rightClickMethod != null) rightClickMethod.invoke(mc); // Force the click
+                } catch (Exception e) {}
+                lastRightClickTime = System.currentTimeMillis();
+                nextRightDelay = generateNextDelay();
+            }
         }
     }
 
-    private void generateNextDelay() {
-        float min = Math.min(minCps, maxCps);
-        float max = Math.max(minCps, maxCps);
-        float targetCps = min + (rand.nextFloat() * (max - min));
+    private long generateNextDelay() {
+        float targetCps = minCps + (rand.nextFloat() * (maxCps - minCps));
         long baseDelay = (long) (1000.0F / targetCps);
-
+        
         long randomOffset = 0;
         switch (randomMode) {
             case 0: randomOffset = (long) ((rand.nextGaussian() * 15) - 7); break;
-            case 1: 
-                randomOffset = (long) ((rand.nextGaussian() * 25) - 10);
-                if (rand.nextInt(10) == 1) randomOffset += 40; 
-                break;
-            case 2: 
-                randomOffset = (long) ((rand.nextGaussian() * 35) - 15);
-                if (rand.nextInt(20) == 1) randomOffset -= 30; 
-                if (rand.nextInt(15) == 1) randomOffset += 60; 
-                break;
+            case 1: randomOffset = (long) ((rand.nextGaussian() * 25) - 10); break;
+            case 2: randomOffset = (long) ((rand.nextGaussian() * 35) - 15); break;
         }
-        this.nextDelay = Math.max(20, baseDelay + randomOffset);
+        return Math.max(20, baseDelay + randomOffset);
     }
 
     private boolean isHoldingWhitelistedItem() {

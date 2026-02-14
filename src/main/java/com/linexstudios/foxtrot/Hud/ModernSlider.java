@@ -8,7 +8,7 @@ import org.lwjgl.input.Mouse;
 public class ModernSlider extends GuiButton {
     public float sliderValue;
     private final float min, max;
-    private boolean dragging;
+    public boolean dragging;
     private final String prefix;
 
     public ModernSlider(int id, int x, int y, int width, int height, String prefix, float value, float min, float max) {
@@ -16,7 +16,7 @@ public class ModernSlider extends GuiButton {
         this.prefix = prefix;
         this.min = min;
         this.max = max;
-        this.sliderValue = (value - min) / (max - min); // Normalize value between 0 and 1
+        this.sliderValue = (value - min) / (max - min); 
         this.updateDisplayString();
     }
 
@@ -25,23 +25,24 @@ public class ModernSlider extends GuiButton {
         if (!this.visible) return;
         this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width && mouseY < this.yPosition + this.height;
 
+        // Smoothly update the slider while the mouse is held down
         if (this.dragging) {
-            this.sliderValue = (float)(mouseX - (this.xPosition + 4)) / (float)(this.width - 8);
-            if (this.sliderValue < 0.0F) this.sliderValue = 0.0F;
-            if (this.sliderValue > 1.0F) this.sliderValue = 1.0F;
-            updateDisplayString();
+            if (!Mouse.isButtonDown(0)) {
+                this.dragging = false; // Stop dragging if they let go of left click
+            } else {
+                this.sliderValue = (float)(mouseX - (this.xPosition + 4)) / (float)(this.width - 8);
+                if (this.sliderValue < 0.0F) this.sliderValue = 0.0F;
+                if (this.sliderValue > 1.0F) this.sliderValue = 1.0F;
+                updateDisplayString();
+            }
         }
 
-        // Dark Theme Background
         int backgroundColor = this.hovered ? 0xFF2A2A2A : 0xFF1C1C1C;
         Gui.drawRect(this.xPosition - 1, this.yPosition - 1, this.xPosition + this.width + 1, this.yPosition + this.height + 1, 0xFF101010);
         Gui.drawRect(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, backgroundColor);
 
-        // Draw Slider Track
         int sliderWidth = (int)(this.sliderValue * (this.width - 8));
         Gui.drawRect(this.xPosition + 4, this.yPosition + this.height - 4, this.xPosition + 4 + sliderWidth, this.yPosition + this.height - 2, 0xFFFFFFFF);
-        
-        // Draw Thumb (The draggable dot)
         Gui.drawRect(this.xPosition + 4 + sliderWidth - 2, this.yPosition + this.height - 6, this.xPosition + 4 + sliderWidth + 2, this.yPosition + this.height, 0xFFAAAAAA);
 
         mc.fontRendererObj.drawStringWithShadow(this.displayString, this.xPosition + 6, this.yPosition + 3, 0xFFFFFFFF);

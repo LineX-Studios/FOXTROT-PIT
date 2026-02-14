@@ -18,11 +18,17 @@ public class EditHUDGui extends GuiScreen {
     public static boolean panelCollapsed = false;
     private int lastX, lastY;
 
+    // Category States
     public static boolean combatExpanded = false, renderExpanded = false, denickExpanded = false, hudExpanded = false;
+    
+    // Dropdown States
+    public static boolean randomDropdownExpanded = false;
+    public static boolean nameTagsDropdownExpanded = false; // NEW
 
-    // These variables perfectly track where the headers are drawn so clicks never miss
+    // Hotkey State
+    public static boolean bindingAutoClicker = false;
+
     private int catCombatY = -1, catRenderY = -1, catDenickY = -1, catHudY = -1;
-
     private ModernTextField whitelistField;
 
     @Override
@@ -37,29 +43,49 @@ public class EditHUDGui extends GuiScreen {
         String off = EnumChatFormatting.RED + "OFF";
         int btnW = 125; 
 
-        // Combat
+        // --- COMBAT (IDs 40-59) ---
         this.buttonList.add(new ModernGUI(40, 0, 0, btnW, 16, "AutoClicker: " + (AutoClicker.enabled ? on : off)));
-        this.buttonList.add(new ModernGUI(41, 0, 0, btnW - 10, 16, "Hold to Click: " + (AutoClicker.holdToClick ? on : off)));
-        this.buttonList.add(new ModernGUI(42, 0, 0, btnW - 10, 16, "Inventory Fill: " + (AutoClicker.inventoryFill ? on : off)));
-        this.buttonList.add(new ModernSlider(43, 0, 0, btnW - 10, 16, "Fill CPS", AutoClicker.inventoryFillCps, 5.0F, 20.0F));
-        this.buttonList.add(new ModernGUI(44, 0, 0, btnW - 10, 16, "Break Blocks: " + (AutoClicker.breakBlocks ? on : off)));
-        this.buttonList.add(new ModernSlider(45, 0, 0, btnW - 10, 16, "Min CPS", AutoClicker.minCps, 1.0F, 20.0F));
-        this.buttonList.add(new ModernSlider(46, 0, 0, btnW - 10, 16, "Max CPS", AutoClicker.maxCps, 1.0F, 20.0F));
-        this.buttonList.add(new ModernGUI(47, 0, 0, btnW - 10, 16, "Limit Items: " + (AutoClicker.limitItems ? on : off)));
+        
+        // The Bind Button
+        String bindText = bindingAutoClicker ? "[Press Any Key]" : "Bind: " + (AutoClicker.bind == Keyboard.KEY_NONE ? "NONE" : Keyboard.getKeyName(AutoClicker.bind));
+        this.buttonList.add(new ModernGUI(54, 0, 0, btnW - 10, 16, bindText));
+        
+        this.buttonList.add(new ModernGUI(41, 0, 0, btnW - 10, 16, "Left Click: " + (AutoClicker.leftClick ? on : off)));
+        this.buttonList.add(new ModernGUI(42, 0, 0, btnW - 10, 16, "Right Click: " + (AutoClicker.rightClick ? on : off)));
+        this.buttonList.add(new ModernGUI(43, 0, 0, btnW - 10, 16, "Hold to Click: " + (AutoClicker.holdToClick ? on : off)));
+        this.buttonList.add(new ModernGUI(44, 0, 0, btnW - 10, 16, "Inventory Fill: " + (AutoClicker.inventoryFill ? on : off)));
+        this.buttonList.add(new ModernSlider(45, 0, 0, btnW - 10, 16, "Fill CPS", AutoClicker.inventoryFillCps, 5.0F, 20.0F));
+        this.buttonList.add(new ModernGUI(46, 0, 0, btnW - 10, 16, "Break Blocks: " + (AutoClicker.breakBlocks ? on : off)));
+        this.buttonList.add(new ModernSlider(47, 0, 0, btnW - 10, 16, "Min CPS", AutoClicker.minCps, 1.0F, 20.0F));
+        this.buttonList.add(new ModernSlider(48, 0, 0, btnW - 10, 16, "Max CPS", AutoClicker.maxCps, 1.0F, 20.0F));
 
-        // Ensure the text field isn't destroyed when clicking other buttons
+        // Randomization Dropdown
+        String randStr = AutoClicker.randomMode == 0 ? "Normal" : (AutoClicker.randomMode == 1 ? "Extra" : "Extra+");
+        this.buttonList.add(new ModernGUI(49, 0, 0, btnW - 10, 16, "Random: " + randStr + EnumChatFormatting.GRAY + (randomDropdownExpanded ? " ^" : " v")));
+        this.buttonList.add(new ModernGUI(50, 0, 0, btnW - 15, 16, (AutoClicker.randomMode == 0 ? EnumChatFormatting.RED : "") + " > Normal"));
+        this.buttonList.add(new ModernGUI(51, 0, 0, btnW - 15, 16, (AutoClicker.randomMode == 1 ? EnumChatFormatting.RED : "") + " > Extra"));
+        this.buttonList.add(new ModernGUI(52, 0, 0, btnW - 15, 16, (AutoClicker.randomMode == 2 ? EnumChatFormatting.RED : "") + " > Extra+"));
+
+        this.buttonList.add(new ModernGUI(53, 0, 0, btnW - 10, 16, "Limit Items: " + (AutoClicker.limitItems ? on : off)));
+
         if (whitelistField == null) {
             whitelistField = new ModernTextField(100, 0, 0, btnW - 10, 14);
             whitelistField.setText(String.join(", ", AutoClicker.itemWhitelist));
         }
 
-        // Render & HUD Buttons...
-        this.buttonList.add(new ModernGUI(10, 0, 0, btnW, 16, "NameTags: " + (NameTags.enabled ? on : off)));
-        this.buttonList.add(new ModernGUI(11, 0, 0, btnW - 10, 16, "Show Health: " + (NameTags.showHealth ? on : off)));
-        this.buttonList.add(new ModernGUI(12, 0, 0, btnW - 10, 16, "Show Armorstatus: " + (NameTags.showItems ? on : off)));
-        this.buttonList.add(new ModernGUI(20, 0, 0, btnW, 16, "Auto Denick: " + (AutoDenick.enabled ? on : off)));
-        this.buttonList.add(new ModernGUI(30, 0, 0, btnW, 16, "Enemy HUD: " + (EnemyHUD.enabled ? on : off)));
-        this.buttonList.add(new ModernGUI(31, 0, 0, btnW, 16, "Nicked HUD: " + (NickedHUD.enabled ? on : off)));
+        // --- RENDER (IDs 60-69) ---
+        this.buttonList.add(new ModernGUI(60, 0, 0, btnW, 16, "NameTags: " + (NameTags.enabled ? on : off)));
+        this.buttonList.add(new ModernGUI(61, 0, 0, btnW - 10, 16, "Settings: " + EnumChatFormatting.GRAY + (nameTagsDropdownExpanded ? " ^" : " v")));
+        this.buttonList.add(new ModernGUI(62, 0, 0, btnW - 15, 16, " > Show Health: " + (NameTags.showHealth ? on : off)));
+        this.buttonList.add(new ModernGUI(63, 0, 0, btnW - 15, 16, " > Show Armor: " + (NameTags.showItems ? on : off)));
+        this.buttonList.add(new ModernGUI(64, 0, 0, btnW - 10, 16, "Chest ESP: " + (ChestESP.enabled ? on : off)));
+        
+        // --- DENICK (IDs 70-79) ---
+        this.buttonList.add(new ModernGUI(70, 0, 0, btnW, 16, "Auto Denick: " + (AutoDenick.enabled ? on : off)));
+        
+        // --- HUD (IDs 80-89) ---
+        this.buttonList.add(new ModernGUI(80, 0, 0, btnW, 16, "Enemy HUD: " + (EnemyHUD.enabled ? on : off)));
+        this.buttonList.add(new ModernGUI(81, 0, 0, btnW, 16, "Nicked HUD: " + (NickedHUD.enabled ? on : off)));
     }
 
     @Override
@@ -68,35 +94,38 @@ public class EditHUDGui extends GuiScreen {
         if (EnemyHUD.enabled) EnemyHUD.instance.render(true);
         if (NickedHUD.enabled) NickedHUD.instance.render(true);
 
-        // Header
         Gui.drawRect(panelX, panelY, panelX + 135, panelY + 18, 0xFF121212);
         this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Foxtrot Settings", panelX + 5, panelY + 5, -1);
         this.fontRendererObj.drawStringWithShadow(panelCollapsed ? "+" : "-", panelX + 122, panelY + 5, -1);
 
         if (!panelCollapsed) {
-            // 1. CALCULATE BACKGROUND HEIGHT FIRST
             int bgHeight = 4;
-            bgHeight += 12 + (combatExpanded ? (countButtons(40, 47) * 18) + 28 : 0) + 4;
-            bgHeight += 12 + (renderExpanded ? (countButtons(10, 12) * 18) : 0) + 4;
-            bgHeight += 12 + (denickExpanded ? (countButtons(20, 20) * 18) : 0) + 4;
-            bgHeight += 12 + (hudExpanded ? (countButtons(30, 31) * 18) : 0) + 4;
+            
+            // Dynamic Height Logic
+            int combatCount = 12; // Base buttons
+            if (randomDropdownExpanded) combatCount += 3;
+            bgHeight += 12 + (combatExpanded ? (combatCount * 18) + 28 : 0) + 4;
+            
+            int renderCount = 3; // Base buttons (NameTags, Settings Header, ChestESP)
+            if (nameTagsDropdownExpanded) renderCount += 2; // Health and Armor
+            bgHeight += 12 + (renderExpanded ? (renderCount * 18) : 0) + 4;
+            
+            bgHeight += 12 + (denickExpanded ? (1 * 18) : 0) + 4;
+            bgHeight += 12 + (hudExpanded ? (2 * 18) : 0) + 4;
 
-            // 2. DRAW BACKGROUND BEHIND TEXT
             Gui.drawRect(panelX, panelY + 18, panelX + 135, panelY + 18 + bgHeight, 0xDD121212);
 
-            // 3. DRAW HEADERS & BUTTONS ON TOP (Fixes the dark text issue)
             int currentY = panelY + 22;
-            currentY = drawCategory(currentY, "Combat", combatExpanded, 40, 47, mouseX, mouseY);
-            currentY = drawCategory(currentY, "Render", renderExpanded, 10, 12, mouseX, mouseY);
-            currentY = drawCategory(currentY, "Denick", denickExpanded, 20, 20, mouseX, mouseY);
-            currentY = drawCategory(currentY, "HUD", hudExpanded, 30, 31, mouseX, mouseY);
+            currentY = drawCategory(currentY, "Combat", combatExpanded, 40, 59, mouseX, mouseY);
+            currentY = drawCategory(currentY, "Render", renderExpanded, 60, 69, mouseX, mouseY);
+            currentY = drawCategory(currentY, "Denick", denickExpanded, 70, 79, mouseX, mouseY);
+            currentY = drawCategory(currentY, "HUD", hudExpanded, 80, 89, mouseX, mouseY);
 
             super.drawScreen(mouseX, mouseY, partialTicks);
         }
     }
 
     private int drawCategory(int y, String name, boolean expanded, int startId, int endId, int mouseX, int mouseY) {
-        // Save exact Y coordinate so mouseClicked NEVER misses
         if (name.equals("Combat")) catCombatY = y;
         if (name.equals("Render")) catRenderY = y;
         if (name.equals("Denick")) catDenickY = y;
@@ -111,6 +140,30 @@ public class EditHUDGui extends GuiScreen {
 
         for (GuiButton btn : this.buttonList) {
             if (btn.id >= startId && btn.id <= endId) {
+                
+                // Combat Nested Dropdown
+                if (btn.id >= 50 && btn.id <= 52) {
+                    if (expanded && randomDropdownExpanded) {
+                        btn.visible = true;
+                        btn.xPosition = panelX + 15;
+                        btn.yPosition = y;
+                        y += 18;
+                    } else btn.visible = false;
+                    continue;
+                }
+
+                // Render Nested Dropdown (NameTags)
+                if (btn.id >= 62 && btn.id <= 63) {
+                    if (expanded && nameTagsDropdownExpanded) {
+                        btn.visible = true;
+                        btn.xPosition = panelX + 15; // Indent
+                        btn.yPosition = y;
+                        y += 18;
+                    } else btn.visible = false;
+                    continue;
+                }
+
+                // Standard Buttons
                 if (expanded) {
                     btn.visible = true;
                     btn.xPosition = panelX + 5 + (btn.width < 125 ? 5 : 0);
@@ -139,6 +192,19 @@ public class EditHUDGui extends GuiScreen {
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        // --- CUSTOM HOTKEY LISTENER ---
+        if (bindingAutoClicker) {
+            if (keyCode == Keyboard.KEY_ESCAPE) {
+                AutoClicker.bind = Keyboard.KEY_NONE;
+            } else {
+                AutoClicker.bind = keyCode;
+            }
+            bindingAutoClicker = false;
+            ConfigHandler.saveConfig();
+            this.initGui();
+            return;
+        }
+
         if (combatExpanded && whitelistField != null && whitelistField.getVisible() && whitelistField.isFocused()) {
             whitelistField.textboxKeyTyped(typedChar, keyCode);
             updateWhitelist();
@@ -158,18 +224,33 @@ public class EditHUDGui extends GuiScreen {
 
     @Override
     protected void actionPerformed(GuiButton button) {
+        if (button instanceof ModernSlider) return; // Fixes Slider Bug
+
+        // Combat
         if (button.id == 40) AutoClicker.enabled = !AutoClicker.enabled;
-        if (button.id == 41) AutoClicker.holdToClick = !AutoClicker.holdToClick;
-        if (button.id == 42) AutoClicker.inventoryFill = !AutoClicker.inventoryFill;
-        if (button.id == 44) AutoClicker.breakBlocks = !AutoClicker.breakBlocks;
-        if (button.id == 47) AutoClicker.limitItems = !AutoClicker.limitItems;
+        if (button.id == 41) AutoClicker.leftClick = !AutoClicker.leftClick;
+        if (button.id == 42) AutoClicker.rightClick = !AutoClicker.rightClick;
+        if (button.id == 43) AutoClicker.holdToClick = !AutoClicker.holdToClick;
+        if (button.id == 44) AutoClicker.inventoryFill = !AutoClicker.inventoryFill;
+        if (button.id == 46) AutoClicker.breakBlocks = !AutoClicker.breakBlocks;
+        if (button.id == 49) randomDropdownExpanded = !randomDropdownExpanded;
+        if (button.id == 50) { AutoClicker.randomMode = 0; randomDropdownExpanded = false; }
+        if (button.id == 51) { AutoClicker.randomMode = 1; randomDropdownExpanded = false; }
+        if (button.id == 52) { AutoClicker.randomMode = 2; randomDropdownExpanded = false; }
+        if (button.id == 53) AutoClicker.limitItems = !AutoClicker.limitItems;
+        if (button.id == 54) { bindingAutoClicker = true; this.initGui(); return; } // Trigger Bind
         
-        if (button.id == 10) NameTags.enabled = !NameTags.enabled;
-        if (button.id == 11) NameTags.showHealth = !NameTags.showHealth;
-        if (button.id == 12) NameTags.showItems = !NameTags.showItems;
-        if (button.id == 20) AutoDenick.enabled = !AutoDenick.enabled;
-        if (button.id == 30) EnemyHUD.enabled = !EnemyHUD.enabled;
-        if (button.id == 31) NickedHUD.enabled = !NickedHUD.enabled;
+        // Render
+        if (button.id == 60) NameTags.enabled = !NameTags.enabled;
+        if (button.id == 61) nameTagsDropdownExpanded = !nameTagsDropdownExpanded; // Toggle Dropdown
+        if (button.id == 62) NameTags.showHealth = !NameTags.showHealth;
+        if (button.id == 63) NameTags.showItems = !NameTags.showItems;
+        if (button.id == 64) ChestESP.enabled = !ChestESP.enabled;
+        
+        // Denick & HUD
+        if (button.id == 70) AutoDenick.enabled = !AutoDenick.enabled;
+        if (button.id == 80) EnemyHUD.enabled = !EnemyHUD.enabled;
+        if (button.id == 81) NickedHUD.enabled = !NickedHUD.enabled;
         
         ConfigHandler.saveConfig();
         this.initGui();
@@ -191,7 +272,6 @@ public class EditHUDGui extends GuiScreen {
         }
 
         if (!panelCollapsed) {
-            // Uses the perfectly tracked Y coordinates to guarantee clicks register
             if (catCombatY != -1 && mouseY >= catCombatY && mouseY <= catCombatY + 12 && mouseX >= panelX && mouseX <= panelX + 135) {
                 combatExpanded = !combatExpanded; ConfigHandler.saveConfig(); this.initGui(); return;
             }
@@ -217,12 +297,6 @@ public class EditHUDGui extends GuiScreen {
         }
     }
 
-    private int countButtons(int start, int end) {
-        int count = 0;
-        for (GuiButton btn : this.buttonList) if (btn.id >= start && btn.id <= end) count++;
-        return count;
-    }
-
     @Override
     protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
         super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
@@ -240,9 +314,9 @@ public class EditHUDGui extends GuiScreen {
             if (btn instanceof ModernSlider) {
                 ModernSlider slider = (ModernSlider) btn;
                 slider.mouseReleased(mouseX, mouseY);
-                if (slider.id == 43) AutoClicker.inventoryFillCps = slider.getValue();
-                if (slider.id == 45) AutoClicker.minCps = slider.getValue();
-                if (slider.id == 46) AutoClicker.maxCps = slider.getValue();
+                if (slider.id == 45) AutoClicker.inventoryFillCps = slider.getValue();
+                if (slider.id == 47) AutoClicker.minCps = slider.getValue();
+                if (slider.id == 48) AutoClicker.maxCps = slider.getValue();
                 ConfigHandler.saveConfig();
             }
         }
@@ -251,6 +325,7 @@ public class EditHUDGui extends GuiScreen {
     @Override
     public void onGuiClosed() { 
         Keyboard.enableRepeatEvents(false); 
+        bindingAutoClicker = false; // Reset binding state if you close GUI mid-bind
         ConfigHandler.saveConfig(); 
     }
     
