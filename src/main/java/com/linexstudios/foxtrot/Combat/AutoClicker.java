@@ -118,6 +118,27 @@ public class AutoClicker {
                     if (leftClickCounterField != null) leftClickCounterField.set(mc, 0); 
                     KeyBinding.setKeyBindState(attackKey, true);
                     KeyBinding.onTick(attackKey);
+
+                    // --- NEW: CPS MOD SPOOFER ---
+                    // 1. Spoof the Forge Client MouseEvent // IN CASE YOU HAD A CPS MOD AND IT DOESNT SHOW THE CPS AT ALL THIS SHOULD FIX IT.
+                    net.minecraftforge.client.event.MouseEvent fakeEvent = new net.minecraftforge.client.event.MouseEvent();
+                    
+                    Field btnField = net.minecraftforge.client.event.MouseEvent.class.getDeclaredField("button");
+                    btnField.setAccessible(true);
+                    btnField.set(fakeEvent, 0); // 0 = Left Click
+                    
+                    Field stateField = net.minecraftforge.client.event.MouseEvent.class.getDeclaredField("buttonstate");
+                    stateField.setAccessible(true);
+                    stateField.set(fakeEvent, true); // true = Button Pressed
+                    
+                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(fakeEvent);
+
+                    // 2. Spoof the FML InputEvent (Some CPS mods use this instead)
+                    net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().post(
+                        new net.minecraftforge.fml.common.gameevent.InputEvent.MouseInputEvent()
+                    );
+                    // -----------------------------
+
                 } catch (Exception e) {}
                 lastLeftClickTime = System.currentTimeMillis();
                 nextLeftDelay = generateNextDelay();
@@ -143,7 +164,15 @@ public class AutoClicker {
     private long generateNextDelay() {
         float targetCps = minCps + (rand.nextFloat() * (maxCps - minCps));
         long baseDelay = (long) (1000.0F / targetCps);
-        long randomOffset = (long) ((rand.nextGaussian() * 15) - 7);
+        long randomOffset = 0;
+        
+        // Restored GUI switch integration
+        switch (randomMode) {
+            case 0: randomOffset = (long) ((rand.nextGaussian() * 15) - 7); break;
+            case 1: randomOffset = (long) ((rand.nextGaussian() * 25) - 10); break;
+            case 2: randomOffset = (long) ((rand.nextGaussian() * 35) - 15); break;
+        }
+        
         return Math.max(20, baseDelay + randomOffset);
     }
 
