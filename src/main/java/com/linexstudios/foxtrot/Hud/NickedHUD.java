@@ -128,7 +128,7 @@ public class NickedHUD {
         this.height = currentY - hudY;
 
         if (isEditing) {
-            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x55A020F0);
+            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
         }
     }
 

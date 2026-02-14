@@ -19,57 +19,55 @@ import java.util.Locale;
 
 public class NameTags {
     public static final NameTags instance = new NameTags();
+    
+    // --- THE NEW SETTINGS VARIABLES ---
     public static boolean enabled = false;
+    public static boolean showHealth = true;
+    public static boolean showItems = true;
+    public static boolean itemsThroughWalls = false;
+    
     private final Minecraft mc = Minecraft.getMinecraft();
 
     @SubscribeEvent
     public void onRenderNametag(RenderLivingEvent.Specials.Pre<EntityPlayer> event) {
         if (!enabled || mc.thePlayer == null || mc.theWorld == null) return;
-        
         if (!(event.entity instanceof EntityPlayer)) return;
         EntityPlayer player = (EntityPlayer) event.entity;
-        
         if (player == mc.thePlayer || player.isInvisible()) return;
 
-        // Cancel the vanilla Minecraft nametag so we can replace it
+        // Cancel the vanilla Minecraft nametag so we can replace it completely
         event.setCanceled(true);
 
         float distance = mc.thePlayer.getDistanceToEntity(player);
-        
-        // CLUTTER FIX 1: Don't render anything past 60 blocks (saves massive FPS)
-        if (distance > 60.0F) return; 
-
         double x = event.x;
         double y = event.y + player.height + 0.45D;
         double z = event.z;
 
-        // Smoother scaling so it doesn't get huge and block your screen up close
+        // Smoother scaling so it stays a readable size no matter how far away they are
         float scale = Math.max(0.025F, distance / 8.0F * 0.02F);
 
         GlStateManager.pushMatrix();
         GlStateManager.translate((float) x, (float) y, (float) z);
-
         GlStateManager.rotate(-mc.getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
         GlStateManager.rotate(mc.getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-scale, -scale, scale);
 
-        // GL Setup to render through walls (ESP)
+        // --- ESP TEXT STATE (Visible Through Walls) ---
         GlStateManager.disableLighting();
-        GlStateManager.disableDepth(); 
+        GlStateManager.disableDepth(); // Turns OFF depth so text ignores walls
+        GlStateManager.depthMask(false); 
         GlStateManager.enableBlend();
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        
-        // FLICKER FIX: Stops the background boxes from Z-fighting with each other
-        GlStateManager.depthMask(false); 
 
         // Build the text string
-        String name = player.getDisplayName().getFormattedText();
-        float health = player.getHealth() + player.getAbsorptionAmount();
+        String text = player.getDisplayName().getFormattedText();
         
-        // Dynamic health colors
-        String healthColor = health > 15 ? EnumChatFormatting.GREEN.toString() : (health > 7 ? EnumChatFormatting.YELLOW.toString() : EnumChatFormatting.RED.toString());
-        String healthStr = healthColor + String.format(Locale.US, "%.1f", health);
-        String text = name + " " + healthStr;
+        // HEALTH TOGGLE LOGIC
+        if (showHealth) {
+            float health = player.getHealth() + player.getAbsorptionAmount();
+            String healthColor = health > 15 ? EnumChatFormatting.GREEN.toString() : (health > 7 ? EnumChatFormatting.YELLOW.toString() : EnumChatFormatting.RED.toString());
+            text += " " + healthColor + String.format(Locale.US, "%.1f", health);
+        }
 
         int width = mc.fontRendererObj.getStringWidth(text) / 2;
 
@@ -84,12 +82,12 @@ public class NameTags {
         worldrenderer.pos(width + 2, -2, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         tessellator.draw();
         GlStateManager.enableTexture2D();
-
+        
         // Draw the text
         mc.fontRendererObj.drawStringWithShadow(text, -width, 0, 0xFFFFFF);
 
-        // CLUTTER FIX 2: Only show Armor and Weapons for players within 15 blocks
-        if (distance <= 15.0F) {
+        // --- ITEM TOGGLE LOGIC ---
+        if (showItems) {
             List<ItemStack> items = new ArrayList<>();
             if (player.getHeldItem() != null) items.add(player.getHeldItem());
             for (int i = 3; i >= 0; i--) {
@@ -99,42 +97,42 @@ public class NameTags {
             }
 
             if (!items.isEmpty()) {
-                int itemOffset = -(items.size() * 16) / 2;
                 GlStateManager.pushMatrix();
-                GlStateManager.translate(0, -18, 0); 
+                GlStateManager.translate(0, -18, 0); // Move above the text
                 
-                // Isolates the item lighting so it doesn't break the world
-                GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-                RenderHelper.enableGUIStandardItemLighting();
-                GlStateManager.enableDepth(); // Depth must be ON for items to look 3D
+                // ITEMS THROUGH WALLS TOGGLE LOGIC
+                if (itemsThroughWalls) {
+                    GlStateManager.depthFunc(GL11.GL_ALWAYS); // Renders through blocks
+                } else {
+                    GlStateManager.enableDepth(); // Hides behind blocks
+                    GlStateManager.depthMask(true);
+                }
 
+                int itemOffset = -(items.size() * 16) / 2;
                 for (ItemStack item : items) {
                     GlStateManager.pushMatrix();
                     GlStateManager.translate(itemOffset, 0, 0);
                     
+                    RenderHelper.enableGUIStandardItemLighting();
                     mc.getRenderItem().renderItemAndEffectIntoGUI(item, 0, 0);
                     mc.getRenderItem().renderItemOverlays(mc.fontRendererObj, item, 0, 0);
+                    RenderHelper.disableStandardItemLighting();
                     
                     GlStateManager.popMatrix();
                     itemOffset += 16;
                 }
 
-                // Restores whatever lighting state we had before drawing the items
-                GL11.glPopAttrib(); 
+                GlStateManager.depthFunc(GL11.GL_LEQUAL); // Reset depth function
                 GlStateManager.popMatrix();
             }
         }
 
-        // Restore vanilla GL state
-        GlStateManager.depthMask(true); // Re-enable depth mask
+        // --- RESTORE VANILLA STATE ---
+        GlStateManager.depthMask(true); 
         GlStateManager.enableDepth();
-        GlStateManager.enableLighting();
         GlStateManager.disableBlend();
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         
-        // LIGHTING BUG FIX: This tells Minecraft to turn the 3D sun/shadows back on
-        RenderHelper.enableStandardItemLighting(); 
-
         GlStateManager.popMatrix();
     }
 }
