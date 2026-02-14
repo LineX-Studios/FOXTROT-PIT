@@ -28,7 +28,7 @@ public class NameTags {
         if (!enabled || mc.thePlayer == null || mc.theWorld == null) return;
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
-            // Don't render on ourselves unless we are in F5 mode
+            // Don't render on ourselves unless we are in third-person view
             if (player == mc.thePlayer && mc.gameSettings.thirdPersonView == 0) continue;
             if (player.isDead || player.isInvisible()) continue; 
 
@@ -47,7 +47,7 @@ public class NameTags {
         float scale = (distance / 4.0F) * 0.015F;
         if (scale < 0.025F) scale = 0.025F; // Keeps it readable when very close
 
-        // Save GL State and setup positioning
+        // Save GL State and setup positioning perfectly above the head
         GlStateManager.pushMatrix();
         GlStateManager.translate((float)x, (float)y + player.height + 0.6F, (float)z);
         
@@ -57,14 +57,14 @@ public class NameTags {
         GlStateManager.rotate(mc.getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-scale, -scale, scale);
 
-        // --- 2. FIX LIGHTING & WALL HACKS ---
+        // --- 2. VAPE WALLHACK STATE (No Depth, No Lighting) ---
         GlStateManager.disableLighting();
-        GlStateManager.disableDepth(); // Renders through walls
+        GlStateManager.disableDepth(); 
         GlStateManager.enableBlend();
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GlStateManager.depthMask(false);
 
-        // --- 3. BUILD TEXT (Preserves server prefixes like [107]) ---
+        // --- 3. BUILD TEXT (Preserves server prefixes perfectly) ---
         String name = player.getDisplayName().getFormattedText();
         if (showHealth) {
             float health = player.getHealth() + player.getAbsorptionAmount();
@@ -76,11 +76,11 @@ public class NameTags {
 
         int width = mc.fontRendererObj.getStringWidth(name) / 2;
 
+        // --- 4. DRAW VAPE V4 BACKGROUND RECTANGLE ---
         GlStateManager.disableTexture2D();
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
         worldrenderer.begin(7, DefaultVertexFormats.POSITION_COLOR);
-        // Draws a black box with 0.5 Alpha (Semi-transparent)
         worldrenderer.pos(-width - 2, -2, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         worldrenderer.pos(-width - 2, 9, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         worldrenderer.pos(width + 2, 9, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
@@ -91,7 +91,7 @@ public class NameTags {
         // --- 5. RENDER TEXT ---
         mc.fontRendererObj.drawStringWithShadow(name, -width, 0, -1);
 
-        // --- 6. RENDER ARMOR & HELD ITEM ---
+        // --- 6. RENDER ARMOR (FIXED SLIDING & LIGHTING) ---
         if (showItems) {
             List<ItemStack> items = new ArrayList<>();
             // Add Held Item first (Left side)
@@ -110,13 +110,28 @@ public class NameTags {
                 for (ItemStack item : items) {
                     GlStateManager.pushMatrix();
                     GlStateManager.translate(startX, itemY, 0);
-                    GlStateManager.scale(1.0F, 1.0F, 1.0F);
 
-                    // Re-enable lighting JUST for the 3D items so they don't render black
+                    // MATHEMATICAL FIX FOR THE SLIDING/PARALLAX BUG:
+                    // renderItemIntoGUI intrinsically translates Z by +32. 
+                    // By passing exactly -32.0F, we neutralize the depth to 0.0F so it locks onto the 2D plane.
+                    float prevZ = mc.getRenderItem().zLevel;
+                    mc.getRenderItem().zLevel = -32.0F;
+
+                    // FIX FOR DARK ITEMS: Items need isolated lighting
+                    GlStateManager.enableLighting();
                     RenderHelper.enableGUIStandardItemLighting();
+
+                    // renderItemIntoGUI might re-enable depth, force it off
+                    GlStateManager.disableDepth();
+
                     mc.getRenderItem().renderItemIntoGUI(item, 0, 0);
                     mc.getRenderItem().renderItemOverlays(mc.fontRendererObj, item, 0, 0);
+
+                    // Turn lighting back off so the nametag text stays perfectly bright
                     RenderHelper.disableStandardItemLighting();
+                    GlStateManager.disableLighting();
+                    
+                    mc.getRenderItem().zLevel = prevZ;
 
                     GlStateManager.popMatrix();
                     startX += 16;
@@ -124,7 +139,7 @@ public class NameTags {
             }
         }
 
-        // --- 7. RESTORE GL STATE ---
+        // --- 7. RESTORE VANILLA GL STATE ---
         GlStateManager.enableDepth();
         GlStateManager.depthMask(true);
         GlStateManager.enableLighting();
