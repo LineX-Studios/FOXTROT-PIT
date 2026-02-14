@@ -22,7 +22,7 @@ public class NameTags {
     public static boolean enabled = false;
     public static boolean showHealth = true;
     public static boolean showItems = true;
-    public static boolean itemsThroughWalls = true; // Set to TRUE by default for ESP
+    public static boolean itemsThroughWalls = true;
     
     private final Minecraft mc = Minecraft.getMinecraft();
 
@@ -33,14 +33,13 @@ public class NameTags {
         EntityPlayer player = (EntityPlayer) event.entity;
         if (player == mc.thePlayer || player.isInvisible()) return;
 
-        event.setCanceled(true); // Cancels vanilla nametag
+        event.setCanceled(true);
 
         double x = event.x;
         double y = event.y + player.height + 0.5D;
         double z = event.z;
 
         float distance = mc.thePlayer.getDistanceToEntity(player);
-        // Map-wide scaling
         float scale = Math.max(0.025F, distance / 8.0F * 0.02F);
 
         GlStateManager.pushMatrix();
@@ -49,14 +48,12 @@ public class NameTags {
         GlStateManager.rotate(mc.getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-scale, -scale, scale);
 
-        // --- GLOBAL ESP STATE ---
         GlStateManager.disableLighting();
-        GlStateManager.disableDepth(); // This ensures everything renders THROUGH walls
+        GlStateManager.disableDepth();
         GlStateManager.depthMask(false);
         GlStateManager.enableBlend();
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        // Name and Health Text
         String text = player.getDisplayName().getFormattedText();
         if (showHealth) {
             float health = player.getHealth() + player.getAbsorptionAmount();
@@ -66,7 +63,6 @@ public class NameTags {
 
         int width = mc.fontRendererObj.getStringWidth(text) / 2;
 
-        // Background Box
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
         GlStateManager.disableTexture2D();
@@ -79,7 +75,6 @@ public class NameTags {
         GlStateManager.enableTexture2D();
         mc.fontRendererObj.drawStringWithShadow(text, -width, 0, 0xFFFFFF);
 
-        // --- STUCK ARMOR RENDERING ---
         if (showItems) {
             List<ItemStack> items = new ArrayList<>();
             if (player.getHeldItem() != null) items.add(player.getHeldItem());
@@ -87,9 +82,7 @@ public class NameTags {
 
             if (!items.isEmpty()) {
                 GlStateManager.pushMatrix();
-                GlStateManager.translate(0, -18, 0); // Stuck directly above text
-                
-                // ESP Logic for items
+                GlStateManager.translate(0, -18, 0); 
                 if (itemsThroughWalls) GlStateManager.disableDepth();
                 else GlStateManager.enableDepth();
 

@@ -3,7 +3,9 @@ package com.linexstudios.foxtrot.Handler;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
+import com.linexstudios.foxtrot.Hud.EditHUDGui;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
+import com.linexstudios.foxtrot.Combat.AutoClicker;
 
 import java.io.*;
 import java.util.*;
@@ -35,21 +37,41 @@ public class ConfigHandler {
                 props.load(in);
                 in.close();
 
-                // FIX: Load both HUD positions separately
+                // HUD positions
                 NickedHUD.hudX = Integer.parseInt(props.getProperty("nickedHudX", "10"));
                 NickedHUD.hudY = Integer.parseInt(props.getProperty("nickedHudY", "80"));
-                
                 EnemyHUD.hudX = Integer.parseInt(props.getProperty("enemyHudX", "200"));
                 EnemyHUD.hudY = Integer.parseInt(props.getProperty("enemyHudY", "80"));
 
-                // AutoDenick toggle
-                AutoDenick.enabled = Boolean.parseBoolean(props.getProperty("autoDenick", "false"));
+                // --- GUI Memory States ---
+                EditHUDGui.panelX = Integer.parseInt(props.getProperty("panelX", "-1"));
+                EditHUDGui.panelY = Integer.parseInt(props.getProperty("panelY", "-1"));
+                EditHUDGui.panelCollapsed = Boolean.parseBoolean(props.getProperty("panelCollapsed", "false"));
+                EditHUDGui.combatExpanded = Boolean.parseBoolean(props.getProperty("combatExpanded", "false"));
+                EditHUDGui.renderExpanded = Boolean.parseBoolean(props.getProperty("renderExpanded", "false"));
+                EditHUDGui.denickExpanded = Boolean.parseBoolean(props.getProperty("denickExpanded", "false"));
+                EditHUDGui.hudExpanded = Boolean.parseBoolean(props.getProperty("hudExpanded", "false"));
 
-                // HUD enabled/disabled settings
+                // --- AutoClicker Settings ---
+                AutoClicker.enabled = Boolean.parseBoolean(props.getProperty("clickerEnabled", "false"));
+                AutoClicker.holdToClick = Boolean.parseBoolean(props.getProperty("clickerHoldToClick", "true"));
+                AutoClicker.inventoryFill = Boolean.parseBoolean(props.getProperty("clickerInvFill", "true"));
+                AutoClicker.breakBlocks = Boolean.parseBoolean(props.getProperty("clickerBreakBlocks", "true"));
+                AutoClicker.limitItems = Boolean.parseBoolean(props.getProperty("clickerLimitItems", "true"));
+                
+                AutoClicker.inventoryFillCps = Float.parseFloat(props.getProperty("clickerInvFillCps", "15.0"));
+                AutoClicker.minCps = Float.parseFloat(props.getProperty("clickerMinCps", "9.0"));
+                AutoClicker.maxCps = Float.parseFloat(props.getProperty("clickerMaxCps", "13.0"));
+
+                // Load Whitelist (split by commas)
+                String whitelistStr = props.getProperty("clickerWhitelist", "sword,axe");
+                AutoClicker.itemWhitelist = new ArrayList<>(Arrays.asList(whitelistStr.split(",")));
+
+                // Existing Module Toggles
+                AutoDenick.enabled = Boolean.parseBoolean(props.getProperty("autoDenick", "false"));
                 EnemyHUD.enabled = Boolean.parseBoolean(props.getProperty("enemyHudEnabled", "true"));
                 EnemyHUD.notificationsEnabled = Boolean.parseBoolean(props.getProperty("enemyHudAlerts", "true"));
                 EnemyHUD.debugMode = Boolean.parseBoolean(props.getProperty("enemyHudDebug", "false"));
-
                 NickedHUD.enabled = Boolean.parseBoolean(props.getProperty("nickedHudEnabled", "true"));
                 NameTags.enabled = Boolean.parseBoolean(props.getProperty("nameTagsEnabled", "false"));
             }
@@ -72,13 +94,37 @@ public class ConfigHandler {
             // Save Settings
             Properties props = new Properties();
             
-            // FIX: Save both HUD positions separately
+            // HUD positions
             props.setProperty("nickedHudX", String.valueOf(NickedHUD.hudX));
             props.setProperty("nickedHudY", String.valueOf(NickedHUD.hudY));
-            
             props.setProperty("enemyHudX", String.valueOf(EnemyHUD.hudX));
             props.setProperty("enemyHudY", String.valueOf(EnemyHUD.hudY));
+
+            // --- GUI Memory States ---
+            props.setProperty("panelX", String.valueOf(EditHUDGui.panelX));
+            props.setProperty("panelY", String.valueOf(EditHUDGui.panelY));
+            props.setProperty("panelCollapsed", String.valueOf(EditHUDGui.panelCollapsed));
+            props.setProperty("combatExpanded", String.valueOf(EditHUDGui.combatExpanded));
+            props.setProperty("renderExpanded", String.valueOf(EditHUDGui.renderExpanded));
+            props.setProperty("denickExpanded", String.valueOf(EditHUDGui.denickExpanded));
+            props.setProperty("hudExpanded", String.valueOf(EditHUDGui.hudExpanded));
+
+            // --- AutoClicker Settings ---
+            props.setProperty("clickerEnabled", String.valueOf(AutoClicker.enabled));
+            props.setProperty("clickerHoldToClick", String.valueOf(AutoClicker.holdToClick));
+            props.setProperty("clickerInvFill", String.valueOf(AutoClicker.inventoryFill));
+            props.setProperty("clickerBreakBlocks", String.valueOf(AutoClicker.breakBlocks));
+            props.setProperty("clickerLimitItems", String.valueOf(AutoClicker.limitItems));
             
+            props.setProperty("clickerInvFillCps", String.valueOf(AutoClicker.inventoryFillCps));
+            props.setProperty("clickerMinCps", String.valueOf(AutoClicker.minCps));
+            props.setProperty("clickerMaxCps", String.valueOf(AutoClicker.maxCps));
+
+            // Save Whitelist (join array with commas)
+            String whitelistStr = String.join(",", AutoClicker.itemWhitelist);
+            props.setProperty("clickerWhitelist", whitelistStr);
+
+            // Existing Module Toggles
             props.setProperty("autoDenick", String.valueOf(AutoDenick.enabled));
             props.setProperty("enemyHudEnabled", String.valueOf(EnemyHUD.enabled));
             props.setProperty("enemyHudAlerts", String.valueOf(EnemyHUD.notificationsEnabled));
