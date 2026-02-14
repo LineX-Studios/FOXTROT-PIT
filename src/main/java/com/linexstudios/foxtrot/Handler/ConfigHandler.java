@@ -6,6 +6,7 @@ import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Hud.EditHUDGui;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
+import com.linexstudios.foxtrot.Render.ChestESP;
 
 import java.io.*;
 import java.util.*;

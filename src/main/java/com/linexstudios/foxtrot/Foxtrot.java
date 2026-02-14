@@ -9,12 +9,13 @@ import com.linexstudios.foxtrot.Handler.KeybindHandler;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
+import com.linexstudios.foxtrot.Render.ChestESP;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 
-@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.3.8", acceptedMinecraftVersions = "[1.8.9]")
+@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.3.9", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
     
     @Mod.EventHandler
