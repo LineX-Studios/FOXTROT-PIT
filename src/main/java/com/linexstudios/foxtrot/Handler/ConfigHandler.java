@@ -2,6 +2,7 @@ package com.linexstudios.foxtrot.Handler;
 
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
+import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 
 import java.io.*;

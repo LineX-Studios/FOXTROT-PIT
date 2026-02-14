@@ -2,6 +2,7 @@ package com.linexstudios.foxtrot.Hud;
 
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.util.EnumChatFormatting;
 import java.io.IOException;
 
 public class EditHUDGui extends GuiScreen {
@@ -9,11 +10,15 @@ public class EditHUDGui extends GuiScreen {
     private boolean draggingNicked = false;
     private int lastX, lastY;
 
-    @Override
+@Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground(); 
-        this.fontRendererObj.drawStringWithShadow("§6§lFoxtrot HUD Editor", this.width / 2 - 55, 20, 0xFFFFFF);
-        this.fontRendererObj.drawStringWithShadow("§7Click and drag the boxes. Press ESC to save.", this.width / 2 - 110, 35, 0xFFFFFF);
+        
+        String title = EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Foxtrot HUD Editor";
+        this.fontRendererObj.drawStringWithShadow(title, this.width / 2 - 55, 20, 0xFFFFFF);
+        
+        String subtitle = EnumChatFormatting.GRAY + "Click and drag the HUD Elements. Press ESC to save.";
+        this.fontRendererObj.drawStringWithShadow(subtitle, this.width / 2 - 110, 35, 0xFFFFFF);
 
         if (EnemyHUD.enabled) EnemyHUD.instance.render(true);
         if (NickedHUD.enabled) NickedHUD.instance.render(true);

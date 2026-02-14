@@ -18,7 +18,7 @@ public class KeybindHandler {
         // "Toggle NameTags ESP" = Name in the controls menu
         // Keyboard.KEY_X = Default key is X
         // "Foxtrot Mod" = The category it will show up under in the controls menu
-        toggleNameTags = new KeyBinding("Toggle NameTags ESP", Keyboard.KEY_X, "Foxtrot Mod");
+        toggleNameTags = new KeyBinding("Toggle Names", Keyboard.KEY_X, "Foxtrot");
         
         // Registers it into Minecraft's native keybind system
         ClientRegistry.registerKeyBinding(toggleNameTags);
@@ -39,7 +39,7 @@ public class KeybindHandler {
             if (mc.thePlayer != null) {
                 String status = NameTags.enabled ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF";
                 mc.thePlayer.addChatMessage(new ChatComponentText(
-                        EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + "Foxtrot" + EnumChatFormatting.GRAY + "] " +
+                        EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "PIT" + EnumChatFormatting.GRAY + "] " +
                         EnumChatFormatting.YELLOW + "NameTags ESP: " + status
                 ));
             }
