@@ -9,17 +9,17 @@ import com.linexstudios.foxtrot.Handler.KeybindHandler;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
-import com.linexstudios.foxtrot.Combat.AutoClicker; // Added Import
+import com.linexstudios.foxtrot.Combat.AutoClicker; 
 import com.linexstudios.foxtrot.Render.ChestESP;
-import net.minecraft.client.settings.KeyBinding; // Added Import
+import net.minecraft.client.settings.KeyBinding; 
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.client.registry.ClientRegistry; // Added Import
+import net.minecraftforge.fml.client.registry.ClientRegistry; 
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import org.lwjgl.input.Keyboard; // Added Import
+import org.lwjgl.input.Keyboard; 
 
-@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.4.3", acceptedMinecraftVersions = "[1.8.9]")
+@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.4.4", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
     
     // The shared KeyBinding for the AutoClicker

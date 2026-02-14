@@ -54,7 +54,7 @@ public class ConfigHandler {
 
                 AutoClicker.enabled = Boolean.parseBoolean(props.getProperty("clickerEnabled", "false"));
                 AutoClicker.leftClick = Boolean.parseBoolean(props.getProperty("clickerLeft", "true"));
-                AutoClicker.rightClick = Boolean.parseBoolean(props.getProperty("clickerRight", "false"));
+                AutoClicker.fastPlaceEnabled = Boolean.parseBoolean(props.getProperty("fastPlace", "false")); // Updated
                 AutoClicker.holdToClick = Boolean.parseBoolean(props.getProperty("clickerHoldToClick", "true"));
                 AutoClicker.inventoryFill = Boolean.parseBoolean(props.getProperty("clickerInvFill", "true"));
                 AutoClicker.breakBlocks = Boolean.parseBoolean(props.getProperty("clickerBreakBlocks", "true"));
@@ -113,7 +113,7 @@ public class ConfigHandler {
 
             props.setProperty("clickerEnabled", String.valueOf(AutoClicker.enabled));
             props.setProperty("clickerLeft", String.valueOf(AutoClicker.leftClick));
-            props.setProperty("clickerRight", String.valueOf(AutoClicker.rightClick));
+            props.setProperty("fastPlace", String.valueOf(AutoClicker.fastPlaceEnabled)); // Updated
             props.setProperty("clickerHoldToClick", String.valueOf(AutoClicker.holdToClick));
             props.setProperty("clickerInvFill", String.valueOf(AutoClicker.inventoryFill));
             props.setProperty("clickerBreakBlocks", String.valueOf(AutoClicker.breakBlocks));

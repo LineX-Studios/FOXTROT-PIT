@@ -25,11 +25,11 @@ public class AutoClicker {
     private Robot robot;
     private Field leftClickCounterField;
 
-    // --- Toggles & Debug ---
+    // --- Toggles ---
     public static boolean enabled = false;
     public static boolean debugMode = false;
     public static boolean leftClick = true;
-    public static boolean rightClick = false;
+    public static boolean fastPlaceEnabled = false; 
     public static boolean holdToClick = true;
 
     // --- Inventory Fill ---
@@ -44,7 +44,7 @@ public class AutoClicker {
     public static boolean breakBlocks = true;
     private int blockHitTicks = 0;
 
-    // --- Whitelist ---
+    // --- Whitelist (Strictly for Left Click) ---
     public static boolean limitItems = false;
     public static List<String> itemWhitelist = new ArrayList<>(Arrays.asList("sword", "axe", "pickaxe"));
 
@@ -78,19 +78,19 @@ public class AutoClicker {
         int attackKey = mc.gameSettings.keyBindAttack.getKeyCode();
         int useKey = mc.gameSettings.keyBindUseItem.getKeyCode();
 
+        // Phase START bypass
         if (event.phase == TickEvent.Phase.START) {
             if (leftClick && holdToClick && Mouse.isButtonDown(0)) KeyBinding.setKeyBindState(attackKey, false);
-            if (rightClick && holdToClick && Mouse.isButtonDown(1)) KeyBinding.setKeyBindState(useKey, false);
+            if (fastPlaceEnabled && holdToClick && Mouse.isButtonDown(1)) KeyBinding.setKeyBindState(useKey, false);
             return;
         }
 
-        // --- PHASE.END LOGIC ---
+        // Inventory Fill Logic (Requires Left Click hold only)
         if (mc.currentScreen instanceof net.minecraft.client.gui.inventory.GuiContainer) {
-            if (inventoryFill && Keyboard.isKeyDown(Keyboard.KEY_LSHIFT)) {
+            if (inventoryFill && Mouse.isButtonDown(0)) {
                 long invDelay = inventoryFillCps >= 20.0F ? 0 : (long)(1000.0F / inventoryFillCps);
                 if (System.currentTimeMillis() - lastInvClick >= invDelay) {
                     if (robot != null) {
-                        // Using fully qualified name here to avoid the compile error
                         robot.mousePress(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
                         robot.mouseRelease(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
                     }
@@ -102,6 +102,7 @@ public class AutoClicker {
 
         if (mc.currentScreen != null) return;
 
+        // --- LEFT CLICK LOGIC (Uses Whitelist) ---
         if (leftClick) {
             boolean shouldLeftClick = !holdToClick || Mouse.isButtonDown(0);
             if (breakBlocks && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
@@ -109,12 +110,12 @@ public class AutoClicker {
                 if (blockHitTicks > 15) shouldLeftClick = false; 
             } else blockHitTicks = 0;
 
+            // Whitelist check
             if (limitItems && !isHoldingWhitelistedItem()) shouldLeftClick = false;
 
             if (shouldLeftClick && System.currentTimeMillis() - lastLeftClickTime >= nextLeftDelay) {
                 try {
-                    if (leftClickCounterField != null) leftClickCounterField.set(mc, 0);
-                    if (debugMode) System.out.println("[Foxtrot-Debug] FIRING LEFT CLICK");
+                    if (leftClickCounterField != null) leftClickCounterField.set(mc, 0); 
                     KeyBinding.setKeyBindState(attackKey, true);
                     KeyBinding.onTick(attackKey);
                 } catch (Exception e) {}
@@ -123,8 +124,13 @@ public class AutoClicker {
             }
         }
 
-        if (rightClick) {
-            boolean shouldRightClick = !holdToClick || Mouse.isButtonDown(1);
+        // --- FAST PLACE LOGIC (Isolated from Whitelist) ---
+        if (fastPlaceEnabled) {
+            ItemStack held = mc.thePlayer.getHeldItem();
+            // Strictly check for blocks only, no whitelist dependency
+            boolean holdingBlock = (held != null && held.getItem() instanceof ItemBlock);
+            boolean shouldRightClick = (!holdToClick || Mouse.isButtonDown(1)) && holdingBlock;
+            
             if (shouldRightClick && System.currentTimeMillis() - lastRightClickTime >= nextRightDelay) {
                 KeyBinding.setKeyBindState(useKey, true);
                 KeyBinding.onTick(useKey);
@@ -137,12 +143,7 @@ public class AutoClicker {
     private long generateNextDelay() {
         float targetCps = minCps + (rand.nextFloat() * (maxCps - minCps));
         long baseDelay = (long) (1000.0F / targetCps);
-        long randomOffset = 0;
-        switch (randomMode) {
-            case 0: randomOffset = (long) ((rand.nextGaussian() * 15) - 7); break;
-            case 1: randomOffset = (long) ((rand.nextGaussian() * 25) - 10); break;
-            case 2: randomOffset = (long) ((rand.nextGaussian() * 35) - 15); break;
-        }
+        long randomOffset = (long) ((rand.nextGaussian() * 15) - 7);
         return Math.max(20, baseDelay + randomOffset);
     }
 
@@ -150,10 +151,11 @@ public class AutoClicker {
         ItemStack held = mc.thePlayer.getHeldItem();
         if (held == null) return false;
         Item item = held.getItem();
-        if (itemWhitelist.contains("blocks") && item instanceof ItemBlock) return true;
+        
         if (item instanceof ItemSword && itemWhitelist.contains("sword")) return true;
         if (item instanceof ItemAxe && itemWhitelist.contains("axe")) return true;
         if (item instanceof ItemPickaxe && itemWhitelist.contains("pickaxe")) return true;
+
         String name = item.getUnlocalizedName().toLowerCase();
         for (String w : itemWhitelist) if (name.contains(w.toLowerCase())) return true;
         return false;
