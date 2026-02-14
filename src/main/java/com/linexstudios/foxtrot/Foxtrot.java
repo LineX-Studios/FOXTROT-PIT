@@ -13,7 +13,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 
-@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.3.3", acceptedMinecraftVersions = "[1.8.9]")
+@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.3.5", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
     
     @Mod.EventHandler
@@ -37,6 +37,8 @@ public class Foxtrot {
 
         // Register AutoDenick listener
         MinecraftForge.EVENT_BUS.register(AutoDenick.instance);
+        // Register NickScanner scans for players who are nicked
+        MinecraftForge.EVENT_BUS.register(NickScanner.instance);
         
         // 2. Register the KeybindHandler to listen for when you actually press 'X'
         MinecraftForge.EVENT_BUS.register(new KeybindHandler());

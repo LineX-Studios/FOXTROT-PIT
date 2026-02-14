@@ -26,51 +26,54 @@ public class NameTags {
     public void onRenderNametag(RenderLivingEvent.Specials.Pre<EntityPlayer> event) {
         if (!enabled || mc.thePlayer == null || mc.theWorld == null) return;
         
-        // We only want to render this for players
         if (!(event.entity instanceof EntityPlayer)) return;
         EntityPlayer player = (EntityPlayer) event.entity;
         
-        // Don't render our own nametag or invisible players
         if (player == mc.thePlayer || player.isInvisible()) return;
 
         // Cancel the vanilla Minecraft nametag so we can replace it
         event.setCanceled(true);
 
         float distance = mc.thePlayer.getDistanceToEntity(player);
-        if (distance > 150.0F) return; // Prevent rendering players across the entire map
+        
+        // CLUTTER FIX 1: Don't render anything past 60 blocks (saves massive FPS)
+        if (distance > 60.0F) return; 
 
         double x = event.x;
-        double y = event.y + player.height + 0.45D; // Hover just above their head
+        double y = event.y + player.height + 0.45D;
         double z = event.z;
 
-        // Dynamic scale so it gets larger the further away they are (readable from far away)
-        float baseScale = 0.016666668F * 1.6F;
-        float scale = (distance / 5.0F) * baseScale;
-        if (scale < 0.025F) scale = 0.025F; // Minimum size so it's readable up close
+        // Smoother scaling so it doesn't get huge and block your screen up close
+        float scale = Math.max(0.025F, distance / 8.0F * 0.02F);
 
         GlStateManager.pushMatrix();
         GlStateManager.translate((float) x, (float) y, (float) z);
 
-        // Rotate the text to always face your camera natively
         GlStateManager.rotate(-mc.getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
         GlStateManager.rotate(mc.getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-scale, -scale, scale);
 
         // GL Setup to render through walls (ESP)
         GlStateManager.disableLighting();
-        GlStateManager.disableDepth(); // This is what makes it show through walls
+        GlStateManager.disableDepth(); 
         GlStateManager.enableBlend();
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        
+        // FLICKER FIX: Stops the background boxes from Z-fighting with each other
+        GlStateManager.depthMask(false); 
 
-        // Build the text string (Prestige, Name, Health)
+        // Build the text string
         String name = player.getDisplayName().getFormattedText();
         float health = player.getHealth() + player.getAbsorptionAmount();
-        String healthStr = EnumChatFormatting.GREEN + String.format(Locale.US, "%.1f", health);
+        
+        // Dynamic health colors
+        String healthColor = health > 15 ? EnumChatFormatting.GREEN.toString() : (health > 7 ? EnumChatFormatting.YELLOW.toString() : EnumChatFormatting.RED.toString());
+        String healthStr = healthColor + String.format(Locale.US, "%.1f", health);
         String text = name + " " + healthStr;
 
         int width = mc.fontRendererObj.getStringWidth(text) / 2;
 
-        // Draw the dark background rectangle behind the text
+        // Draw the dark background rectangle
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
         GlStateManager.disableTexture2D();
@@ -85,47 +88,53 @@ public class NameTags {
         // Draw the text
         mc.fontRendererObj.drawStringWithShadow(text, -width, 0, 0xFFFFFF);
 
-        // Collect Items (Held Item, then Helmet -> Boots)
-        List<ItemStack> items = new ArrayList<>();
-        if (player.getHeldItem() != null) items.add(player.getHeldItem());
-        for (int i = 3; i >= 0; i--) {
-            if (player.inventory.armorInventory[i] != null) {
-                items.add(player.inventory.armorInventory[i]);
+        // CLUTTER FIX 2: Only show Armor and Weapons for players within 15 blocks
+        if (distance <= 15.0F) {
+            List<ItemStack> items = new ArrayList<>();
+            if (player.getHeldItem() != null) items.add(player.getHeldItem());
+            for (int i = 3; i >= 0; i--) {
+                if (player.inventory.armorInventory[i] != null) {
+                    items.add(player.inventory.armorInventory[i]);
+                }
             }
-        }
 
-        // Draw Items above the name
-        if (!items.isEmpty()) {
-            int itemOffset = -(items.size() * 16) / 2;
-            GlStateManager.pushMatrix();
-            GlStateManager.translate(0, -18, 0); // Move 18 pixels above the text
-            
-            GlStateManager.enableDepth(); // Depth must be temporarily enabled for standard item lighting
-            RenderHelper.enableGUIStandardItemLighting();
-            mc.getRenderItem().zLevel = -150.0F; // Prevent Z-fighting glitches
-
-            for (ItemStack item : items) {
+            if (!items.isEmpty()) {
+                int itemOffset = -(items.size() * 16) / 2;
                 GlStateManager.pushMatrix();
-                GlStateManager.translate(itemOffset, 0, 0);
+                GlStateManager.translate(0, -18, 0); 
                 
-                mc.getRenderItem().renderItemAndEffectIntoGUI(item, 0, 0);
-                mc.getRenderItem().renderItemOverlays(mc.fontRendererObj, item, 0, 0);
-                
-                GlStateManager.popMatrix();
-                itemOffset += 16;
-            }
+                // Isolates the item lighting so it doesn't break the world
+                GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+                RenderHelper.enableGUIStandardItemLighting();
+                GlStateManager.enableDepth(); // Depth must be ON for items to look 3D
 
-            mc.getRenderItem().zLevel = 0.0F;
-            RenderHelper.disableStandardItemLighting();
-            GlStateManager.disableDepth(); // Re-disable depth to restore the ESP state
-            GlStateManager.popMatrix();
+                for (ItemStack item : items) {
+                    GlStateManager.pushMatrix();
+                    GlStateManager.translate(itemOffset, 0, 0);
+                    
+                    mc.getRenderItem().renderItemAndEffectIntoGUI(item, 0, 0);
+                    mc.getRenderItem().renderItemOverlays(mc.fontRendererObj, item, 0, 0);
+                    
+                    GlStateManager.popMatrix();
+                    itemOffset += 16;
+                }
+
+                // Restores whatever lighting state we had before drawing the items
+                GL11.glPopAttrib(); 
+                GlStateManager.popMatrix();
+            }
         }
 
-        // Restore vanilla GL state so we don't break the rest of the game's rendering
+        // Restore vanilla GL state
+        GlStateManager.depthMask(true); // Re-enable depth mask
         GlStateManager.enableDepth();
         GlStateManager.enableLighting();
         GlStateManager.disableBlend();
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        
+        // LIGHTING BUG FIX: This tells Minecraft to turn the 3D sun/shadows back on
+        RenderHelper.enableStandardItemLighting(); 
+
         GlStateManager.popMatrix();
     }
 }
