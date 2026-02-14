@@ -45,45 +45,52 @@ public class NameTags {
         // --- 1. DISTANCE SCALING ---
         float distance = mc.thePlayer.getDistanceToEntity(player);
         float scale = (distance / 4.0F) * 0.015F;
-        if (scale < 0.025F) scale = 0.025F; // Keeps it readable when very close
+        if (scale < 0.020F) scale = 0.020F; // Smooth minimum size limit
 
-        // Save GL State and setup positioning perfectly above the head
         GlStateManager.pushMatrix();
         GlStateManager.translate((float)x, (float)y + player.height + 0.6F, (float)z);
         
-        // Make the tag constantly face the camera perfectly
+        // Make the tag perfectly face the camera
         GL11.glNormal3f(0.0F, 1.0F, 0.0F);
         GlStateManager.rotate(-mc.getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
         GlStateManager.rotate(mc.getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-scale, -scale, scale);
 
-        // --- 2. VAPE WALLHACK STATE (No Depth, No Lighting) ---
+        // --- 2. WALLHACK STATE (Through walls, no darkness) ---
         GlStateManager.disableLighting();
         GlStateManager.disableDepth(); 
         GlStateManager.enableBlend();
         GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GlStateManager.depthMask(false);
 
-        // --- 3. BUILD TEXT (Preserves server prefixes perfectly) ---
+        // --- 3. BUILD TEXT & HEALTH COLORS ---
         String name = player.getDisplayName().getFormattedText();
         if (showHealth) {
             float health = player.getHealth() + player.getAbsorptionAmount();
+            float maxHealth = player.getMaxHealth();
+            float percentage = health / maxHealth;
+
+            // Green -> Yellow -> Orange -> Red Logic
             String colorCode = "\u00a7a"; // Default Green
-            if (health <= player.getMaxHealth() * 0.5f) colorCode = "\u00a7e"; // Yellow
-            if (health <= player.getMaxHealth() * 0.25f) colorCode = "\u00a7c"; // Red
+            if (percentage <= 0.75f) colorCode = "\u00a7e"; // Yellow
+            if (percentage <= 0.50f) colorCode = "\u00a76"; // Orange/Gold
+            if (percentage <= 0.25f) colorCode = "\u00a7c"; // Red
+
             name = name + " " + colorCode + String.format("%.1f", health);
         }
 
         int width = mc.fontRendererObj.getStringWidth(name) / 2;
 
-        // --- 4. DRAW VAPE V4 BACKGROUND RECTANGLE ---
+        // --- 4. VAPE V4 BACKGROUND BOX ---
         GlStateManager.disableTexture2D();
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
         worldrenderer.begin(7, DefaultVertexFormats.POSITION_COLOR);
+        
+        // Y goes from -2 to 11 to give perfectly balanced top/bottom padding
         worldrenderer.pos(-width - 2, -2, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
-        worldrenderer.pos(-width - 2, 9, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
-        worldrenderer.pos(width + 2, 9, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
+        worldrenderer.pos(-width - 2, 11, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
+        worldrenderer.pos(width + 2, 11, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         worldrenderer.pos(width + 2, -2, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         tessellator.draw();
         GlStateManager.enableTexture2D();
@@ -91,7 +98,7 @@ public class NameTags {
         // --- 5. RENDER TEXT ---
         mc.fontRendererObj.drawStringWithShadow(name, -width, 0, -1);
 
-        // --- 6. RENDER ARMOR (FIXED SLIDING & LIGHTING) ---
+        // --- 6. RENDER ARMOR (PARALLAX SLIDING FIX) ---
         if (showItems) {
             List<ItemStack> items = new ArrayList<>();
             // Add Held Item first (Left side)
@@ -104,30 +111,26 @@ public class NameTags {
             }
 
             if (!items.isEmpty()) {
-                int startX = -(items.size() * 16) / 2;
-                int itemY = -18; // Offset perfectly above the text box
+                int startX = -(items.size() * 16) / 2; // Perfectly centers the items
+                int itemY = -18; // Locks them exactly 1 pixel above the background box
 
                 for (ItemStack item : items) {
                     GlStateManager.pushMatrix();
                     GlStateManager.translate(startX, itemY, 0);
 
-                    // MATHEMATICAL FIX FOR THE SLIDING/PARALLAX BUG:
-                    // renderItemIntoGUI intrinsically translates Z by +32. 
-                    // By passing exactly -32.0F, we neutralize the depth to 0.0F so it locks onto the 2D plane.
+                    // THE MAGIC FIX: Crushes the Z-axis perfectly flat so items can NEVER slide
+                    GlStateManager.scale(1.0F, 1.0F, 0.01F);
+                    
+                    // Counteract 1.8.9's inherent GUI forward depth
                     float prevZ = mc.getRenderItem().zLevel;
-                    mc.getRenderItem().zLevel = -32.0F;
+                    mc.getRenderItem().zLevel = -100.0F; 
 
-                    // FIX FOR DARK ITEMS: Items need isolated lighting
                     GlStateManager.enableLighting();
                     RenderHelper.enableGUIStandardItemLighting();
-
-                    // renderItemIntoGUI might re-enable depth, force it off
-                    GlStateManager.disableDepth();
 
                     mc.getRenderItem().renderItemIntoGUI(item, 0, 0);
                     mc.getRenderItem().renderItemOverlays(mc.fontRendererObj, item, 0, 0);
 
-                    // Turn lighting back off so the nametag text stays perfectly bright
                     RenderHelper.disableStandardItemLighting();
                     GlStateManager.disableLighting();
                     
@@ -139,7 +142,7 @@ public class NameTags {
             }
         }
 
-        // --- 7. RESTORE VANILLA GL STATE ---
+        // --- 7. RESTORE GL STATE ---
         GlStateManager.enableDepth();
         GlStateManager.depthMask(true);
         GlStateManager.enableLighting();

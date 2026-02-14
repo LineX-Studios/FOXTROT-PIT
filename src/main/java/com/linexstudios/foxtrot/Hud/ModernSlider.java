@@ -42,8 +42,12 @@ public class ModernSlider extends GuiButton {
         Gui.drawRect(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, backgroundColor);
 
         int sliderWidth = (int)(this.sliderValue * (this.width - 8));
+        
+        // The filled track (White)
         Gui.drawRect(this.xPosition + 4, this.yPosition + this.height - 4, this.xPosition + 4 + sliderWidth, this.yPosition + this.height - 2, 0xFFFFFFFF);
-        Gui.drawRect(this.xPosition + 4 + sliderWidth - 2, this.yPosition + this.height - 6, this.xPosition + 4 + sliderWidth + 2, this.yPosition + this.height, 0xFFAAAAAA);
+        
+        // The slider tip/knob (Red Accent)
+        Gui.drawRect(this.xPosition + 4 + sliderWidth - 2, this.yPosition + this.height - 6, this.xPosition + 4 + sliderWidth + 2, this.yPosition + this.height, 0xFFFF3333);
 
         mc.fontRendererObj.drawStringWithShadow(this.displayString, this.xPosition + 6, this.yPosition + 3, 0xFFFFFFFF);
     }
@@ -64,6 +68,12 @@ public class ModernSlider extends GuiButton {
     @Override
     public void mouseReleased(int mouseX, int mouseY) {
         this.dragging = false;
+    }
+
+    // This completely mutes the vanilla click sound when dragging the slider
+    @Override
+    public void playPressSound(net.minecraft.client.audio.SoundHandler soundHandlerIn) {
+        // Leave empty to mute
     }
 
     private void updateDisplayString() {
