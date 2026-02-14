@@ -7,7 +7,6 @@ import com.linexstudios.foxtrot.Hud.EditHUDGui;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Render.ChestESP;
-import org.lwjgl.input.Keyboard;
 
 import java.io.*;
 import java.util.*;
@@ -42,7 +41,6 @@ public class ConfigHandler {
                 EnemyHUD.hudX = Integer.parseInt(props.getProperty("enemyHudX", "200"));
                 EnemyHUD.hudY = Integer.parseInt(props.getProperty("enemyHudY", "80"));
 
-                // GUI Memory States
                 EditHUDGui.panelX = Integer.parseInt(props.getProperty("panelX", "-1"));
                 EditHUDGui.panelY = Integer.parseInt(props.getProperty("panelY", "-1"));
                 EditHUDGui.panelCollapsed = Boolean.parseBoolean(props.getProperty("panelCollapsed", "false"));
@@ -50,12 +48,11 @@ public class ConfigHandler {
                 EditHUDGui.renderExpanded = Boolean.parseBoolean(props.getProperty("renderExpanded", "false"));
                 EditHUDGui.denickExpanded = Boolean.parseBoolean(props.getProperty("denickExpanded", "false"));
                 EditHUDGui.hudExpanded = Boolean.parseBoolean(props.getProperty("hudExpanded", "false"));
+                EditHUDGui.autoClickerDropdownExpanded = Boolean.parseBoolean(props.getProperty("autoClickerDropdownExpanded", "false"));
                 EditHUDGui.randomDropdownExpanded = Boolean.parseBoolean(props.getProperty("randomDropdownExpanded", "false"));
                 EditHUDGui.nameTagsDropdownExpanded = Boolean.parseBoolean(props.getProperty("nameTagsDropdownExpanded", "false"));
 
-                // AutoClicker Settings
                 AutoClicker.enabled = Boolean.parseBoolean(props.getProperty("clickerEnabled", "false"));
-                AutoClicker.bind = Integer.parseInt(props.getProperty("clickerBind", String.valueOf(Keyboard.KEY_NONE)));
                 AutoClicker.leftClick = Boolean.parseBoolean(props.getProperty("clickerLeft", "true"));
                 AutoClicker.rightClick = Boolean.parseBoolean(props.getProperty("clickerRight", "false"));
                 AutoClicker.holdToClick = Boolean.parseBoolean(props.getProperty("clickerHoldToClick", "true"));
@@ -68,10 +65,9 @@ public class ConfigHandler {
                 AutoClicker.maxCps = Float.parseFloat(props.getProperty("clickerMaxCps", "13.0"));
                 AutoClicker.randomMode = Integer.parseInt(props.getProperty("clickerRandomMode", "1"));
 
-                String whitelistStr = props.getProperty("clickerWhitelist", "sword,axe");
+                String whitelistStr = props.getProperty("clickerWhitelist", "sword,axe,pickaxe");
                 AutoClicker.itemWhitelist = new ArrayList<>(Arrays.asList(whitelistStr.split(",")));
 
-                // Render & Existing Modules
                 ChestESP.enabled = Boolean.parseBoolean(props.getProperty("chestEspEnabled", "false"));
                 AutoDenick.enabled = Boolean.parseBoolean(props.getProperty("autoDenick", "false"));
                 EnemyHUD.enabled = Boolean.parseBoolean(props.getProperty("enemyHudEnabled", "true"));
@@ -104,7 +100,6 @@ public class ConfigHandler {
             props.setProperty("enemyHudX", String.valueOf(EnemyHUD.hudX));
             props.setProperty("enemyHudY", String.valueOf(EnemyHUD.hudY));
 
-            // GUI Memory States
             props.setProperty("panelX", String.valueOf(EditHUDGui.panelX));
             props.setProperty("panelY", String.valueOf(EditHUDGui.panelY));
             props.setProperty("panelCollapsed", String.valueOf(EditHUDGui.panelCollapsed));
@@ -112,12 +107,11 @@ public class ConfigHandler {
             props.setProperty("renderExpanded", String.valueOf(EditHUDGui.renderExpanded));
             props.setProperty("denickExpanded", String.valueOf(EditHUDGui.denickExpanded));
             props.setProperty("hudExpanded", String.valueOf(EditHUDGui.hudExpanded));
+            props.setProperty("autoClickerDropdownExpanded", String.valueOf(EditHUDGui.autoClickerDropdownExpanded));
             props.setProperty("randomDropdownExpanded", String.valueOf(EditHUDGui.randomDropdownExpanded));
             props.setProperty("nameTagsDropdownExpanded", String.valueOf(EditHUDGui.nameTagsDropdownExpanded));
 
-            // AutoClicker Settings
             props.setProperty("clickerEnabled", String.valueOf(AutoClicker.enabled));
-            props.setProperty("clickerBind", String.valueOf(AutoClicker.bind));
             props.setProperty("clickerLeft", String.valueOf(AutoClicker.leftClick));
             props.setProperty("clickerRight", String.valueOf(AutoClicker.rightClick));
             props.setProperty("clickerHoldToClick", String.valueOf(AutoClicker.holdToClick));
@@ -133,7 +127,6 @@ public class ConfigHandler {
             String whitelistStr = String.join(",", AutoClicker.itemWhitelist);
             props.setProperty("clickerWhitelist", whitelistStr);
 
-            // Render & Existing Modules
             props.setProperty("chestEspEnabled", String.valueOf(ChestESP.enabled));
             props.setProperty("autoDenick", String.valueOf(AutoDenick.enabled));
             props.setProperty("enemyHudEnabled", String.valueOf(EnemyHUD.enabled));

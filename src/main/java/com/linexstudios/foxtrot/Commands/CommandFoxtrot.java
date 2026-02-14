@@ -64,9 +64,13 @@ public class CommandFoxtrot extends CommandBase {
 
         switch (action) {
             case "debug":
+                // Toggles HUD debug info (Enemy list logic, etc.)
                 EnemyHUD.debugMode = !EnemyHUD.debugMode;
+                // Toggles AutoClicker heartbeat logs (FIRING CLICK messages)
+                com.linexstudios.foxtrot.Combat.AutoClicker.debugMode = EnemyHUD.debugMode; 
+                
                 ConfigHandler.saveConfig();
-                sendMessage(sender, EnumChatFormatting.YELLOW + "Debug: " + (EnemyHUD.debugMode ? "ON" : "OFF"));
+                sendMessage(sender, EnumChatFormatting.YELLOW + "Foxtrot Global Debug: " + (EnemyHUD.debugMode ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF"));
                 break;
 
             case "denick":
