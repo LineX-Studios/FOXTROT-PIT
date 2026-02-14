@@ -2,6 +2,7 @@ package com.linexstudios.foxtrot;
 
 import com.linexstudios.foxtrot.Commands.CommandFoxtrot;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
+import com.linexstudios.foxtrot.Denick.NickScanner; // <-- THIS IS THE FIX
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import com.linexstudios.foxtrot.Handler.KeybindHandler;
@@ -35,9 +36,8 @@ public class Foxtrot {
         // Register ban detection
         MinecraftForge.EVENT_BUS.register(new WhoGotBanned());
 
-        // Register AutoDenick listener
+        // Register AutoDenick and NickScanner listeners
         MinecraftForge.EVENT_BUS.register(AutoDenick.instance);
-        // Register NickScanner scans for players who are nicked
         MinecraftForge.EVENT_BUS.register(NickScanner.instance);
         
         // 2. Register the KeybindHandler to listen for when you actually press 'X'
