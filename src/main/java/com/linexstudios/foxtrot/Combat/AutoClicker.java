@@ -4,6 +4,7 @@ import com.linexstudios.foxtrot.Foxtrot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.item.*;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
@@ -65,27 +66,32 @@ public class AutoClicker {
 
     @SubscribeEvent
     public void onKeyInput(InputEvent.KeyInputEvent event) {
-        if (Foxtrot.toggleCombatKey.isPressed()) {
+        // --- AutoClicker Toggle (Down Arrow) ---
+        if (Foxtrot.toggleCombatKey != null && Foxtrot.toggleCombatKey.isPressed()) {
             enabled = !enabled;
+            if (mc.thePlayer != null) {
+                String state = enabled ? "\u00a7aON" : "\u00a7cOFF";
+                mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[PIT] \u00a77AutoClicker: " + state));
+            }
             if (debugMode) System.out.println("[Foxtrot-Debug] AutoClicker Toggled: " + enabled);
+        }
+
+        // --- Inventory Fill Toggle (Right Arrow) ---
+        if (Foxtrot.toggleInvFillKey != null && Foxtrot.toggleInvFillKey.isPressed()) {
+            inventoryFill = !inventoryFill;
+            if (mc.thePlayer != null) {
+                String state = inventoryFill ? "\u00a7aON" : "\u00a7cOFF";
+                mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[PIT] \u00a77Inventory Fill: " + state));
+            }
+            if (debugMode) System.out.println("[Foxtrot-Debug] Inventory Fill Toggled: " + inventoryFill);
         }
     }
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
-        if (mc.thePlayer == null || mc.theWorld == null || !enabled) return;
+        if (mc.thePlayer == null || mc.theWorld == null) return;
 
-        int attackKey = mc.gameSettings.keyBindAttack.getKeyCode();
-        int useKey = mc.gameSettings.keyBindUseItem.getKeyCode();
-
-        // Phase START bypass
-        if (event.phase == TickEvent.Phase.START) {
-            if (leftClick && holdToClick && Mouse.isButtonDown(0)) KeyBinding.setKeyBindState(attackKey, false);
-            if (fastPlaceEnabled && holdToClick && Mouse.isButtonDown(1)) KeyBinding.setKeyBindState(useKey, false);
-            return;
-        }
-
-        // Inventory Fill Logic (Requires Left Click hold only)
+        // Inventory Fill Logic (Independent of main AutoClicker toggle)
         if (mc.currentScreen instanceof net.minecraft.client.gui.inventory.GuiContainer) {
             if (inventoryFill && Mouse.isButtonDown(0)) {
                 long invDelay = inventoryFillCps >= 20.0F ? 0 : (long)(1000.0F / inventoryFillCps);
@@ -100,9 +106,19 @@ public class AutoClicker {
             return; 
         }
 
+        if (!enabled) return; // Rest of combat requires the main toggle
+
+        int attackKey = mc.gameSettings.keyBindAttack.getKeyCode();
+        int useKey = mc.gameSettings.keyBindUseItem.getKeyCode();
+
+        if (event.phase == TickEvent.Phase.START) {
+            if (leftClick && holdToClick && Mouse.isButtonDown(0)) KeyBinding.setKeyBindState(attackKey, false);
+            if (fastPlaceEnabled && holdToClick && Mouse.isButtonDown(1)) KeyBinding.setKeyBindState(useKey, false);
+            return;
+        }
+
         if (mc.currentScreen != null) return;
 
-        // --- LEFT CLICK LOGIC (Uses Whitelist) ---
         if (leftClick) {
             boolean shouldLeftClick = !holdToClick || Mouse.isButtonDown(0);
             if (breakBlocks && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
@@ -110,7 +126,6 @@ public class AutoClicker {
                 if (blockHitTicks > 15) shouldLeftClick = false; 
             } else blockHitTicks = 0;
 
-            // Whitelist check
             if (limitItems && !isHoldingWhitelistedItem()) shouldLeftClick = false;
 
             if (shouldLeftClick && System.currentTimeMillis() - lastLeftClickTime >= nextLeftDelay) {
@@ -119,25 +134,18 @@ public class AutoClicker {
                     KeyBinding.setKeyBindState(attackKey, true);
                     KeyBinding.onTick(attackKey);
 
-                    // --- NEW: CPS MOD SPOOFER ---
-                    // 1. Spoof the Forge Client MouseEvent // IN CASE YOU HAD A CPS MOD AND IT DOESNT SHOW THE CPS AT ALL THIS SHOULD FIX IT.
                     net.minecraftforge.client.event.MouseEvent fakeEvent = new net.minecraftforge.client.event.MouseEvent();
-                    
                     Field btnField = net.minecraftforge.client.event.MouseEvent.class.getDeclaredField("button");
                     btnField.setAccessible(true);
-                    btnField.set(fakeEvent, 0); // 0 = Left Click
-                    
+                    btnField.set(fakeEvent, 0); 
                     Field stateField = net.minecraftforge.client.event.MouseEvent.class.getDeclaredField("buttonstate");
                     stateField.setAccessible(true);
-                    stateField.set(fakeEvent, true); // true = Button Pressed
-                    
+                    stateField.set(fakeEvent, true); 
                     net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(fakeEvent);
 
-                    // 2. Spoof the FML InputEvent (Some CPS mods use this instead)
-                    net.minecraftforge.fml.common.FMLCommonHandler.instance().bus().post(
+                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
                         new net.minecraftforge.fml.common.gameevent.InputEvent.MouseInputEvent()
                     );
-                    // -----------------------------
 
                 } catch (Exception e) {}
                 lastLeftClickTime = System.currentTimeMillis();
@@ -145,10 +153,8 @@ public class AutoClicker {
             }
         }
 
-        // --- FAST PLACE LOGIC (Isolated from Whitelist) ---
         if (fastPlaceEnabled) {
             ItemStack held = mc.thePlayer.getHeldItem();
-            // Strictly check for blocks only, no whitelist dependency
             boolean holdingBlock = (held != null && held.getItem() instanceof ItemBlock);
             boolean shouldRightClick = (!holdToClick || Mouse.isButtonDown(1)) && holdingBlock;
             
@@ -166,7 +172,6 @@ public class AutoClicker {
         long baseDelay = (long) (1000.0F / targetCps);
         long randomOffset = 0;
         
-        // Restored GUI switch integration
         switch (randomMode) {
             case 0: randomOffset = (long) ((rand.nextGaussian() * 15) - 7); break;
             case 1: randomOffset = (long) ((rand.nextGaussian() * 25) - 10); break;

@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.client.event.RenderLivingEvent;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.opengl.GL11;
@@ -56,7 +57,6 @@ public class NameTags {
         GlStateManager.rotate(mc.getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-scale, -scale, scale);
 
-        // --- 2. WALLHACK STATE (Through walls, no darkness) ---
         GlStateManager.disableLighting();
         GlStateManager.disableDepth(); 
         GlStateManager.enableBlend();
@@ -81,7 +81,6 @@ public class NameTags {
 
         int width = mc.fontRendererObj.getStringWidth(name) / 2;
 
-        // --- 4. VAPE V4 BACKGROUND BOX ---
         GlStateManager.disableTexture2D();
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
@@ -149,5 +148,14 @@ public class NameTags {
         GlStateManager.disableBlend();
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         GlStateManager.popMatrix();
+    }
+
+    // --- 8. DISABLE VANILLA NAMETAGS ---
+    @SubscribeEvent
+    public void onRenderVanillaNametag(RenderLivingEvent.Specials.Pre event) {
+        // If our custom NameTags are enabled, and the entity is a player, cancel the default nametag
+        if (enabled && event.entity instanceof EntityPlayer) {
+            event.setCanceled(true);
+        }
     }
 }
