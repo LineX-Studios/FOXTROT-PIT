@@ -23,7 +23,7 @@ compileJava {
     targetCompatibility = '1.8'
 }
 
-version = "0.5.1"
+version = "0.5.2"
 group = "com.linexstudios.foxtrot"
 archivesBaseName = "Foxtrot"
 

@@ -13,11 +13,12 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class EnemyHUD {
     public static final EnemyHUD instance = new EnemyHUD();
-    
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
@@ -36,7 +37,6 @@ public class EnemyHUD {
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return; 
-        
         render(false);
     }
 
@@ -47,11 +47,18 @@ public class EnemyHUD {
         int currentY = hudY;
         int maxWidth = fr.getStringWidth("Enemy List:");
         boolean foundEnemy = false;
+        
+        // DUPE FIX
+        Set<String> renderedEnemies = new HashSet<>();
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
-            if (!isTarget(other.getName())) continue;
+            String name = other.getName();
+            
+            if (!isTarget(name)) continue;
+            if (renderedEnemies.contains(name.toLowerCase())) continue; // Block Duplicates
+            renderedEnemies.add(name.toLowerCase());
 
             if (!foundEnemy) {
                 fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
@@ -59,14 +66,13 @@ public class EnemyHUD {
                 foundEnemy = true;
             }
 
-            // Grabs prestige bracket and rank color natively from Hypixel
             String displayName;
             String rawFormatted = other.getDisplayName().getFormattedText();
-            int nameIndex = rawFormatted.indexOf(other.getName());
+            int nameIndex = rawFormatted.indexOf(name);
             if (nameIndex >= 0) {
-                displayName = rawFormatted.substring(0, nameIndex + other.getName().length());
+                displayName = rawFormatted.substring(0, nameIndex + name.length());
             } else {
-                displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.RED + other.getName();
+                displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.RED + name;
             }
 
             String gear = getShortEnchants(other);
@@ -97,9 +103,7 @@ public class EnemyHUD {
         this.width = maxWidth;
         this.height = currentY - hudY;
 
-        if (isEditing) {
-            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
-        }
+        if (isEditing) Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
     }
 
     public boolean isHovered(int mouseX, int mouseY) {
@@ -123,13 +127,9 @@ public class EnemyHUD {
                 List<String> shortNames = new ArrayList<>();
                 for (int i = 0; i < enchants.tagCount(); i++) {
                     String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
-                    if (formatted != null) {
-                        shortNames.add(formatted);
-                    }
+                    if (formatted != null) shortNames.add(formatted);
                 }
-                if (!shortNames.isEmpty()) {
-                    return String.join(EnumChatFormatting.WHITE + "/", shortNames);
-                }
+                if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
             }
             if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
         }
@@ -149,8 +149,7 @@ public class EnemyHUD {
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
             case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
-            default:
-                return null;
+            default: return null;
         }
     }
 

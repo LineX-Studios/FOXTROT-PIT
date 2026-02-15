@@ -13,18 +13,18 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class FriendsHUD {
     public static final FriendsHUD instance = new FriendsHUD();
-    
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
     public static boolean debugMode = false;
     public static boolean notificationsEnabled = true;
 
-    // Offset X so it doesn't render directly on top of EnemyHUD
     public static int hudX = 350;
     public static int hudY = 80;
     
@@ -37,7 +37,6 @@ public class FriendsHUD {
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return; 
-        
         render(false);
     }
 
@@ -48,36 +47,40 @@ public class FriendsHUD {
         int currentY = hudY;
         int maxWidth = fr.getStringWidth("Friends");
         boolean foundFriend = false;
+        
+        // DUPE FIX: Keeps track of who we already rendered this frame
+        Set<String> renderedFriends = new HashSet<>();
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
-            if (!isFriend(other.getName())) continue;
+            String name = other.getName();
+            
+            if (!isFriend(name)) continue;
+            if (renderedFriends.contains(name.toLowerCase())) continue; // Block Duplicates
+            renderedFriends.add(name.toLowerCase());
 
             if (!foundFriend) {
-                // Changed title to match the screenshot
-                fr.drawStringWithShadow(EnumChatFormatting.GREEN + "Friends", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.GREEN + "Friends List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 foundFriend = true;
             }
 
-            // Grabs prestige bracket and rank color natively from Hypixel
             String displayName;
             String rawFormatted = other.getDisplayName().getFormattedText();
-            int nameIndex = rawFormatted.indexOf(other.getName());
+            int nameIndex = rawFormatted.indexOf(name);
             if (nameIndex >= 0) {
-                displayName = rawFormatted.substring(0, nameIndex + other.getName().length());
+                displayName = rawFormatted.substring(0, nameIndex + name.length());
             } else {
-                displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.GREEN + other.getName();
+                displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.GREEN + name;
             }
 
-            // NEW: Prepend the green [F] tag
             displayName = EnumChatFormatting.GREEN + "[F] " + EnumChatFormatting.RESET + displayName;
 
             String gear = getShortEnchants(other);
             String dist = getDistanceOrSpawn(other);
 
-            String fullLine = displayName + EnumChatFormatting.GRAY + " - " + gear + " " + dist;
+            String fullLine = displayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
             fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
 
             int lineWidth = fr.getStringWidth(fullLine);
@@ -87,9 +90,9 @@ public class FriendsHUD {
 
         if (!foundFriend) {
             if (isEditing) {
-                fr.drawStringWithShadow(EnumChatFormatting.GREEN + "Friends", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.GREEN + "Friends List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.GREEN + "[F] " + EnumChatFormatting.GRAY + "[96] Placeholder " + EnumChatFormatting.GREEN + "[SPAWN]";
+                String placeholder = EnumChatFormatting.GREEN + "[F] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -102,22 +105,20 @@ public class FriendsHUD {
         this.width = maxWidth;
         this.height = currentY - hudY;
 
-        if (isEditing) {
-            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
-        }
+        if (isEditing) Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
     }
 
     public boolean isHovered(int mouseX, int mouseY) {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
-    // NEW: Updated to use the green bracket format from your screenshot
+    // FIXED: Exactly matches EnemyHUD's distance formatting now!
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
         if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
-            return EnumChatFormatting.GREEN + "[SPAWN]";
+            return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);
-        return EnumChatFormatting.GREEN + "[" + String.format("%.0f", dist) + "m]";
+        return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
     }
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
@@ -129,13 +130,9 @@ public class FriendsHUD {
                 List<String> shortNames = new ArrayList<>();
                 for (int i = 0; i < enchants.tagCount(); i++) {
                     String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
-                    if (formatted != null) {
-                        shortNames.add(formatted);
-                    }
+                    if (formatted != null) shortNames.add(formatted);
                 }
-                if (!shortNames.isEmpty()) {
-                    return String.join(EnumChatFormatting.WHITE + "/", shortNames);
-                }
+                if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
             }
             if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
         }
@@ -155,8 +152,7 @@ public class FriendsHUD {
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
             case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
-            default:
-                return null;
+            default: return null;
         }
     }
 

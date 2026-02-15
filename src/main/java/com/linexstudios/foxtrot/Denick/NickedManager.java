@@ -1,18 +1,15 @@
 package com.linexstudios.foxtrot.Denick;
 
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Stores resolved identities discovered during the session and handles global nametag formatting.
- */
 public class NickedManager {
     public static final NickedManager instance = new NickedManager();
 
-    // Stores Nick -> Real IGN mapping (Case preserved for HUD rendering)
     private static final Map<String, String> resolvedNicks = new ConcurrentHashMap<>();
 
     public static void addNicked(String nick, String realName) {
@@ -42,24 +39,27 @@ public class NickedManager {
         resolvedNicks.clear();
     }
 
-    // --- FORCES THE REAL NAME ONTO ALL IN-GAME NAMETAGS GLOBALLY ---
+    // --- FORCES THE REAL NAME AND FRIEND TAG ONTO ALL IN-GAME NAMETAGS ---
     @SubscribeEvent
     public void onNameFormat(PlayerEvent.NameFormat event) {
-        String nickedName = event.username;
-        
-        // 1. Check current session memory
-        String realName = getResolvedIGN(nickedName); 
-        
-        // 2. Check persistent JSON cache if not found in current session
+        String username = event.username;
+        String display = event.displayname;
+
+        // 1. Check if they are a friend and add [F]
+        if (com.linexstudios.foxtrot.Hud.FriendsHUD.isFriend(username)) {
+            display = EnumChatFormatting.GREEN + "[F] " + EnumChatFormatting.RESET + display;
+        }
+
+        // 2. Check if they are denicked and append (RealIGN)
+        String realName = getResolvedIGN(username); 
         if (realName == null || realName.equals("Scraping...")) {
-            realName = CacheManager.getFromCache(nickedName);
+            realName = CacheManager.getFromCache(username);
         }
         
-        // 3. Apply the yellow brackets
         if (realName != null && !realName.equals("Scraping...")) {
-            // Appends the yellow brackets exactly like your screenshot: 
-            // The_F4st_Milk §e(ItsEmmanGaming)
-            event.displayname = event.displayname + " \u00a7e(" + realName + ")";
+            display = display + " \u00a7e(" + realName + ")";
         }
+
+        event.displayname = display;
     }
 }

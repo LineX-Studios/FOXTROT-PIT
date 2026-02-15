@@ -1,6 +1,6 @@
 package com.linexstudios.foxtrot.Hud;
 
-import com.linexstudios.foxtrot.Denick.NickedManager;
+import com.linexstudios.foxtrot.Denick.CacheManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -15,7 +15,9 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,18 +26,14 @@ public class NickedHUD {
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
-    public static boolean debugMode = false;
-
     public static int hudX = 10;
     public static int hudY = 80;
     
     public int width = 0;
     public int height = 0;
-
+    
     public static List<String> nickedPlayers = new ArrayList<>();
 
-    // Updated Regex to strip EVERYTHING in brackets (Prestige and Ranks)
-    // Matches patterns like [120], [XX-95], [MVP++], [YOUTUBE] followed by a space
     private static final Pattern PREFIX_STRIP_PATTERN = Pattern.compile("^\\[.*?\\]\\s+");
 
     @SubscribeEvent
@@ -52,65 +50,62 @@ public class NickedHUD {
         int currentY = hudY;
         int maxWidth = fr.getStringWidth("Nicked Players:");
         boolean foundNicked = false;
+        
+        // DUPE FIX
+        Set<String> renderedNicks = new HashSet<>();
 
         NetHandlerPlayClient netHandler = mc.getNetHandler();
         if (netHandler != null) {
             for (NetworkPlayerInfo info : netHandler.getPlayerInfoMap()) {
                 if (info == null || info.getGameProfile() == null || info.getGameProfile().getId() == null) continue;
-                
-                // Skip real players (Version 4/3 UUIDs)
-                if (info.getGameProfile().getId().version() == 2) continue; // Note: Ensure this matches your intended bypass logic
+                if (info.getGameProfile().getId().version() != 1) continue; 
                 
                 String nickedName = info.getGameProfile().getName();
                 if (nickedName.startsWith("§")) continue;
+                
+                if (renderedNicks.contains(nickedName.toLowerCase())) continue; // Block Duplicates
+                renderedNicks.add(nickedName.toLowerCase());
 
-                String realIGN = NickedManager.getResolvedIGN(nickedName);
-                boolean isManuallyScraped = nickedPlayers.contains(nickedName.toLowerCase());
+                String realIGN = CacheManager.getFromCache(nickedName);
 
-                if ((realIGN != null && !realIGN.isEmpty()) || isManuallyScraped || NickedManager.isResolved(nickedName)) {
-                    if (!foundNicked) {
-                        fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
-                        currentY += fr.FONT_HEIGHT + 2;
-                        foundNicked = true;
-                    }
+                if (!foundNicked) {
+                    fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
+                    currentY += fr.FONT_HEIGHT + 2;
+                    foundNicked = true;
+                }
 
-                    EntityOtherPlayerMP other = null;
-                    for (Object obj : mc.theWorld.playerEntities) {
-                        if (obj instanceof EntityOtherPlayerMP) {
-                            EntityOtherPlayerMP p = (EntityOtherPlayerMP) obj;
-                            if (p.getName().equalsIgnoreCase(nickedName)) {
-                                other = p;
-                                break;
-                            }
+                EntityOtherPlayerMP other = null;
+                for (Object obj : mc.theWorld.playerEntities) {
+                    if (obj instanceof EntityOtherPlayerMP) {
+                        EntityOtherPlayerMP p = (EntityOtherPlayerMP) obj;
+                        if (p.getName().equalsIgnoreCase(nickedName)) {
+                            other = p;
+                            break;
                         }
                     }
-
-                    // Get the nicked identity display
-                    String nickDisplay;
-                    if (other != null) {
-                        nickDisplay = other.getDisplayName().getFormattedText();
-                    } else if (info.getDisplayName() != null) {
-                        nickDisplay = info.getDisplayName().getFormattedText();
-                    } else {
-                        nickDisplay = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
-                    }
-
-                    // Format the Real IGN result to remove prestige/ranks in brackets
-                    String cleanedRealIGN = (realIGN != null && !realIGN.isEmpty()) ? stripAllPrefixes(realIGN) : "Scraping...";
-                    
-                    // UPDATED FORMATTING: The entire (RealName) string is now YELLOW
-                    String finalDisplayName = nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
-
-                    String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
-                    String dist = other != null ? getDistanceOrSpawn(other) : EnumChatFormatting.GRAY + "Far";
-
-                    String fullLine = finalDisplayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
-                    fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
-                    
-                    int lineWidth = fr.getStringWidth(fullLine);
-                    if (lineWidth > maxWidth) maxWidth = lineWidth;
-                    currentY += fr.FONT_HEIGHT;
                 }
+
+                String nickDisplay;
+                if (other != null) {
+                    nickDisplay = other.getDisplayName().getFormattedText();
+                } else if (info.getDisplayName() != null) {
+                    nickDisplay = info.getDisplayName().getFormattedText();
+                } else {
+                    nickDisplay = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
+                }
+
+                String cleanedRealIGN = (realIGN != null && !realIGN.isEmpty()) ? stripAllPrefixes(realIGN) : "Scraping...";
+                String finalDisplayName = nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
+
+                String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
+                String dist = other != null ? getDistanceOrSpawn(other) : EnumChatFormatting.GRAY + "Far";
+
+                String fullLine = finalDisplayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
+                fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
+                
+                int lineWidth = fr.getStringWidth(fullLine);
+                if (lineWidth > maxWidth) maxWidth = lineWidth;
+                currentY += fr.FONT_HEIGHT;
             }
         }
 
@@ -131,28 +126,17 @@ public class NickedHUD {
         this.width = maxWidth;
         this.height = currentY - hudY;
 
-        if (isEditing) {
-            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
-        }
+        if (isEditing) Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
     }
 
-    /**
-     * Specifically cleans the Real IGN to remove any bracketed prefixes.
-     * Example: "[XX-95] [VIP] BadBoyCody" -> "BadBoyCody"
-     */
     private String stripAllPrefixes(String input) {
         if (input == null || input.isEmpty()) return input;
-        
-        // Remove color codes to work with plain text first
         String plain = EnumChatFormatting.getTextWithoutFormattingCodes(input);
-        
-        // Use regex to keep stripping brackets until none are left at the start
         Matcher matcher = PREFIX_STRIP_PATTERN.matcher(plain);
         while (matcher.find()) {
             plain = plain.substring(matcher.end());
             matcher = PREFIX_STRIP_PATTERN.matcher(plain);
         }
-        
         return plain.trim();
     }
 

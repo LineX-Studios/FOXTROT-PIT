@@ -59,11 +59,17 @@ public class AutoDenick {
                 String nick = info.getGameProfile().getName();
                 currentNickedSet.add(nick);
                 
+                // FIXED BUG: Don't scrape unless they are physically spawned in and wearing armor!
+                EntityPlayer p = mc.theWorld.getPlayerEntityByName(nick);
+                if (p == null) continue; 
+                ArrayList<Integer> nonces = ItemScraper.getNoncesFromPlayer(p);
+                if (nonces.isEmpty()) continue; 
+                
                 if (!CacheManager.nickInCache(nick) && !resolvingNicks.contains(nick)) {
                     resolvingNicks.add(nick);
                     
                     if (!notifiedScraping.contains(nick)) {
-                        sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
+                        sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
                         notifiedScraping.add(nick);
                     }
                     
@@ -83,14 +89,16 @@ public class AutoDenick {
                         if (realName != null) {
                             synchronized (CacheManager.class) {
                                 if (!CacheManager.nickInCache(nick)) {
-                                    // 1. Save to persistent JSON
                                     CacheManager.addToCache(nick, realName);
-                                    
-                                    // 2. Update local session memory for HUD/Nametags
                                     NickedManager.updateNicked(nick, realName);
                                     
-                                    // 3. Notify the player
-                                    sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.DARK_GRAY + "\u00bb " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + " " + EnumChatFormatting.YELLOW + realName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
+                                    sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.DARK_GRAY + "\u00bb " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + " " + EnumChatFormatting.YELLOW + realName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
+                                    
+                                    // FIXED BUG: Forces the vanilla game to instantly re-draw their overhead Nametag!
+                                    EntityPlayer targetEntity = mc.theWorld.getPlayerEntityByName(nick);
+                                    if (targetEntity != null) {
+                                        targetEntity.refreshDisplayName();
+                                    }
                                 }
                             }
                         }
@@ -101,7 +109,7 @@ public class AutoDenick {
         
         for (String name : currentNickedSet) {
             if (!lastNickedSet.contains(name)) {
-                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.WHITE + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "\u00bb " + EnumChatFormatting.AQUA + name);
+                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.WHITE + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "\u00bb " + EnumChatFormatting.AQUA + name);
             }
         }
         lastNickedSet.clear();
@@ -119,11 +127,14 @@ public class AutoDenick {
                     UUIDS.add(UUID);
                 }
             }
-            if (UUIDS.size() == 1) {
+            
+            // FIXED BUG: No longer strict `UUIDS.size() == 1`. 
+            // It now flawlessly loops through every piece of armor even if they wear mixed sets!
+            if (!UUIDS.isEmpty()) {
                 for (String uuid : UUIDS) {
-                    String realName = getNameFromUUID(uuid);
-                    if (realName != null && isPlayerAbleToNick(uuid)) {
-                        return realName;
+                    if (isPlayerAbleToNick(uuid)) {
+                        String realName = getNameFromUUID(uuid);
+                        if (realName != null) return realName;
                     }
                 }
             }
