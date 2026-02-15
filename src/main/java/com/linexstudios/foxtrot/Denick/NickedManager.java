@@ -39,25 +39,28 @@ public class NickedManager {
         resolvedNicks.clear();
     }
 
-    // --- FORCES THE REAL NAME AND FRIEND TAG ONTO ALL IN-GAME NAMETAGS ---
     @SubscribeEvent
     public void onNameFormat(PlayerEvent.NameFormat event) {
         String username = event.username;
         String display = event.displayname;
 
-        // 1. Check if they are a friend and add [F]
+        // 1. Friends Check
         if (com.linexstudios.foxtrot.Hud.FriendsHUD.isFriend(username)) {
-            display = EnumChatFormatting.GREEN + "[F] " + EnumChatFormatting.RESET + display;
+            display = EnumChatFormatting.DARK_GREEN + "[" + EnumChatFormatting.GREEN + "F" + EnumChatFormatting.DARK_GREEN + "] " + EnumChatFormatting.RESET + display;
+        } 
+        // 2. Enemy Check
+        else if (com.linexstudios.foxtrot.Hud.EnemyHUD.isTarget(username)) {
+            display = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + display;
         }
 
-        // 2. Check if they are denicked and append (RealIGN)
-        String realName = getResolvedIGN(username); 
-        if (realName == null || realName.equals("Scraping...")) {
-            realName = CacheManager.getFromCache(username);
+        // 3. Nicked Check
+        String realName = CacheManager.getFromCache(username);
+        if (realName == null) {
+            realName = getResolvedIGN(username); 
         }
         
-        if (realName != null && !realName.equals("Scraping...")) {
-            display = display + " \u00a7e(" + realName + ")";
+        if (realName != null && !realName.equals("Scraping") && !realName.equals("Failed") && !realName.equals("No Nonce")) {
+            display = EnumChatFormatting.DARK_BLUE + "[" + EnumChatFormatting.BLUE + "N" + EnumChatFormatting.DARK_BLUE + "] " + EnumChatFormatting.RESET + display + " \u00a7e(" + realName + ")";
         }
 
         event.displayname = display;

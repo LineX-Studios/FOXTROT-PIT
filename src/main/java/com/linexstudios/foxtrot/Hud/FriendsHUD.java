@@ -45,10 +45,9 @@ public class FriendsHUD {
 
         FontRenderer fr = mc.fontRendererObj;
         int currentY = hudY;
-        int maxWidth = fr.getStringWidth("Friends");
+        int maxWidth = fr.getStringWidth("Friends List:");
         boolean foundFriend = false;
         
-        // DUPE FIX: Keeps track of who we already rendered this frame
         Set<String> renderedFriends = new HashSet<>();
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
@@ -57,11 +56,11 @@ public class FriendsHUD {
             String name = other.getName();
             
             if (!isFriend(name)) continue;
-            if (renderedFriends.contains(name.toLowerCase())) continue; // Block Duplicates
+            if (renderedFriends.contains(name.toLowerCase())) continue; 
             renderedFriends.add(name.toLowerCase());
 
             if (!foundFriend) {
-                fr.drawStringWithShadow(EnumChatFormatting.GREEN + "Friends List:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.DARK_GREEN + "" + EnumChatFormatting.BOLD + "Friends List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 foundFriend = true;
             }
@@ -75,7 +74,7 @@ public class FriendsHUD {
                 displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.GREEN + name;
             }
 
-            displayName = EnumChatFormatting.GREEN + "[F] " + EnumChatFormatting.RESET + displayName;
+            displayName = EnumChatFormatting.DARK_GREEN + "[" + EnumChatFormatting.GREEN + "F" + EnumChatFormatting.DARK_GREEN + "] " + EnumChatFormatting.RESET + displayName;
 
             String gear = getShortEnchants(other);
             String dist = getDistanceOrSpawn(other);
@@ -90,9 +89,10 @@ public class FriendsHUD {
 
         if (!foundFriend) {
             if (isEditing) {
-                fr.drawStringWithShadow(EnumChatFormatting.GREEN + "Friends List:", hudX, currentY, 0xFFFFFF);
+                // FIXED: Re-added the missing quotation mark right here!
+                fr.drawStringWithShadow(EnumChatFormatting.DARK_GREEN + "" + EnumChatFormatting.BOLD + "Friends List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.GREEN + "[F] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
+                String placeholder = EnumChatFormatting.DARK_GREEN + "[" + EnumChatFormatting.GREEN + "F" + EnumChatFormatting.DARK_GREEN + "] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -112,9 +112,8 @@ public class FriendsHUD {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
-    // FIXED: Exactly matches EnemyHUD's distance formatting now!
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
+        if (player.posY > 113.0D) {
             return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);

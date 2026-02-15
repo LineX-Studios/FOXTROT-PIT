@@ -48,7 +48,6 @@ public class EnemyHUD {
         int maxWidth = fr.getStringWidth("Enemy List:");
         boolean foundEnemy = false;
         
-        // DUPE FIX
         Set<String> renderedEnemies = new HashSet<>();
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
@@ -57,7 +56,7 @@ public class EnemyHUD {
             String name = other.getName();
             
             if (!isTarget(name)) continue;
-            if (renderedEnemies.contains(name.toLowerCase())) continue; // Block Duplicates
+            if (renderedEnemies.contains(name.toLowerCase())) continue; 
             renderedEnemies.add(name.toLowerCase());
 
             if (!foundEnemy) {
@@ -75,6 +74,9 @@ public class EnemyHUD {
                 displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.RED + name;
             }
 
+            // NEW: &4[&cE&4] formatting
+            displayName = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + displayName;
+
             String gear = getShortEnchants(other);
             String dist = getDistanceOrSpawn(other);
 
@@ -90,7 +92,7 @@ public class EnemyHUD {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.GRAY + "[Enemy list HUD Position]";
+                String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -111,7 +113,7 @@ public class EnemyHUD {
     }
 
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
+        if (player.posY > 113.0D) {
             return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);

@@ -1,6 +1,7 @@
 package com.linexstudios.foxtrot.Hud;
 
 import com.linexstudios.foxtrot.Denick.CacheManager;
+import com.linexstudios.foxtrot.Denick.NickedManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -51,7 +52,6 @@ public class NickedHUD {
         int maxWidth = fr.getStringWidth("Nicked Players:");
         boolean foundNicked = false;
         
-        // DUPE FIX
         Set<String> renderedNicks = new HashSet<>();
 
         NetHandlerPlayClient netHandler = mc.getNetHandler();
@@ -63,10 +63,13 @@ public class NickedHUD {
                 String nickedName = info.getGameProfile().getName();
                 if (nickedName.startsWith("§")) continue;
                 
-                if (renderedNicks.contains(nickedName.toLowerCase())) continue; // Block Duplicates
+                if (renderedNicks.contains(nickedName.toLowerCase())) continue; 
                 renderedNicks.add(nickedName.toLowerCase());
 
                 String realIGN = CacheManager.getFromCache(nickedName);
+                if (realIGN == null) {
+                    realIGN = NickedManager.getResolvedIGN(nickedName);
+                }
 
                 if (!foundNicked) {
                     fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
@@ -94,8 +97,15 @@ public class NickedHUD {
                     nickDisplay = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
                 }
 
-                String cleanedRealIGN = (realIGN != null && !realIGN.isEmpty()) ? stripAllPrefixes(realIGN) : "Scraping...";
-                String finalDisplayName = nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
+                String cleanedRealIGN = "Scraping...";
+                if (realIGN != null && !realIGN.isEmpty()) {
+                    if (realIGN.equals("Failed")) cleanedRealIGN = "Failed";
+                    else if (realIGN.equals("No Nonce")) cleanedRealIGN = "No Nonce";
+                    else cleanedRealIGN = stripAllPrefixes(realIGN);
+                }
+
+                // NEW: &1[&9N&1] formatting
+                String finalDisplayName = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.RESET + nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
 
                 String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
                 String dist = other != null ? getDistanceOrSpawn(other) : EnumChatFormatting.GRAY + "Far";
@@ -145,7 +155,7 @@ public class NickedHUD {
     }
 
     private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player.posY > 113.0D || (player.posX > -20 && player.posX < 20 && player.posZ > -20 && player.posZ < 20)) {
+        if (player.posY > 113.0D) {
             return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
         }
         float dist = player.getDistanceToEntity(mc.thePlayer);
