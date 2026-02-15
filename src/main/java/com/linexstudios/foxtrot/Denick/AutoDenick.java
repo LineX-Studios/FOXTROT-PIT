@@ -1,198 +1,289 @@
 package com.linexstudios.foxtrot.Denick;
 
+import com.google.gson.*;
+import com.linexstudios.foxtrot.Util.ItemScraper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityOtherPlayerMP;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.client.network.NetworkPlayerInfo;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AutoDenick {
     public static final AutoDenick instance = new AutoDenick();
-    public static boolean enabled = false;
-    private final Minecraft mc = Minecraft.getMinecraft();
+    private static final Set<String> resolvingNicks = ConcurrentHashMap.newKeySet();
+    public static Minecraft mc = Minecraft.getMinecraft();
     
-    private static final ExecutorService executor = Executors.newFixedThreadPool(2);
-    private final String prefix = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "PIT" + EnumChatFormatting.GRAY + "] ";
+    // Exact BetterPit public set used by the HUD
+    public static Set<String> lastNickedSet = new HashSet<>();
     
-    private final Set<String> resolved = new HashSet<>();
-    private long lastScan = 0;
+    public static boolean enabled = true; 
+    private int tickTimer = 0;
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
-        if (!enabled || mc.theWorld == null || mc.thePlayer == null || event.phase != TickEvent.Phase.END) return;
-
-        // 3-second cooldown to avoid API spam
-        if (System.currentTimeMillis() - lastScan < 3000L) return;
-        lastScan = System.currentTimeMillis();
-
-        // ONLY look at players the NickScanner has already flagged
-        for (Object obj : mc.theWorld.playerEntities) {
-            if (obj instanceof EntityOtherPlayerMP) {
-                EntityOtherPlayerMP p = (EntityOtherPlayerMP) obj;
-                String name = p.getName();
-
-                // If NickScanner detected them AND we haven't resolved them yet
-                if (NickScanner.detectedNicks.contains(name) && !resolved.contains(name)) {
-                    
-                    // Because they are physically rendered, we can steal their nonce
-                    int nonce = getNonce(p); 
-                    if (nonce > 0) {
-                        resolved.add(name); // Mark as resolved so we don't spam PitPal
-                        runAsyncDenick(nonce, name); // Send to background thread
-                    }
-                }
-            }
-        }
-    }
-
-    private void runAsyncDenick(int nonce, String inGameName) {
-        executor.execute(() -> {
-            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-
-            String resolvedIGN = resolveOwnerFromNonce(nonce);
-            
-            if (resolvedIGN != null && !resolvedIGN.equalsIgnoreCase(inGameName)) {
-                if (isValidMinecraftName(resolvedIGN)) {
-                    // Update the HUD from "Awaiting Nonce..." to their real name
-                    NickedManager.addNicked(inGameName, resolvedIGN);
-                    sendMessage(EnumChatFormatting.AQUA + "AutoDenick: " + EnumChatFormatting.YELLOW + inGameName + EnumChatFormatting.GRAY + " is actually " + EnumChatFormatting.GREEN + resolvedIGN);
-                } else {
-                    NickedManager.addNicked(inGameName, EnumChatFormatting.RED + "Fake API Data");
-                }
-            } else {
-                NickedManager.addNicked(inGameName, EnumChatFormatting.RED + "Resolution Failed");
-            }
-        });
-    }
-
-    private int getNonce(EntityOtherPlayerMP player) {
-        List<ItemStack> items = new ArrayList<>();
-        Collections.addAll(items, player.inventory.armorInventory);
-        items.add(player.getHeldItem());
+        if (!enabled || mc.theWorld == null || mc.getNetHandler() == null || event.phase != TickEvent.Phase.END) return;
         
-        for (ItemStack item : items) {
-            if (item != null && item.hasTagCompound()) {
-                NBTTagCompound tag = item.getTagCompound().getCompoundTag("ExtraAttributes");
-                if (tag != null && tag.hasKey("Nonce")) {
-                    return tag.getInteger("Nonce");
+        tickTimer++;
+        if (tickTimer >= 40) { // Run safely every 2 seconds
+            tickTimer = 0;
+            detectIfPlayerIsNicked();
+        }
+    }
+
+    // Exact BetterPit Version 1 UUID Check
+    public static boolean isNicked(UUID playerUUID) {
+        return playerUUID.version() == 1;
+    }
+
+    public static void detectIfPlayerIsNicked() {
+        Set<String> currentNickedSet = new HashSet<>();
+        
+        for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
+            if (info == null || info.getGameProfile() == null || info.getGameProfile().getId() == null) continue;
+            
+            UUID playerUUID = info.getGameProfile().getId();
+            if (isNicked(playerUUID)) {
+                String nick = info.getGameProfile().getName();
+                currentNickedSet.add(nick);
+                
+                if (!CacheManager.nickInCache(nick) && !resolvingNicks.contains(nick)) {
+                    resolvingNicks.add(nick);
+                    new Thread(() -> {
+                        String realName = null;
+                        long millisStarted = System.currentTimeMillis();
+                        try {
+                            realName = tryToResolveNick(nick);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        } finally {
+                            resolvingNicks.remove(nick);
+                        }
+                        
+                        long millisEnded = System.currentTimeMillis();
+                        long time = millisEnded - millisStarted;
+                        
+                        if (realName != null) {
+                            synchronized (CacheManager.class) {
+                                if (!CacheManager.nickInCache(nick)) {
+                                    CacheManager.addToCache(nick, realName);
+                                    // Exact BetterPit Chat Format
+                                    sendMessage("\u00a77[\u00a76Foxtrot\u00a77] \u00a7aDenicked \u00a78\u00bb \u00a7b" + nick + " \u00a77\u2192 \u00a7r \u00a7e" + realName +" \u00a77(\u00a7f" + time + "ms\u00a77)");
+                                    sendMessage("\u00a78[\u00a7a+\u00a78] \u00a77[\u00a76Foxtrot\u00a77] \u00a7aAdded \u00a7e" + realName + "\u00a7a to denicked players cache.");
+                                }
+                            }
+                        }
+                    }).start();
                 }
             }
         }
-        return -1;
+        
+        for (String name : currentNickedSet) {
+            if (!lastNickedSet.contains(name)) {
+                sendMessage("\u00a77[\u00a76Foxtrot\u00a77] \u00a7fNicked Player \u00a78\u00bb \u00a7b" + name);
+            }
+        }
+        lastNickedSet.clear();
+        lastNickedSet.addAll(currentNickedSet);
     }
 
-    private String resolveOwnerFromNonce(int nonce) {
-        HttpURLConnection conn = null;
-        try {
-            URL url = new URL("https://pitpal.rocks/api/listings/items/nonce" + nonce);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setConnectTimeout(6000);
-            conn.setReadTimeout(6000);
-
-            if (conn.getResponseCode() == 200) {
-                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String l;
-                while ((l = r.readLine()) != null) sb.append(l);
-                r.close();
-                
-                String response = sb.toString();
-                if (response.isEmpty() || !response.startsWith("{")) return null;
-                
-                JSONObject root = new JSONObject(response);
-                
-                JSONArray itemsArr = null;
-                if (root.has("items") && !root.isNull("items")) {
-                    itemsArr = root.getJSONArray("items");
-                } else if (root.has("data") && !root.isNull("data")) {
-                    itemsArr = root.getJSONArray("data");
+    public static String tryToResolveNick(String nickedName) throws IOException {
+        EntityPlayer player = mc.theWorld.getPlayerEntityByName(nickedName);
+        if (player != null) {
+            
+            // 1. BetterPit Nonce Check
+            ArrayList<Integer> nonceList = ItemScraper.getNoncesFromPlayer(player);
+            Set<String> UUIDS = new HashSet<>();
+            for (int nonce : nonceList) {
+                String UUID = getUUIDFromNonce(nonce);
+                if (UUID != null) {
+                    UUIDS.add(UUID);
                 }
-
-                if (itemsArr != null && itemsArr.length() > 0) {
-                    JSONObject itemObj = itemsArr.getJSONObject(0);
-                    
-                    if (itemObj.has("ownerusername") && !itemObj.isNull("ownerusername")) {
-                        return itemObj.getString("ownerusername").replaceAll("§.", "").replaceAll("\\$.", "").trim();
-                    }
-                    
-                    String ownerId = null;
-                    if (itemObj.has("ownerId") && !itemObj.isNull("ownerId")) {
-                        ownerId = itemObj.getString("ownerId").trim();
-                    } else if (itemObj.has("ownerid") && !itemObj.isNull("ownerid")) {
-                        ownerId = itemObj.getString("ownerid").trim();
-                    }
-                    
-                    if (ownerId != null && !ownerId.isEmpty()) {
-                        return resolveUsernameFromUUID(ownerId);
+            }
+            if (UUIDS.size() == 1) {
+                for (String uuid : UUIDS) {
+                    String realName = getNameFromUUID(uuid);
+                    if (realName != null && isPlayerAbleToNick(uuid)) {
+                        sendMessage("[Denicker] found from nonce: " + realName);
+                        return realName;
                     }
                 }
             }
-        } catch (Exception ignored) {
-        } finally {
-            if (conn != null) conn.disconnect();
+            
+            // 2. BetterPit Enchant/Rage Check
+            Set<String> rageUUIDS = getUUIDSFromEnchant(ItemScraper.getPantFromName(nickedName));
+            if (rageUUIDS != null) {
+                Set<String> uuids = new HashSet<>();
+                for (String uuid : rageUUIDS) {
+                    if (isPlayerAbleToNick(uuid)) {
+                        uuids.add(uuid);
+                    }
+                }
+                if (uuids.size() == 1) {
+                    for (String realUuid : uuids) {
+                        String realName = getNameFromUUID(realUuid);
+                        if (realName != null) {
+                            sendMessage("[Denicker] found from rage: " + realName);
+                            return realName;
+                        }
+                    }
+                }
+            }
         }
         return null;
     }
 
-    private boolean isValidMinecraftName(String name) {
-        HttpURLConnection conn = null;
+    public static boolean isPlayerAbleToNick(String UUID) {
         try {
-            URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + name);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setConnectTimeout(4000);
-            conn.setReadTimeout(4000);
-            return conn.getResponseCode() == 200;
-        } catch (Exception e) {
-            return false;
-        } finally {
-            if (conn != null) conn.disconnect();
+            String pitMartResponse = fetchJson("https://pitmart.net/api/player/" + UUID);
+            if (pitMartResponse != null) {
+                JsonObject json = getJsonObject(pitMartResponse);
+                JsonObject player = json.getAsJsonObject("player");
+                return "SUPERSTAR".equals(player.get("rank").getAsString());
+            }
+            String pandaResponse = fetchJson("https://pitpanda.rocks/api/username/" + UUID);
+            if (pandaResponse != null) {
+                JsonObject json = getJsonObject(pandaResponse);
+                String notCleanName = json.get("name").getAsString();
+                Matcher m = Pattern.compile("\u00a7a(\\w+)\\s*$").matcher(notCleanName);
+                return m.find();
+            }
+        } catch (IOException | JsonSyntaxException e) {
+            throw new RuntimeException(e);
         }
+        return false;
     }
 
-    private String resolveUsernameFromUUID(String uuid) {
-        HttpURLConnection conn = null;
+    public static String getNameFromUUID(String UUID) {
         try {
-            URL url = new URL("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid.replace("-", ""));
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
-
-            if (conn.getResponseCode() == 200) {
-                BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String l;
-                while ((l = r.readLine()) != null) sb.append(l);
-                r.close();
-
-                JSONObject root = new JSONObject(sb.toString());
-                if (root.has("name")) return root.getString("name");
+            String mojangUrl = "https://api.mojang.com/user/profile/" + UUID;
+            String mojangResponse = fetchJson(mojangUrl);
+            if (mojangResponse != null) {
+                JsonObject json = getJsonObject(mojangResponse);
+                return json.get("name").getAsString();
             }
-        } catch (Exception ignored) {
-        } finally {
-            if (conn != null) conn.disconnect();
+
+            String pandaUrl = "https://pitpanda.rocks/api/username/" + UUID;
+            String pandaResponse = fetchJson(pandaUrl);
+            if (pandaResponse != null) {
+                JsonObject json = getJsonObject(pandaResponse);
+                String notCleanName = json.get("name").getAsString();
+                Matcher m = Pattern.compile("\\s\u00a7.(\\w+)").matcher(notCleanName);
+                if (m.find()) return m.group(1);
+            }
+            String pitMartUrl = "https://pitmart.net/api/player/" + UUID;
+            String pitMartResponse = fetchJson(pitMartUrl);
+            if (pitMartResponse != null) {
+                JsonObject json = getJsonObject(pitMartResponse);
+                return json.getAsJsonObject("player").get("username").getAsString();
+            }
+        } catch (IOException | JsonSyntaxException e) {
+            throw new RuntimeException(e);
         }
         return null;
     }
 
-    private void sendMessage(String msg) {
-        mc.addScheduledTask(() -> {
-            if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText(prefix + msg));
-        });
+    public static Set<String> getUUIDSFromEnchant(ItemScraper.Pant pant) {
+        if (pant.nonce != 9 || pant.enchants.size() < 2) return null;
+
+        try {
+            String apiUrl = "https://pitmart.net/api/searchitems?" + ItemScraper.getCompoundEnchants(pant);
+            String response = fetchJson(apiUrl);
+            if (response != null) {
+                JsonObject json = getJsonObject(response);
+                JsonArray docs = json.getAsJsonArray("docs");
+
+                Set<String> ownerUUIDs = new HashSet<>();
+                for (JsonElement docElement : docs) {
+                    JsonObject doc = docElement.getAsJsonObject();
+                    JsonObject item = doc.getAsJsonObject("item");
+
+                    boolean isGemmedMatch = !pant.gem || item.get("gemmed").getAsBoolean();
+                    boolean isMaxLivesMatch = item.get("maxLives").getAsInt() == pant.maxLive;
+
+                    if (isGemmedMatch && isMaxLivesMatch) {
+                        JsonElement owner = doc.has("ownerUuid") ? doc.get("ownerUuid") : item.get("ownerUuid");
+                        if (owner != null) {
+                            ownerUUIDs.add(owner.getAsString());
+                        }
+                    }
+                }
+                return ownerUUIDs.isEmpty() ? null : ownerUUIDs;
+            }
+        } catch (IOException | JsonSyntaxException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+
+    public static String getUUIDFromNonce(int nonce) {
+        try {
+            String apiURL = "https://pitmart.net/api/searchitems?nonce=" + nonce;
+            String response = fetchJson(apiURL);
+            if (response != null) {
+                JsonObject json = getJsonObject(response);
+                JsonArray docs = json.getAsJsonArray("docs");
+                if (docs.size() > 0) {
+                    JsonObject firstDoc = docs.get(0).getAsJsonObject();
+                    JsonElement ownerUUID = firstDoc.get("ownerUuid");
+                    if (ownerUUID != null) {
+                        return ownerUUID.getAsString();
+                    }
+                }
+            }
+        } catch (IOException | JsonSyntaxException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+
+    private static JsonObject getJsonObject(String response) {
+        JsonParser parser = new JsonParser();
+        JsonElement element = parser.parse(response);
+        return element.getAsJsonObject();
+    }
+
+    private static String fetchJson(String urlString) throws IOException {
+        HttpURLConnection con = null;
+        try {
+            URL url = new URL(urlString);
+            con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("User-Agent", "Mozilla/5.0"); // Prevent Cloudflare 403s
+
+            int status = con.getResponseCode();
+            if (status != 200) return null;
+
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
+                StringBuilder content = new StringBuilder();
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    content.append(inputLine);
+                }
+                return content.toString();
+            }
+        } finally {
+            if (con != null) con.disconnect();
+        }
+    }
+
+    private static void sendMessage(String text) {
+        if (mc.thePlayer != null) {
+            mc.thePlayer.addChatMessage(new ChatComponentText(text));
+        }
     }
 }

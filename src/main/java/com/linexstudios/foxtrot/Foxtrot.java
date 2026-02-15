@@ -19,7 +19,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import org.lwjgl.input.Keyboard; 
 
-@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.4.8", acceptedMinecraftVersions = "[1.8.9]")
+@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.4.9", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
     
     // The shared KeyBinding for the AutoClicker

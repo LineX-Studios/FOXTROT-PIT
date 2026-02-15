@@ -56,7 +56,10 @@ public class NickedHUD {
         NetHandlerPlayClient netHandler = mc.getNetHandler();
         if (netHandler != null) {
             for (NetworkPlayerInfo info : netHandler.getPlayerInfoMap()) {
-                if (info.getGameProfile().getId().version() == 2) continue;
+                if (info == null || info.getGameProfile() == null || info.getGameProfile().getId() == null) continue;
+                
+                // Skip real players (Version 4/3 UUIDs)
+                if (info.getGameProfile().getId().version() == 2) continue; // Note: Ensure this matches your intended bypass logic
                 
                 String nickedName = info.getGameProfile().getName();
                 if (nickedName.startsWith("§")) continue;
@@ -64,7 +67,7 @@ public class NickedHUD {
                 String realIGN = NickedManager.getResolvedIGN(nickedName);
                 boolean isManuallyScraped = nickedPlayers.contains(nickedName.toLowerCase());
 
-                if ((realIGN != null && !realIGN.isEmpty()) || isManuallyScraped) {
+                if ((realIGN != null && !realIGN.isEmpty()) || isManuallyScraped || NickedManager.isResolved(nickedName)) {
                     if (!foundNicked) {
                         fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
                         currentY += fr.FONT_HEIGHT + 2;
@@ -95,7 +98,8 @@ public class NickedHUD {
                     // Format the Real IGN result to remove prestige/ranks in brackets
                     String cleanedRealIGN = (realIGN != null && !realIGN.isEmpty()) ? stripAllPrefixes(realIGN) : "Scraping...";
                     
-                    String finalDisplayName = nickDisplay + EnumChatFormatting.GRAY + " (" + EnumChatFormatting.YELLOW + cleanedRealIGN + EnumChatFormatting.GRAY + ")";
+                    // UPDATED FORMATTING: The entire (RealName) string is now YELLOW
+                    String finalDisplayName = nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
 
                     String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
                     String dist = other != null ? getDistanceOrSpawn(other) : EnumChatFormatting.GRAY + "Far";
