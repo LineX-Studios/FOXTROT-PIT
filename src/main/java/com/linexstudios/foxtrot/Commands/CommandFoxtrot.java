@@ -5,6 +5,7 @@ import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Hud.EditHUDGui;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
+import com.linexstudios.foxtrot.Hud.FriendsHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.HUDController;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
@@ -32,7 +33,7 @@ public class CommandFoxtrot extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/foxtrot <add|remove|list|alerts|toggle|clear|denick|debug|esp|autodenick|hud|nickhud|enemyhud>";
+        return "/foxtrot <friend|add|remove|list|alerts|toggle|clear|denick|debug|esp|autodenick|hud|nickhud|enemyhud>";
     }
 
     @Override
@@ -44,6 +45,7 @@ public class CommandFoxtrot extends CommandBase {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "FOXTROT" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.RED + EnumChatFormatting.BOLD + "HELP MENU"));
             sender.addChatMessage(new ChatComponentText(""));
 
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot friend <add/remove/list> " + EnumChatFormatting.GRAY + "- Manage Friends"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot add [name] " + EnumChatFormatting.GRAY + "- Add enemy"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot remove [name] " + EnumChatFormatting.GRAY + "- Remove enemy"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot list " + EnumChatFormatting.GRAY + "- View enemy list"));
@@ -64,11 +66,8 @@ public class CommandFoxtrot extends CommandBase {
 
         switch (action) {
             case "debug":
-                // Toggles HUD debug info (Enemy list logic, etc.)
                 EnemyHUD.debugMode = !EnemyHUD.debugMode;
-                // Toggles AutoClicker heartbeat logs (FIRING CLICK messages)
                 com.linexstudios.foxtrot.Combat.AutoClicker.debugMode = EnemyHUD.debugMode; 
-                
                 ConfigHandler.saveConfig();
                 sendMessage(sender, EnumChatFormatting.YELLOW + "Foxtrot Global Debug: " + (EnemyHUD.debugMode ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF"));
                 break;
@@ -76,14 +75,10 @@ public class CommandFoxtrot extends CommandBase {
             case "denick":
                 if (args.length > 1) {
                     String target = args[1];
-                    // Start the scrape
                     new Thread(new DenickRunnable(target)).start();
-                    
-                    // Instantly force them onto the Nicked HUD
                     if (!NickedHUD.nickedPlayers.contains(target.toLowerCase())) {
                         NickedHUD.nickedPlayers.add(target.toLowerCase());
                     }
-                    
                     sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Scraping " + target + " and added to NickedHUD."));
                 } else {
                     sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Usage: /fx denick [name]"));
@@ -94,6 +89,55 @@ public class CommandFoxtrot extends CommandBase {
                 EnemyESP.enabled = !EnemyESP.enabled;
                 ConfigHandler.saveConfig();
                 sendMessage(sender, EnumChatFormatting.YELLOW + "Enemy ESP: " + (EnemyESP.enabled ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF"));
+                break;
+
+            // --- FRIENDS COMMAND ---
+            case "friend":
+            case "f":
+                if (args.length < 2) {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Usage: /fx friend <add|remove|list> [name]"));
+                    break;
+                }
+                String subAction = args[1].toLowerCase();
+                if (subAction.equals("add")) {
+                    if (args.length > 2) {
+                        String friendName = args[2];
+                        if (!FriendsHUD.isFriend(friendName)) {
+                            FriendsHUD.friendsList.add(friendName);
+                            ConfigHandler.saveConfig();
+                            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "Added " + friendName + " to friends."));
+                        } else {
+                            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + friendName + " is already on your friends list!"));
+                        }
+                    } else {
+                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Usage: /fx friend add [name]"));
+                    }
+                } else if (subAction.equals("remove")) {
+                    if (args.length > 2) {
+                        String friendName = args[2];
+                        boolean removed = FriendsHUD.friendsList.removeIf(name -> name.equalsIgnoreCase(friendName));
+                        if (removed) {
+                            ConfigHandler.saveConfig();
+                            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Removed " + friendName + " from friends."));
+                        } else {
+                            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + friendName + " was not found on your friends list."));
+                        }
+                    } else {
+                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Usage: /fx friend remove [name]"));
+                    }
+                } else if (subAction.equals("list")) {
+                    if (FriendsHUD.friendsList.isEmpty()) {
+                        sendMessage(sender, EnumChatFormatting.RED + "Your friends list is empty.");
+                    } else {
+                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "Friends List (" + FriendsHUD.friendsList.size() + ")"));
+                        sender.addChatMessage(new ChatComponentText(""));
+                        for (String name : FriendsHUD.friendsList) {
+                            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "- " + FriendsHUD.getFormattedName(name)));
+                        }
+                    }
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Unknown action. Usage: /fx friend <add|remove|list> [name]"));
+                }
                 break;
 
             case "add":
@@ -193,17 +237,33 @@ public class CommandFoxtrot extends CommandBase {
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                    "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud");
+                    "friend", "f", "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud");
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("denick"))) {
+        
+        // Tab complete /fx friend <subcommand>
+        if (args.length == 2 && (args[0].equalsIgnoreCase("friend") || args[0].equalsIgnoreCase("f"))) {
+            return getListOfStringsMatchingLastWord(args, "add", "remove", "list");
+        }
+
+        // Tab complete Players for /fx add, /fx denick, and /fx friend add
+        if ((args.length == 2 && (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("denick"))) || 
+            (args.length == 3 && (args[0].equalsIgnoreCase("friend") || args[0].equalsIgnoreCase("f")) && args[1].equalsIgnoreCase("add"))) {
             return getListOfStringsMatchingLastWord(args,
                     Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap().stream()
                             .map(info -> info.getGameProfile().getName())
                             .collect(Collectors.toList()));
         }
+        
+        // Tab complete Enemy List for /fx remove
         if (args.length == 2 && args[0].equalsIgnoreCase("remove")) {
             return getListOfStringsMatchingLastWord(args, EnemyHUD.targetList);
         }
+        
+        // Tab complete Friends List for /fx friend remove
+        if (args.length == 3 && (args[0].equalsIgnoreCase("friend") || args[0].equalsIgnoreCase("f")) && args[1].equalsIgnoreCase("remove")) {
+            return getListOfStringsMatchingLastWord(args, FriendsHUD.friendsList);
+        }
+        
         return null;
     }
 

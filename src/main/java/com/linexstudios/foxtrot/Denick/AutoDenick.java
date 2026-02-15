@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -62,7 +63,7 @@ public class AutoDenick {
                     resolvingNicks.add(nick);
                     
                     if (!notifiedScraping.contains(nick)) {
-                        sendMessage("\u00a77[\u00a76Foxtrot\u00a77] \u00a7eScraping \u00a7b" + nick + "\u00a7e...");
+                        sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
                         notifiedScraping.add(nick);
                     }
                     
@@ -89,7 +90,7 @@ public class AutoDenick {
                                     NickedManager.updateNicked(nick, realName);
                                     
                                     // 3. Notify the player
-                                    sendMessage("\u00a77[\u00a76Foxtrot\u00a77] \u00a7aDenicked \u00a78\u00bb \u00a7b" + nick + " \u00a77\u2192 \u00a7r \u00a7e" + realName +" \u00a77(\u00a7f" + time + "ms\u00a77)");
+                                    sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.DARK_GRAY + "\u00bb " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + " " + EnumChatFormatting.YELLOW + realName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
                                 }
                             }
                         }
@@ -100,7 +101,7 @@ public class AutoDenick {
         
         for (String name : currentNickedSet) {
             if (!lastNickedSet.contains(name)) {
-                sendMessage("\u00a77[\u00a76Foxtrot\u00a77] \u00a7fNicked Player Detected \u00a78\u00bb \u00a7b" + name);
+                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.WHITE + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "\u00bb " + EnumChatFormatting.AQUA + name);
             }
         }
         lastNickedSet.clear();
@@ -139,7 +140,7 @@ public class AutoDenick {
             
             String pandaResponse = fetchJson("https://pitpanda.rocks/api/username/" + UUID);
             if (pandaResponse != null) {
-                Matcher m = Pattern.compile("\u00a7a(\\w+)\\s*$").matcher(getJsonObject(pandaResponse).get("name").getAsString());
+                Matcher m = Pattern.compile(EnumChatFormatting.GREEN + "(\\w+)\\s*$").matcher(getJsonObject(pandaResponse).get("name").getAsString());
                 if (m.find()) return true;
             }
             
@@ -147,7 +148,7 @@ public class AutoDenick {
             if (pitPalResponse != null) {
                 JsonObject json = getJsonObject(pitPalResponse);
                 String nameString = json.has("name") ? json.get("name").getAsString() : (json.has("data") ? json.getAsJsonObject("data").get("name").getAsString() : "");
-                Matcher m = Pattern.compile("\u00a7a(\\w+)\\s*$").matcher(nameString);
+                Matcher m = Pattern.compile(EnumChatFormatting.GREEN + "(\\w+)\\s*$").matcher(nameString);
                 if (m.find()) return true;
             }
         } catch (Exception e) {}

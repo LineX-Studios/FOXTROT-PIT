@@ -163,4 +163,8 @@ public class FriendsHUD {
     public static boolean isFriend(String name) {
         return name != null && friendsList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
     }
+
+    public static String getFormattedName(String name) {
+        return EnumChatFormatting.GREEN + (name == null ? "null" : name) + EnumChatFormatting.RESET;
+    }
 }

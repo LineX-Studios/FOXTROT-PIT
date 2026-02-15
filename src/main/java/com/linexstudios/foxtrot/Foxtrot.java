@@ -9,6 +9,8 @@ import com.linexstudios.foxtrot.Handler.KeybindHandler;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
+import com.linexstudios.foxtrot.Hud.FriendsHUD;
+import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Combat.AutoClicker; 
 import com.linexstudios.foxtrot.Render.ChestESP;
 import net.minecraft.client.settings.KeyBinding; 
