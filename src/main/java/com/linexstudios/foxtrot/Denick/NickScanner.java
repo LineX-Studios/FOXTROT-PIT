@@ -42,7 +42,7 @@ public class NickScanner {
                     detectedNicks.add(nickName);
                     
                     // Assuming you are still using your custom NickedManager for the HUD rendering:
-                    NickedManager.addNicked(nickName, "\u00a77Scraping...");
+                    NickedManager.addNicked(nickName, "\u00a77Scraping");
                 }
             }
         }

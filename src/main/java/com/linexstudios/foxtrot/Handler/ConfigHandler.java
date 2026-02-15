@@ -9,6 +9,7 @@ import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Render.ChestESP;
 import com.linexstudios.foxtrot.Render.FriendsESP;
+import com.linexstudios.foxtrot.Render.NickedRender;
 
 import java.io.*;
 import java.util.*;
@@ -16,7 +17,7 @@ import java.util.*;
 public class ConfigHandler {
     private static final File configDir = new File("config/Foxtrot");
     private static final File enemyFile = new File(configDir, "enemies.txt");
-    private static final File friendsFile = new File(configDir, "friends.txt"); // NEW
+    private static final File friendsFile = new File(configDir, "friends.txt"); 
     private static final File settingsFile = new File(configDir, "settings.txt");
 
     public static void loadConfig() {
@@ -33,7 +34,6 @@ public class ConfigHandler {
                 reader.close();
             }
 
-            // NEW: Load Friends List
             if (friendsFile.exists()) {
                 BufferedReader reader = new BufferedReader(new FileReader(friendsFile));
                 String line;
@@ -54,7 +54,6 @@ public class ConfigHandler {
                 NickedHUD.hudY = Integer.parseInt(props.getProperty("nickedHudY", "80"));
                 EnemyHUD.hudX = Integer.parseInt(props.getProperty("enemyHudX", "200"));
                 EnemyHUD.hudY = Integer.parseInt(props.getProperty("enemyHudY", "80"));
-                // NEW: Load Friends HUD Position
                 FriendsHUD.hudX = Integer.parseInt(props.getProperty("friendsHudX", "350"));
                 FriendsHUD.hudY = Integer.parseInt(props.getProperty("friendsHudY", "80"));
 
@@ -87,6 +86,7 @@ public class ConfigHandler {
 
                 ChestESP.enabled = Boolean.parseBoolean(props.getProperty("chestEspEnabled", "false"));
                 AutoDenick.enabled = Boolean.parseBoolean(props.getProperty("autoDenick", "false"));
+                NickedRender.enabled = Boolean.parseBoolean(props.getProperty("nickedNametags", "true")); // NEW
                 EnemyHUD.enabled = Boolean.parseBoolean(props.getProperty("enemyHudEnabled", "true"));
                 EnemyHUD.notificationsEnabled = Boolean.parseBoolean(props.getProperty("enemyHudAlerts", "true"));
                 EnemyHUD.debugMode = Boolean.parseBoolean(props.getProperty("enemyHudDebug", "false"));
@@ -95,7 +95,6 @@ public class ConfigHandler {
                 NameTags.showHealth = Boolean.parseBoolean(props.getProperty("nameTagsShowHealth", "true"));
                 NameTags.showItems = Boolean.parseBoolean(props.getProperty("nameTagsShowItems", "true"));
 
-                // NEW: Load Friends settings
                 FriendsHUD.enabled = Boolean.parseBoolean(props.getProperty("friendsHudEnabled", "true"));
                 FriendsESP.enabled = Boolean.parseBoolean(props.getProperty("friendsEspEnabled", "true"));
             }
@@ -114,7 +113,6 @@ public class ConfigHandler {
             }
             enemyWriter.close();
 
-            // NEW: Save Friends List
             PrintWriter friendsWriter = new PrintWriter(new FileWriter(friendsFile));
             for (String name : FriendsHUD.friendsList) {
                 friendsWriter.println(name);
@@ -127,7 +125,6 @@ public class ConfigHandler {
             props.setProperty("nickedHudY", String.valueOf(NickedHUD.hudY));
             props.setProperty("enemyHudX", String.valueOf(EnemyHUD.hudX));
             props.setProperty("enemyHudY", String.valueOf(EnemyHUD.hudY));
-            // NEW: Save Friends HUD Position
             props.setProperty("friendsHudX", String.valueOf(FriendsHUD.hudX));
             props.setProperty("friendsHudY", String.valueOf(FriendsHUD.hudY));
 
@@ -160,6 +157,7 @@ public class ConfigHandler {
 
             props.setProperty("chestEspEnabled", String.valueOf(ChestESP.enabled));
             props.setProperty("autoDenick", String.valueOf(AutoDenick.enabled));
+            props.setProperty("nickedNametags", String.valueOf(NickedRender.enabled)); // NEW
             props.setProperty("enemyHudEnabled", String.valueOf(EnemyHUD.enabled));
             props.setProperty("enemyHudAlerts", String.valueOf(EnemyHUD.notificationsEnabled));
             props.setProperty("enemyHudDebug", String.valueOf(EnemyHUD.debugMode));
@@ -168,7 +166,6 @@ public class ConfigHandler {
             props.setProperty("nameTagsShowHealth", String.valueOf(NameTags.showHealth));
             props.setProperty("nameTagsShowItems", String.valueOf(NameTags.showItems));
             
-            // NEW: Save Friends settings
             props.setProperty("friendsHudEnabled", String.valueOf(FriendsHUD.enabled));
             props.setProperty("friendsEspEnabled", String.valueOf(FriendsESP.enabled));
 

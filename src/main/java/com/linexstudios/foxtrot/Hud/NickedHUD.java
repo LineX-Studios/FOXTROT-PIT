@@ -49,7 +49,7 @@ public class NickedHUD {
 
         FontRenderer fr = mc.fontRendererObj;
         int currentY = hudY;
-        int maxWidth = fr.getStringWidth("Nicked Players:");
+        int maxWidth = fr.getStringWidth("Nicked Players");
         boolean foundNicked = false;
         
         Set<String> renderedNicks = new HashSet<>();
@@ -97,14 +97,13 @@ public class NickedHUD {
                     nickDisplay = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
                 }
 
-                String cleanedRealIGN = "Scraping...";
+                String cleanedRealIGN = "Scraping";
                 if (realIGN != null && !realIGN.isEmpty()) {
                     if (realIGN.equals("Failed")) cleanedRealIGN = "Failed";
                     else if (realIGN.equals("No Nonce")) cleanedRealIGN = "No Nonce";
                     else cleanedRealIGN = stripAllPrefixes(realIGN);
                 }
 
-                // NEW: &1[&9N&1] formatting
                 String finalDisplayName = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.RESET + nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
 
                 String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
@@ -123,7 +122,7 @@ public class NickedHUD {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.GRAY + "[Nicked Players HUD Position]";
+                String placeholder = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -164,20 +163,26 @@ public class NickedHUD {
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
         ItemStack pants = player.inventory.armorInventory[1]; 
-        if (pants != null && pants.hasTagCompound()) {
-            NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
-            if (extra != null && extra.hasKey("CustomEnchants")) {
-                NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
-                List<String> shortNames = new ArrayList<>();
-                for (int i = 0; i < enchants.tagCount(); i++) {
-                    String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
-                    if (formatted != null) shortNames.add(formatted);
+        if (pants != null) {
+            if (pants.hasTagCompound()) {
+                NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
+                if (extra != null && extra.hasKey("CustomEnchants")) {
+                    NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
+                    List<String> shortNames = new ArrayList<>();
+                    for (int i = 0; i < enchants.tagCount(); i++) {
+                        String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
+                        if (formatted != null) shortNames.add(formatted);
+                    }
+                    if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
                 }
-                if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
+                if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
             }
-            if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
+            // NEW: Diamond Pants Check
+            if (pants.getItem() == net.minecraft.init.Items.diamond_leggings) {
+                return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "DIAMOND";
+            }
         }
-        return EnumChatFormatting.GRAY + "Shop";
+        return EnumChatFormatting.GRAY + "" + EnumChatFormatting.BOLD + "SHOP";
     }
 
     public static String formatEnchant(String key) {

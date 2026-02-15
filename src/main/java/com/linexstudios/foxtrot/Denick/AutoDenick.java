@@ -18,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +30,9 @@ public class AutoDenick {
     private static final Set<String> resolvingNicks = ConcurrentHashMap.newKeySet();
     private static final Set<String> notifiedScraping = new HashSet<>(); 
     
+    // NEW: Tracks the exact time a player was last checked to enforce the 20-second retry loop
+    private static final Map<String, Long> retryCooldowns = new ConcurrentHashMap<>(); 
+    
     public static Minecraft mc = Minecraft.getMinecraft();
     public static Set<String> lastNickedSet = new HashSet<>();
     public static boolean enabled = true; 
@@ -39,7 +43,7 @@ public class AutoDenick {
         if (!enabled || mc.theWorld == null || mc.getNetHandler() == null || event.phase != TickEvent.Phase.END) return;
         
         tickTimer++;
-        if (tickTimer >= 40) { 
+        if (tickTimer >= 40) { // Runs every 2 seconds
             tickTimer = 0;
             detectIfPlayerIsNicked();
         }
@@ -63,59 +67,75 @@ public class AutoDenick {
                 EntityPlayer p = mc.theWorld.getPlayerEntityByName(nick);
                 if (p == null) continue; 
                 
-                ArrayList<Integer> nonces = ItemScraper.getNoncesFromPlayer(p);
+                String currentStatus = NickedManager.getResolvedIGN(nick);
                 
-                if (nonces.isEmpty()) {
-                    if (!CacheManager.nickInCache(nick) && !NickedManager.isResolved(nick)) {
-                        NickedManager.updateNicked(nick, "No Nonce");
-                    }
-                    continue; 
-                }
+                // If we don't have their real name yet, or it failed previously, they are eligible for a retry
+                boolean needsDenick = currentStatus == null || currentStatus.equals("Failed") || currentStatus.equals("No Nonce") || currentStatus.equals("Scraping...");
                 
-                if (!CacheManager.nickInCache(nick) && !resolvingNicks.contains(nick) && !NickedManager.isResolved(nick)) {
-                    resolvingNicks.add(nick);
+                if (needsDenick && !resolvingNicks.contains(nick)) {
+                    long lastAttempt = retryCooldowns.getOrDefault(nick, 0L);
                     
-                    if (!notifiedScraping.contains(nick)) {
-                        // NEW: &1[&9N&1] formatting for chat
-                        sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.DARK_BLUE + "[" + EnumChatFormatting.BLUE + "N" + EnumChatFormatting.DARK_BLUE + "] " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
-                        notifiedScraping.add(nick);
-                    }
-                    
-                    new Thread(() -> {
-                        String realName = null;
-                        long millisStarted = System.currentTimeMillis();
-                        try {
-                            realName = tryToResolveNick(nick);
-                        } catch (Exception e) {
-                            // Caught
-                        } finally {
-                            resolvingNicks.remove(nick); 
+                    // FIXED: 20 Second Retry Cooldown!
+                    if (System.currentTimeMillis() - lastAttempt >= 20000) {
+                        ArrayList<Integer> nonces = ItemScraper.getNoncesFromPlayer(p);
+                        
+                        if (nonces.isEmpty()) {
+                            NickedManager.updateNicked(nick, "No Nonce");
+                            retryCooldowns.put(nick, System.currentTimeMillis());
+                            continue; 
                         }
                         
-                        long time = System.currentTimeMillis() - millisStarted;
+                        resolvingNicks.add(nick);
+                        retryCooldowns.put(nick, System.currentTimeMillis()); // Set cooldown immediately so it doesn't spam
                         
-                        synchronized (CacheManager.class) {
-                            if (realName != null) {
-                                CacheManager.addToCache(nick, realName);
-                                NickedManager.updateNicked(nick, realName);
-                                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.DARK_GRAY + "\u00bb " + EnumChatFormatting.DARK_BLUE + "[" + EnumChatFormatting.BLUE + "N" + EnumChatFormatting.DARK_BLUE + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + " " + EnumChatFormatting.YELLOW + realName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
-                            } else {
-                                NickedManager.updateNicked(nick, "Failed");
+                        if (!NickedHUD.nickedPlayers.contains(nick.toLowerCase())) {
+                            NickedHUD.nickedPlayers.add(nick.toLowerCase());
+                        }
+                        
+                        if (!notifiedScraping.contains(nick)) {
+                            sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
+                            notifiedScraping.add(nick);
+                        }
+                        
+                        new Thread(() -> {
+                            String realName = null;
+                            long millisStarted = System.currentTimeMillis();
+                            try {
+                                realName = tryToResolveNick(nick);
+                            } catch (Exception e) {
+                                // Ignored
+                            } finally {
+                                resolvingNicks.remove(nick); 
                             }
                             
-                            EntityPlayer targetEntity = mc.theWorld.getPlayerEntityByName(nick);
-                            if (targetEntity != null) {
-                                targetEntity.refreshDisplayName();
+                            long time = System.currentTimeMillis() - millisStarted;
+                            final String finalRealName = realName;
+                            
+                            synchronized (CacheManager.class) {
+                                if (finalRealName != null) {
+                                    CacheManager.addToCache(nick, finalRealName);
+                                    NickedManager.updateNicked(nick, finalRealName);
+                                    sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.DARK_GRAY + "> " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + EnumChatFormatting.YELLOW + finalRealName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
+                                } else {
+                                    NickedManager.updateNicked(nick, "Failed");
+                                }
+                                
+                                mc.addScheduledTask(() -> {
+                                    EntityPlayer targetEntity = mc.theWorld.getPlayerEntityByName(nick);
+                                    if (targetEntity != null) {
+                                        targetEntity.refreshDisplayName();
+                                    }
+                                });
                             }
-                        }
-                    }).start();
+                        }).start();
+                    }
                 }
             }
         }
         
         for (String name : currentNickedSet) {
             if (!lastNickedSet.contains(name)) {
-                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.WHITE + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "\u00bb " + EnumChatFormatting.DARK_BLUE + "[" + EnumChatFormatting.BLUE + "N" + EnumChatFormatting.DARK_BLUE + "] " + EnumChatFormatting.AQUA + name);
+                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.WHITE + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "> " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
             }
         }
         lastNickedSet.clear();
@@ -129,53 +149,39 @@ public class AutoDenick {
             Set<String> UUIDS = new HashSet<>();
             for (int nonce : nonceList) {
                 String UUID = getUUIDFromNonce(nonce);
-                if (UUID != null) {
-                    UUIDS.add(UUID);
-                }
+                if (UUID != null) UUIDS.add(UUID);
             }
             
             if (!UUIDS.isEmpty()) {
                 for (String uuid : UUIDS) {
-                    if (isPlayerAbleToNick(uuid)) {
-                        String realName = getNameFromUUID(uuid);
-                        if (realName != null) return realName;
-                    }
+                    String realName = getNameFromUUID(uuid);
+                    if (realName != null) return realName;
                 }
             }
         }
         return null; 
     }
 
-    public static boolean isPlayerAbleToNick(String UUID) {
-        try {
-            String pitPalResponse = fetchJson("https://pitpal.rocks/api/player/" + UUID);
-            if (pitPalResponse != null) {
-                JsonObject json = getJsonObject(pitPalResponse);
-                String nameString = json.has("name") ? json.get("name").getAsString() : (json.has("data") ? json.getAsJsonObject("data").get("name").getAsString() : "");
-                Matcher m = Pattern.compile(EnumChatFormatting.GREEN + "(\\w+)\\s*$").matcher(nameString);
-                if (m.find()) return true;
-            }
-            
-            String pitMartResponse = fetchJson("https://pitmart.net/api/player/" + UUID);
-            if (pitMartResponse != null) {
-                return "SUPERSTAR".equals(getJsonObject(pitMartResponse).getAsJsonObject("player").get("rank").getAsString());
-            }
-        } catch (Exception e) {}
-        return false;
-    }
-
     public static String getNameFromUUID(String UUID) {
         try {
             String cleanUUID = UUID.replace("-", "");
             String mojangResponse = fetchJson("https://sessionserver.mojang.com/session/minecraft/profile/" + cleanUUID);
-            if (mojangResponse != null) return getJsonObject(mojangResponse).get("name").getAsString();
+            if (mojangResponse != null) {
+                JsonObject json = getJsonObject(mojangResponse);
+                if (json.has("name")) return json.get("name").getAsString();
+            }
+        } catch (Exception e) {}
 
-            String pitPalResponse = fetchJson("https://pitpal.rocks/api/player/" + UUID);
-            if (pitPalResponse != null) {
-                JsonObject json = getJsonObject(pitPalResponse);
-                String nameString = json.has("name") ? json.get("name").getAsString() : (json.has("data") ? json.getAsJsonObject("data").get("name").getAsString() : "");
-                Matcher m = Pattern.compile("\\s\u00a7.(\\w+)").matcher(nameString);
-                if (m.find()) return m.group(1);
+        try {
+            String pitMartResponse = fetchJson("https://pitmart.net/api/player/" + UUID);
+            if (pitMartResponse != null) {
+                JsonObject json = getJsonObject(pitMartResponse);
+                if (json.has("success") && json.get("success").getAsBoolean() && json.has("player") && !json.get("player").isJsonNull()) {
+                    JsonObject player = json.getAsJsonObject("player");
+                    if (player.has("username") && !player.get("username").isJsonNull()) {
+                        return player.get("username").getAsString(); 
+                    }
+                }
             }
         } catch (Exception e) {}
         return null;
@@ -222,6 +228,8 @@ public class AutoDenick {
             con.setRequestMethod("GET");
             con.setRequestProperty("Content-Type", "application/json");
             con.setRequestProperty("User-Agent", "Mozilla/5.0"); 
+            con.setConnectTimeout(5000); 
+            con.setReadTimeout(5000);
 
             if (con.getResponseCode() != 200) return null;
 

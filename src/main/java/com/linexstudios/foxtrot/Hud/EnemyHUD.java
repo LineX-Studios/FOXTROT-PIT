@@ -45,7 +45,7 @@ public class EnemyHUD {
 
         FontRenderer fr = mc.fontRendererObj;
         int currentY = hudY;
-        int maxWidth = fr.getStringWidth("Enemy List:");
+        int maxWidth = fr.getStringWidth("Enemy List");
         boolean foundEnemy = false;
         
         Set<String> renderedEnemies = new HashSet<>();
@@ -74,7 +74,6 @@ public class EnemyHUD {
                 displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.RED + name;
             }
 
-            // NEW: &4[&cE&4] formatting
             displayName = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + displayName;
 
             String gear = getShortEnchants(other);
@@ -122,20 +121,26 @@ public class EnemyHUD {
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
         ItemStack pants = player.inventory.armorInventory[1]; 
-        if (pants != null && pants.hasTagCompound()) {
-            NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
-            if (extra != null && extra.hasKey("CustomEnchants")) {
-                NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
-                List<String> shortNames = new ArrayList<>();
-                for (int i = 0; i < enchants.tagCount(); i++) {
-                    String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
-                    if (formatted != null) shortNames.add(formatted);
+        if (pants != null) {
+            if (pants.hasTagCompound()) {
+                NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
+                if (extra != null && extra.hasKey("CustomEnchants")) {
+                    NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
+                    List<String> shortNames = new ArrayList<>();
+                    for (int i = 0; i < enchants.tagCount(); i++) {
+                        String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
+                        if (formatted != null) shortNames.add(formatted);
+                    }
+                    if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
                 }
-                if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
+                if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
             }
-            if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
+            // NEW: Diamond Pants Check
+            if (pants.getItem() == net.minecraft.init.Items.diamond_leggings) {
+                return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "DIAMOND";
+            }
         }
-        return EnumChatFormatting.GRAY + "Shop";
+        return EnumChatFormatting.GRAY + "" + EnumChatFormatting.BOLD + "SHOP";
     }
 
     public static String formatEnchant(String key) {

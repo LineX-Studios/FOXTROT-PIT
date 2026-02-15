@@ -14,21 +14,21 @@ public class NickedManager {
 
     public static void addNicked(String nick, String realName) {
         if (nick == null || realName == null) return;
-        resolvedNicks.put(nick, realName);
+        resolvedNicks.put(nick.toLowerCase(), realName);
     }
 
     public static void updateNicked(String nick, String realName) {
         if (nick == null || realName == null) return;
-        resolvedNicks.put(nick, realName);
+        resolvedNicks.put(nick.toLowerCase(), realName);
     }
 
     public static String getResolvedIGN(String nick) {
         if (nick == null) return null;
-        return resolvedNicks.get(nick);
+        return resolvedNicks.get(nick.toLowerCase());
     }
 
     public static boolean isResolved(String nick) {
-        return resolvedNicks.containsKey(nick);
+        return resolvedNicks.containsKey(nick.toLowerCase());
     }
 
     public static Map<String, String> getAllNicks() {
@@ -54,13 +54,24 @@ public class NickedManager {
         }
 
         // 3. Nicked Check
-        String realName = CacheManager.getFromCache(username);
-        if (realName == null) {
-            realName = getResolvedIGN(username); 
-        }
-        
-        if (realName != null && !realName.equals("Scraping") && !realName.equals("Failed") && !realName.equals("No Nonce")) {
-            display = EnumChatFormatting.DARK_BLUE + "[" + EnumChatFormatting.BLUE + "N" + EnumChatFormatting.DARK_BLUE + "] " + EnumChatFormatting.RESET + display + " \u00a7e(" + realName + ")";
+        if (com.linexstudios.foxtrot.Denick.AutoDenick.isNicked(event.entityPlayer.getUniqueID())) {
+            
+            // Apply the [N] tag since they are nicked
+            if (!display.contains("[N]")) {
+                display = EnumChatFormatting.DARK_BLUE + "[" + EnumChatFormatting.BLUE + "N" + EnumChatFormatting.DARK_BLUE + "] " + EnumChatFormatting.RESET + display;
+            }
+
+            String realName = CacheManager.getFromCache(username);
+            if (realName == null) {
+                realName = getResolvedIGN(username); 
+            }
+            
+            // STRICT CHECK: ONLY append if it's a valid resolved name. NEVER append statuses.
+            if (realName != null && !realName.equals("Scraping") && !realName.equals("Failed") && !realName.equals("No Nonce")) {
+                if (!display.contains("(" + realName + ")")) {
+                    display = display + " " + EnumChatFormatting.YELLOW + "(" + realName + ")";
+                }
+            }
         }
 
         event.displayname = display;

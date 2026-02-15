@@ -45,7 +45,7 @@ public class FriendsHUD {
 
         FontRenderer fr = mc.fontRendererObj;
         int currentY = hudY;
-        int maxWidth = fr.getStringWidth("Friends List:");
+        int maxWidth = fr.getStringWidth("[F] Friendslist");
         boolean foundFriend = false;
         
         Set<String> renderedFriends = new HashSet<>();
@@ -89,7 +89,6 @@ public class FriendsHUD {
 
         if (!foundFriend) {
             if (isEditing) {
-                // FIXED: Re-added the missing quotation mark right here!
                 fr.drawStringWithShadow(EnumChatFormatting.DARK_GREEN + "" + EnumChatFormatting.BOLD + "Friends List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 String placeholder = EnumChatFormatting.DARK_GREEN + "[" + EnumChatFormatting.GREEN + "F" + EnumChatFormatting.DARK_GREEN + "] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
@@ -122,20 +121,26 @@ public class FriendsHUD {
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
         ItemStack pants = player.inventory.armorInventory[1]; 
-        if (pants != null && pants.hasTagCompound()) {
-            NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
-            if (extra != null && extra.hasKey("CustomEnchants")) {
-                NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
-                List<String> shortNames = new ArrayList<>();
-                for (int i = 0; i < enchants.tagCount(); i++) {
-                    String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
-                    if (formatted != null) shortNames.add(formatted);
+        if (pants != null) {
+            if (pants.hasTagCompound()) {
+                NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
+                if (extra != null && extra.hasKey("CustomEnchants")) {
+                    NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
+                    List<String> shortNames = new ArrayList<>();
+                    for (int i = 0; i < enchants.tagCount(); i++) {
+                        String formatted = formatEnchant(enchants.getCompoundTagAt(i).getString("Key"));
+                        if (formatted != null) shortNames.add(formatted);
+                    }
+                    if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
                 }
-                if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
+                if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
             }
-            if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
+            // NEW: Diamond Pants Check
+            if (pants.getItem() == net.minecraft.init.Items.diamond_leggings) {
+                return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "DIAMOND";
+            }
         }
-        return EnumChatFormatting.GRAY + "Shop";
+        return EnumChatFormatting.GRAY + "" + EnumChatFormatting.BOLD + "SHOP";
     }
 
     public static String formatEnchant(String key) {
