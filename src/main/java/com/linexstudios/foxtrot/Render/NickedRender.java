@@ -1,5 +1,7 @@
 package com.linexstudios.foxtrot.Render;
 
+import com.linexstudios.foxtrot.Denick.CacheManager;
+import com.linexstudios.foxtrot.Denick.NickedManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.FontRenderer;
@@ -21,6 +23,9 @@ public class NickedRender {
     public void onRenderNametag(RenderLivingEvent.Specials.Pre event) {
         if (!enabled) return; 
         
+        // Prevent double-rendering! If NameTags module is ON, don't draw this one.
+        if (com.linexstudios.foxtrot.Hud.NameTags.enabled) return;
+        
         if (!(event.entity instanceof EntityOtherPlayerMP)) return;
         EntityOtherPlayerMP player = (EntityOtherPlayerMP) event.entity;
         
@@ -34,10 +39,24 @@ public class NickedRender {
         if (isFriend || isEnemy || isNicked) {
             event.setCanceled(true); 
             
-            // Grabs the name formatted by NickedManager (Which handles the [F] [E] [N] and (RealIGN))
+            // Grabs the base name
             String formattedName = player.getDisplayName().getFormattedText();
+
+            // Fetch the Real IGN
+            String realName = CacheManager.getFromCache(nick);
+            if (realName == null) {
+                realName = NickedManager.getResolvedIGN(nick);
+            }
+
+            // EXACT MATCH: Ignores "Scraping" (no dots), "Failed", and "No Nonce"
+            if (realName != null && !realName.equals("Scraping") && !realName.equals("Scraping...") && !realName.equals("Failed") && !realName.equals("No Nonce")) {
+                if (!formattedName.contains("(" + realName + ")")) {
+                    formattedName = formattedName + " " + EnumChatFormatting.YELLOW + "(" + realName + ")";
+                }
+            }
             
             // STRICT FAIL-SAFE: Forcibly delete status texts so they NEVER render over their head
+            // Targets exactly "(Scraping)" without the dots
             formattedName = formattedName.replace(EnumChatFormatting.YELLOW + " (Scraping)", "");
             formattedName = formattedName.replace(EnumChatFormatting.YELLOW + " (Failed)", "");
             formattedName = formattedName.replace(EnumChatFormatting.YELLOW + " (No Nonce)", "");
