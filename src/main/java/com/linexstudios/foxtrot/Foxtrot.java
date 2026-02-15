@@ -19,7 +19,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import org.lwjgl.input.Keyboard; 
 
-@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.4.9", acceptedMinecraftVersions = "[1.8.9]")
+@Mod(modid = "foxtrot", name = "Foxtrot", version = "0.5.1", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
     
     // The shared KeyBinding for the AutoClicker
@@ -49,6 +49,8 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(NickedHUD.instance);
         MinecraftForge.EVENT_BUS.register(new EnemyESP()); 
         MinecraftForge.EVENT_BUS.register(ChestESP.instance);
+        MinecraftForge.EVENT_BUS.register(FriendsHUD.instance);
+        MinecraftForge.EVENT_BUS.register(new FriendsESP());
         
         // Register Combat modules
         MinecraftForge.EVENT_BUS.register(AutoClicker.instance); // REGISTERED AUTOCLICKER

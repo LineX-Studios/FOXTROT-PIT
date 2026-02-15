@@ -1,12 +1,14 @@
 package com.linexstudios.foxtrot.Handler;
 
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
+import com.linexstudios.foxtrot.Hud.FriendsHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Hud.EditHUDGui;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Render.ChestESP;
+import com.linexstudios.foxtrot.Render.FriendsESP;
 
 import java.io.*;
 import java.util.*;
@@ -14,6 +16,7 @@ import java.util.*;
 public class ConfigHandler {
     private static final File configDir = new File("config/Foxtrot");
     private static final File enemyFile = new File(configDir, "enemies.txt");
+    private static final File friendsFile = new File(configDir, "friends.txt"); // NEW
     private static final File settingsFile = new File(configDir, "settings.txt");
 
     public static void loadConfig() {
@@ -30,6 +33,17 @@ public class ConfigHandler {
                 reader.close();
             }
 
+            // NEW: Load Friends List
+            if (friendsFile.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(friendsFile));
+                String line;
+                FriendsHUD.friendsList.clear();
+                while ((line = reader.readLine()) != null) {
+                    if (!line.trim().isEmpty()) FriendsHUD.friendsList.add(line.trim());
+                }
+                reader.close();
+            }
+
             if (settingsFile.exists()) {
                 Properties props = new Properties();
                 FileInputStream in = new FileInputStream(settingsFile);
@@ -40,6 +54,9 @@ public class ConfigHandler {
                 NickedHUD.hudY = Integer.parseInt(props.getProperty("nickedHudY", "80"));
                 EnemyHUD.hudX = Integer.parseInt(props.getProperty("enemyHudX", "200"));
                 EnemyHUD.hudY = Integer.parseInt(props.getProperty("enemyHudY", "80"));
+                // NEW: Load Friends HUD Position
+                FriendsHUD.hudX = Integer.parseInt(props.getProperty("friendsHudX", "350"));
+                FriendsHUD.hudY = Integer.parseInt(props.getProperty("friendsHudY", "80"));
 
                 EditHUDGui.panelX = Integer.parseInt(props.getProperty("panelX", "-1"));
                 EditHUDGui.panelY = Integer.parseInt(props.getProperty("panelY", "-1"));
@@ -54,7 +71,7 @@ public class ConfigHandler {
 
                 AutoClicker.enabled = Boolean.parseBoolean(props.getProperty("clickerEnabled", "false"));
                 AutoClicker.leftClick = Boolean.parseBoolean(props.getProperty("clickerLeft", "true"));
-                AutoClicker.fastPlaceEnabled = Boolean.parseBoolean(props.getProperty("fastPlace", "false")); // Updated
+                AutoClicker.fastPlaceEnabled = Boolean.parseBoolean(props.getProperty("fastPlace", "false")); 
                 AutoClicker.holdToClick = Boolean.parseBoolean(props.getProperty("clickerHoldToClick", "true"));
                 AutoClicker.inventoryFill = Boolean.parseBoolean(props.getProperty("clickerInvFill", "true"));
                 AutoClicker.breakBlocks = Boolean.parseBoolean(props.getProperty("clickerBreakBlocks", "true"));
@@ -77,6 +94,10 @@ public class ConfigHandler {
                 NameTags.enabled = Boolean.parseBoolean(props.getProperty("nameTagsEnabled", "false"));
                 NameTags.showHealth = Boolean.parseBoolean(props.getProperty("nameTagsShowHealth", "true"));
                 NameTags.showItems = Boolean.parseBoolean(props.getProperty("nameTagsShowItems", "true"));
+
+                // NEW: Load Friends settings
+                FriendsHUD.enabled = Boolean.parseBoolean(props.getProperty("friendsHudEnabled", "true"));
+                FriendsESP.enabled = Boolean.parseBoolean(props.getProperty("friendsEspEnabled", "true"));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -87,11 +108,18 @@ public class ConfigHandler {
         try {
             if (!configDir.exists()) configDir.mkdirs();
 
-            PrintWriter writer = new PrintWriter(new FileWriter(enemyFile));
+            PrintWriter enemyWriter = new PrintWriter(new FileWriter(enemyFile));
             for (String name : EnemyHUD.targetList) {
-                writer.println(name);
+                enemyWriter.println(name);
             }
-            writer.close();
+            enemyWriter.close();
+
+            // NEW: Save Friends List
+            PrintWriter friendsWriter = new PrintWriter(new FileWriter(friendsFile));
+            for (String name : FriendsHUD.friendsList) {
+                friendsWriter.println(name);
+            }
+            friendsWriter.close();
 
             Properties props = new Properties();
             
@@ -99,6 +127,9 @@ public class ConfigHandler {
             props.setProperty("nickedHudY", String.valueOf(NickedHUD.hudY));
             props.setProperty("enemyHudX", String.valueOf(EnemyHUD.hudX));
             props.setProperty("enemyHudY", String.valueOf(EnemyHUD.hudY));
+            // NEW: Save Friends HUD Position
+            props.setProperty("friendsHudX", String.valueOf(FriendsHUD.hudX));
+            props.setProperty("friendsHudY", String.valueOf(FriendsHUD.hudY));
 
             props.setProperty("panelX", String.valueOf(EditHUDGui.panelX));
             props.setProperty("panelY", String.valueOf(EditHUDGui.panelY));
@@ -113,7 +144,7 @@ public class ConfigHandler {
 
             props.setProperty("clickerEnabled", String.valueOf(AutoClicker.enabled));
             props.setProperty("clickerLeft", String.valueOf(AutoClicker.leftClick));
-            props.setProperty("fastPlace", String.valueOf(AutoClicker.fastPlaceEnabled)); // Updated
+            props.setProperty("fastPlace", String.valueOf(AutoClicker.fastPlaceEnabled)); 
             props.setProperty("clickerHoldToClick", String.valueOf(AutoClicker.holdToClick));
             props.setProperty("clickerInvFill", String.valueOf(AutoClicker.inventoryFill));
             props.setProperty("clickerBreakBlocks", String.valueOf(AutoClicker.breakBlocks));
@@ -136,6 +167,10 @@ public class ConfigHandler {
             props.setProperty("nameTagsEnabled", String.valueOf(NameTags.enabled));
             props.setProperty("nameTagsShowHealth", String.valueOf(NameTags.showHealth));
             props.setProperty("nameTagsShowItems", String.valueOf(NameTags.showItems));
+            
+            // NEW: Save Friends settings
+            props.setProperty("friendsHudEnabled", String.valueOf(FriendsHUD.enabled));
+            props.setProperty("friendsEspEnabled", String.valueOf(FriendsESP.enabled));
 
             FileOutputStream out = new FileOutputStream(settingsFile);
             props.store(out, "Foxtrot Settings");

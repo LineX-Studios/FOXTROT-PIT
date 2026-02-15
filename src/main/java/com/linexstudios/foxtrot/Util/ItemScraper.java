@@ -23,7 +23,7 @@ public class ItemScraper {
         public boolean gem = false;
         public int maxLive = 0;
         public int nonce = 0;
-        public String customEnchantsString = ""; // Used for API calls
+        public String customEnchantsString = ""; 
     }
 
     // --- NONCE LOGIC ---
@@ -40,7 +40,10 @@ public class ItemScraper {
 
         for (ItemStack item : items) {
             int nonce = getNonce(item);
-            if (nonce != 0 && nonce != 9 && nonce != 6 && nonce != 5) {
+            
+            // STRICT FILTER: Ignores Nonce 0, 1, 2, 3, 4, 5, 6, 7, 8, and 9 (Rage Pants)
+            // Only accepts valid large-digit nonces (e.g., 680163832)
+            if (nonce > 9) { 
                 nonces.add(nonce);
             }
         }

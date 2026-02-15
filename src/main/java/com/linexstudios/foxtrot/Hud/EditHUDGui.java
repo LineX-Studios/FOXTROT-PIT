@@ -4,6 +4,8 @@ import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Render.ChestESP;
+import com.linexstudios.foxtrot.Render.EnemyESP;
+import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Foxtrot;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
@@ -14,7 +16,7 @@ import org.lwjgl.input.Keyboard;
 import java.io.IOException;
 
 public class EditHUDGui extends GuiScreen {
-    private boolean draggingEnemy = false, draggingNicked = false, draggingPanel = false;
+    private boolean draggingEnemy = false, draggingNicked = false, draggingPanel = false, draggingFriends = false;
     public static int panelX = -1, panelY = -1;
     public static boolean panelCollapsed = false;
     private int lastX, lastY;
@@ -45,10 +47,7 @@ public class EditHUDGui extends GuiScreen {
         String bindName = (Foxtrot.toggleCombatKey != null) ? Keyboard.getKeyName(Foxtrot.toggleCombatKey.getKeyCode()) : "NONE";
         this.buttonList.add(new ModernGUI(42, 0, 0, btnW - 10, 16, " > Bind: " + bindName));
         this.buttonList.add(new ModernGUI(43, 0, 0, btnW - 10, 16, " > Left Click: " + (AutoClicker.leftClick ? on : off)));
-        
-        // FIXED LINE 56: Changed rightClick to fastPlaceEnabled
         this.buttonList.add(new ModernGUI(44, 0, 0, btnW - 10, 16, " > Fast Place: " + (AutoClicker.fastPlaceEnabled ? on : off)));
-        
         this.buttonList.add(new ModernGUI(45, 0, 0, btnW - 10, 16, " > Hold to Click: " + (AutoClicker.holdToClick ? on : off)));
         this.buttonList.add(new ModernGUI(46, 0, 0, btnW - 10, 16, " > Inventory Fill: " + (AutoClicker.inventoryFill ? on : off)));
         this.buttonList.add(new ModernSlider(47, 0, 0, btnW - 10, 16, " > Fill CPS", AutoClicker.inventoryFillCps, 5.0F, 20.0F));
@@ -74,11 +73,16 @@ public class EditHUDGui extends GuiScreen {
         this.buttonList.add(new ModernGUI(62, 0, 0, btnW - 10, 16, " > Show Health: " + (NameTags.showHealth ? on : off)));
         this.buttonList.add(new ModernGUI(63, 0, 0, btnW - 10, 16, " > Show Armorstatus: " + (NameTags.showItems ? on : off)));
         this.buttonList.add(new ModernGUI(64, 0, 0, btnW, 16, "Chest ESP: " + (ChestESP.enabled ? on : off)));
+        this.buttonList.add(new ModernGUI(65, 0, 0, btnW, 16, "Enemy ESP: " + (EnemyESP.enabled ? on : off)));
+        // NEW: Friends ESP Toggle
+        this.buttonList.add(new ModernGUI(66, 0, 0, btnW, 16, "Friends ESP: " + (FriendsESP.enabled ? on : off)));
         
         // --- DENICK & HUD ---
         this.buttonList.add(new ModernGUI(70, 0, 0, btnW, 16, "Auto Denick: " + (AutoDenick.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(80, 0, 0, btnW, 16, "Enemy HUD: " + (EnemyHUD.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(81, 0, 0, btnW, 16, "Nicked HUD: " + (NickedHUD.enabled ? on : off)));
+        // NEW: Friends HUD Toggle
+        this.buttonList.add(new ModernGUI(82, 0, 0, btnW, 16, "Friends HUD: " + (FriendsHUD.enabled ? on : off)));
     }
 
     @Override
@@ -86,6 +90,7 @@ public class EditHUDGui extends GuiScreen {
         this.drawDefaultBackground();
         if (EnemyHUD.enabled) EnemyHUD.instance.render(true);
         if (NickedHUD.enabled) NickedHUD.instance.render(true);
+        if (FriendsHUD.enabled) FriendsHUD.instance.render(true);
 
         Gui.drawRect(panelX, panelY, panelX + 135, panelY + 18, 0xFF121212);
         this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Foxtrot Settings", panelX + 5, panelY + 5, -1);
@@ -101,12 +106,13 @@ public class EditHUDGui extends GuiScreen {
             }
             bgHeight += 12 + (combatExpanded ? (combatCount * 18) + (autoClickerDropdownExpanded ? 28 : 0) : 0) + 4;
             
-            int renderCount = 2; 
+            int renderCount = 4; 
             if (nameTagsDropdownExpanded) renderCount += 3;
             bgHeight += 12 + (renderExpanded ? (renderCount * 18) : 0) + 4;
             
             bgHeight += 12 + (denickExpanded ? (1 * 18) : 0) + 4;
-            bgHeight += 12 + (hudExpanded ? (2 * 18) : 0) + 4;
+            // HUD count increased to 3
+            bgHeight += 12 + (hudExpanded ? (3 * 18) : 0) + 4;
 
             Gui.drawRect(panelX, panelY + 18, panelX + 135, panelY + 18 + bgHeight, 0xDD121212);
 
@@ -204,10 +210,7 @@ public class EditHUDGui extends GuiScreen {
         if (button.id == 40) autoClickerDropdownExpanded = !autoClickerDropdownExpanded;
         if (button.id == 41) AutoClicker.enabled = !AutoClicker.enabled;
         if (button.id == 43) AutoClicker.leftClick = !AutoClicker.leftClick;
-        
-        // FIXED LINE 221: Changed rightClick to fastPlaceEnabled
         if (button.id == 44) AutoClicker.fastPlaceEnabled = !AutoClicker.fastPlaceEnabled;
-        
         if (button.id == 45) AutoClicker.holdToClick = !AutoClicker.holdToClick;
         if (button.id == 46) AutoClicker.inventoryFill = !AutoClicker.inventoryFill;
         if (button.id == 48) AutoClicker.breakBlocks = !AutoClicker.breakBlocks;
@@ -221,11 +224,14 @@ public class EditHUDGui extends GuiScreen {
         if (button.id == 62) NameTags.showHealth = !NameTags.showHealth;
         if (button.id == 63) NameTags.showItems = !NameTags.showItems;
         if (button.id == 64) ChestESP.enabled = !ChestESP.enabled;
+        if (button.id == 65) EnemyESP.enabled = !EnemyESP.enabled;
+        if (button.id == 66) FriendsESP.enabled = !FriendsESP.enabled; // NEW Toggle
         
         // Denick & HUD
         if (button.id == 70) AutoDenick.enabled = !AutoDenick.enabled;
         if (button.id == 80) EnemyHUD.enabled = !EnemyHUD.enabled;
         if (button.id == 81) NickedHUD.enabled = !NickedHUD.enabled;
+        if (button.id == 82) FriendsHUD.enabled = !FriendsHUD.enabled; // NEW Toggle
         
         ConfigHandler.saveConfig();
         this.initGui();
@@ -268,6 +274,8 @@ public class EditHUDGui extends GuiScreen {
                 draggingEnemy = true; lastX = mouseX; lastY = mouseY;
             } else if (NickedHUD.enabled && NickedHUD.instance.isHovered(mouseX, mouseY)) {
                 draggingNicked = true; lastX = mouseX; lastY = mouseY;
+            } else if (FriendsHUD.enabled && FriendsHUD.instance.isHovered(mouseX, mouseY)) { // NEW Drag Check
+                draggingFriends = true; lastX = mouseX; lastY = mouseY;
             }
         }
     }
@@ -278,12 +286,13 @@ public class EditHUDGui extends GuiScreen {
         if (draggingPanel) { panelX += (mouseX - lastX); panelY += (mouseY - lastY); lastX = mouseX; lastY = mouseY; }
         else if (draggingEnemy) { EnemyHUD.hudX += (mouseX - lastX); EnemyHUD.hudY += (mouseY - lastY); lastX = mouseX; lastY = mouseY; }
         else if (draggingNicked) { NickedHUD.hudX += (mouseX - lastX); NickedHUD.hudY += (mouseY - lastY); lastX = mouseX; lastY = mouseY; }
+        else if (draggingFriends) { FriendsHUD.hudX += (mouseX - lastX); FriendsHUD.hudY += (mouseY - lastY); lastX = mouseX; lastY = mouseY; } // NEW Drag Move
     }
 
     @Override
     protected void mouseReleased(int mouseX, int mouseY, int state) {
         super.mouseReleased(mouseX, mouseY, state);
-        draggingEnemy = false; draggingNicked = false; draggingPanel = false;
+        draggingEnemy = false; draggingNicked = false; draggingPanel = false; draggingFriends = false; // Reset Friends drag
         
         for (GuiButton btn : this.buttonList) {
             if (btn instanceof ModernSlider) {
