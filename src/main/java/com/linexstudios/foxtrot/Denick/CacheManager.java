@@ -41,6 +41,21 @@ public class CacheManager {
         saveCache();
     }
 
+    /**
+     * Removes a player from the denicked JSON cache.
+     * This is used by the /fx denickentry clear command.
+     */
+    public static void removeFromCache(String nick) {
+        if (nick == null || cache == null) return;
+
+        // Remove the entry (check for both exact and lowercase to be safe)
+        cache.remove(nick);
+        cache.remove(nick.toLowerCase());
+
+        // Save the updated map back to denicked.json
+        saveCache();
+    }
+
     public static boolean nickInCache(String nick) {
         return cache.containsKey(nick);
     }

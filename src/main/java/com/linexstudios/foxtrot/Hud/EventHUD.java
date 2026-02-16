@@ -110,7 +110,7 @@ public class EventHUD {
         FontRenderer fr = mc.fontRendererObj;
         int currentY = hudY;
 
-        String header = EnumChatFormatting.YELLOW + "" + EnumChatFormatting.BOLD + "Upcoming Events:";
+        String header = EnumChatFormatting.GOLD + "" + EnumChatFormatting.BOLD + "Upcoming Events:";
         fr.drawStringWithShadow(header, hudX, currentY, 0xFFFFFF);
         int maxWidth = fr.getStringWidth(header);
         currentY += fr.FONT_HEIGHT + 2;

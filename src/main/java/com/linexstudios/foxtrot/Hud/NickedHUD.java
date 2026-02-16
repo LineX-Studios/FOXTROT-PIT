@@ -2,7 +2,7 @@ package com.linexstudios.foxtrot.Hud;
 
 import com.linexstudios.foxtrot.Denick.CacheManager;
 import com.linexstudios.foxtrot.Denick.NickedManager;
-import com.linexstudios.foxtrot.Util.SpawnRegions; // IMPORTED NEW TRACKER
+import com.linexstudios.foxtrot.Util.SpawnRegions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -109,8 +109,6 @@ public class NickedHUD {
 
                 String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
 
-                // --- NEW: Using Centralized Spawn Tracker ---
-                // If 'other' is null, it means the nicked player is in the tab list but too far away to physically render yet.
                 String dist = other != null ? SpawnRegions.getLocationFormat(mc.thePlayer, other) : EnumChatFormatting.GRAY + "Far";
 
                 String fullLine = finalDisplayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
@@ -126,7 +124,7 @@ public class NickedHUD {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
+                String placeholder = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -156,8 +154,6 @@ public class NickedHUD {
     public boolean isHovered(int mouseX, int mouseY) {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
-
-    // THE OLD getDistanceOrSpawn() HAS BEEN COMPLETELY REMOVED!
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
         ItemStack pants = player.inventory.armorInventory[1];

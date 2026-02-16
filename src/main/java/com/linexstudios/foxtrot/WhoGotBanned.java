@@ -14,88 +14,92 @@ import java.util.Map;
 import java.util.Set;
 
 public class WhoGotBanned {
+    public static final WhoGotBanned instance = new WhoGotBanned();
     private final Minecraft mc = Minecraft.getMinecraft();
-    public static boolean enabled = true;
 
-    // Tracks players currently in the Tab list
-    private Set<String> previousPlayers = new HashSet<>();
-    
-    // Caches players who recently left and the exact millisecond they vanished
-    private final Map<String, Long> recentLeaves = new HashMap<>();
-    
-    // Timer flag in case the chat message arrives BEFORE the player is removed
-    private long lastBanMessageTime = 0;
+    // Keeps track of the lobby from the previous tick
+    private final Set<String> previousPlayers = new HashSet<>();
+
+    // Memory bank of people who left in the last 5 seconds (Name -> Timestamp)
+    private final Map<String, Long> recentlyLeft = new HashMap<>();
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
-        if (!enabled || mc.theWorld == null || mc.getNetHandler() == null || event.phase != TickEvent.Phase.END) return;
+        if (event.phase != TickEvent.Phase.END || mc.theWorld == null || mc.getNetHandler() == null) return;
 
-        // 1. Get the current players in the Tab list
         Set<String> currentPlayers = new HashSet<>();
-        for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
-            if (info != null && info.getGameProfile() != null) {
-                currentPlayers.add(info.getGameProfile().getName());
-            }
-        }
 
-        // 2. Compare with the previous tick to see who just vanished
-        if (!previousPlayers.isEmpty()) {
-            for (String prev : previousPlayers) {
-                if (!currentPlayers.contains(prev)) {
-                    long now = System.currentTimeMillis();
-                    
-                    // Did a ban message happen in the last 2 seconds? (Message arrived FIRST)
-                    if (now - lastBanMessageTime < 2000) {
-                        announceBan(prev);
-                        lastBanMessageTime = 0; // Reset to prevent double announcements
-                    } else {
-                        // Otherwise, just log their departure normally
-                        recentLeaves.put(prev, now);
-                    }
+        // Grab everyone currently in the Tab List
+        for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
+            if (info != null && info.getGameProfile() != null && info.getGameProfile().getName() != null) {
+                String name = info.getGameProfile().getName();
+                // Filter out NPCs/Holograms (they usually start with color codes in the tab logic)
+                if (!name.startsWith("§")) {
+                    currentPlayers.add(name);
                 }
             }
         }
-        previousPlayers = currentPlayers;
 
-        // 3. Memory management: Clean up players who left more than 3 seconds ago
-        recentLeaves.entrySet().removeIf(entry -> System.currentTimeMillis() - entry.getValue() > 3000);
+        // If previousPlayers is empty, it means we just joined the lobby. Just sync and return to avoid false positives.
+        if (previousPlayers.isEmpty()) {
+            previousPlayers.addAll(currentPlayers);
+            return;
+        }
+
+        // Compare: Who was here a tick ago, but is gone now?
+        for (String prev : previousPlayers) {
+            if (!currentPlayers.contains(prev)) {
+                // They vanished! Log their name and the exact millisecond they disappeared.
+                recentlyLeft.put(prev, System.currentTimeMillis());
+            }
+        }
+
+        // Update the previous list for the next tick calculation
+        previousPlayers.clear();
+        previousPlayers.addAll(currentPlayers);
+
+        // Cleanup: Delete anyone from the memory bank who left more than 5 seconds ago
+        long now = System.currentTimeMillis();
+        recentlyLeft.entrySet().removeIf(entry -> now - entry.getValue() > 5000);
     }
 
     @SubscribeEvent
-    public void onChatMessage(ClientChatReceivedEvent event) {
-        if (!enabled || mc.theWorld == null) return;
+    public void onChat(ClientChatReceivedEvent event) {
+        if (event.type == 2) return; // Ignore action bar messages (like health or mana)
 
-        // Extract the raw text to ignore color formatting changes
-        String message = event.message.getUnformattedText().trim();
+        // Strip the formatting so we can read the raw text easily
+        String unformatted = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
 
-        // Detect the official Hypixel removal messages
-        if (message.equals("A player has been removed from your game.") || 
-            message.equals("A player has been removed from your lobby for hacking or abuse.")) {
-            
-            long now = System.currentTimeMillis();
-            boolean found = false;
-            
-            // Did someone leave the Tab list right before this message? (Removal happened FIRST)
-            for (Map.Entry<String, Long> entry : recentLeaves.entrySet()) {
-                if (now - entry.getValue() <= 2000) {
-                    announceBan(entry.getKey());
-                    found = true;
+        // Check for Hypixel's exact Watchdog ban messages
+        if (unformatted.contains("A player has been removed from your game") ||
+                unformatted.contains("A player has been removed from your lobby")) {
+
+            // The ban message just hit! Let's find the person who vanished closest to this exact millisecond.
+            String bannedPlayer = "Unknown (Too Fast)";
+            long closestTime = Long.MAX_VALUE;
+
+            for (Map.Entry<String, Long> entry : recentlyLeft.entrySet()) {
+                long timeDiff = System.currentTimeMillis() - entry.getValue();
+
+                if (timeDiff < closestTime) {
+                    closestTime = timeDiff;
+                    bannedPlayer = entry.getKey();
                 }
             }
-            
-            if (found) {
-                // Clear the cache so we don't accidentally double-announce
-                recentLeaves.clear();
-            } else {
-                // Set the flag so the Tick event can catch them if they vanish in the next 2 seconds
-                lastBanMessageTime = now;
-            }
-        }
-    }
 
-    private void announceBan(String playerName) {
-        String prefix = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "PIT" + EnumChatFormatting.GRAY + "] ";
-        String alert = EnumChatFormatting.GREEN + playerName + " has been banned!";
-        mc.thePlayer.addChatMessage(new ChatComponentText(prefix + alert));
+            // --- TRIGGER THE CHAT ALERT ---
+            if (mc.thePlayer != null) {
+                mc.thePlayer.addChatMessage(new ChatComponentText(
+                        EnumChatFormatting.GRAY + "[" +
+                                EnumChatFormatting.RED + "FOXTROT" +
+                                EnumChatFormatting.GRAY + "] " +
+                                EnumChatFormatting.RED + bannedPlayer + " " +
+                                EnumChatFormatting.GOLD + "Has been banned!"
+                ));
+            }
+
+            // Clear the map so we don't accidentally flag the same person twice if the server lags
+            recentlyLeft.clear();
+        }
     }
 }

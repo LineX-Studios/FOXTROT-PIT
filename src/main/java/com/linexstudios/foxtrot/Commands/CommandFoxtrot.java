@@ -9,6 +9,7 @@ import com.linexstudios.foxtrot.Hud.FriendsHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.HUDController;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
+import com.linexstudios.foxtrot.Denick.CacheManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -33,7 +34,7 @@ public class CommandFoxtrot extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/foxtrot <friend|add|remove|list|alerts|toggle|clear|denick|debug|esp|autodenick|hud|nickhud|enemyhud>";
+        return "/foxtrot <friend|add|remove|list|alerts|toggle|clear|denick|debug|esp|autodenick|hud|nickhud|enemyhud|denickentry>";
     }
 
     @Override
@@ -53,6 +54,7 @@ public class CommandFoxtrot extends CommandBase {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot toggle " + EnumChatFormatting.GRAY + "- Toggle all HUDs"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot esp " + EnumChatFormatting.GRAY + "- Toggle ESP"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot denick [name] " + EnumChatFormatting.GRAY + "- Scrape Player"));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot denickentry clear [name] " + EnumChatFormatting.GRAY + "- Clear cached nick"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot autodenick " + EnumChatFormatting.GRAY + "- Toggle automatic denicking"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot hud " + EnumChatFormatting.GRAY + "- Open HUD Editor"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot nickhud " + EnumChatFormatting.GRAY + "- Toggle NickedHUD"));
@@ -65,9 +67,20 @@ public class CommandFoxtrot extends CommandBase {
         ConfigHandler.logDebug("User executed: /fx " + String.join(" ", args));
 
         switch (action) {
+            case "denickentry":
+                if (args.length >= 3 && args[1].equalsIgnoreCase("clear")) {
+                    String target = args[2];
+                    NickedHUD.nickedPlayers.removeIf(n -> n.equalsIgnoreCase(target));
+                    CacheManager.removeFromCache(target);
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Foxtrot] " + EnumChatFormatting.GREEN + "Cleared " + EnumChatFormatting.WHITE + target + EnumChatFormatting.GREEN + " from denick memory!"));
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Usage: /fx denickentry clear [name]"));
+                }
+                break;
+
             case "debug":
                 EnemyHUD.debugMode = !EnemyHUD.debugMode;
-                com.linexstudios.foxtrot.Combat.AutoClicker.debugMode = EnemyHUD.debugMode; 
+                com.linexstudios.foxtrot.Combat.AutoClicker.debugMode = EnemyHUD.debugMode;
                 ConfigHandler.saveConfig();
                 sendMessage(sender, EnumChatFormatting.YELLOW + "Foxtrot Global Debug: " + (EnemyHUD.debugMode ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF"));
                 break;
@@ -91,7 +104,6 @@ public class CommandFoxtrot extends CommandBase {
                 sendMessage(sender, EnumChatFormatting.YELLOW + "Enemy ESP: " + (EnemyESP.enabled ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF"));
                 break;
 
-            // --- FRIENDS COMMAND ---
             case "friend":
             case "f":
                 if (args.length < 2) {
@@ -237,33 +249,37 @@ public class CommandFoxtrot extends CommandBase {
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                    "friend", "f", "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud");
+                    "friend", "f", "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud", "denickentry");
         }
-        
-        // Tab complete /fx friend <subcommand>
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("denickentry")) {
+            return getListOfStringsMatchingLastWord(args, "clear");
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("denickentry") && args[1].equalsIgnoreCase("clear")) {
+            return getListOfStringsMatchingLastWord(args, CacheManager.getCache().keySet());
+        }
+
         if (args.length == 2 && (args[0].equalsIgnoreCase("friend") || args[0].equalsIgnoreCase("f"))) {
             return getListOfStringsMatchingLastWord(args, "add", "remove", "list");
         }
 
-        // Tab complete Players for /fx add, /fx denick, and /fx friend add
-        if ((args.length == 2 && (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("denick"))) || 
-            (args.length == 3 && (args[0].equalsIgnoreCase("friend") || args[0].equalsIgnoreCase("f")) && args[1].equalsIgnoreCase("add"))) {
+        if ((args.length == 2 && (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("denick"))) ||
+                (args.length == 3 && (args[0].equalsIgnoreCase("friend") || args[0].equalsIgnoreCase("f")) && args[1].equalsIgnoreCase("add"))) {
             return getListOfStringsMatchingLastWord(args,
                     Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap().stream()
                             .map(info -> info.getGameProfile().getName())
                             .collect(Collectors.toList()));
         }
-        
-        // Tab complete Enemy List for /fx remove
+
         if (args.length == 2 && args[0].equalsIgnoreCase("remove")) {
             return getListOfStringsMatchingLastWord(args, EnemyHUD.targetList);
         }
-        
-        // Tab complete Friends List for /fx friend remove
+
         if (args.length == 3 && (args[0].equalsIgnoreCase("friend") || args[0].equalsIgnoreCase("f")) && args[1].equalsIgnoreCase("remove")) {
             return getListOfStringsMatchingLastWord(args, FriendsHUD.friendsList);
         }
-        
+
         return null;
     }
 

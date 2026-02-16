@@ -94,7 +94,7 @@ public class EnemyHUD {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
+                String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));

@@ -50,9 +50,8 @@ public class RegHUD {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
 
-            // 1. Check if the player has Regularity pants and get their formatted enchants
             String enchantsDisplay = getRegEnchants(other);
-            if (enchantsDisplay == null) continue; // They don't have Regularity, skip them!
+            if (enchantsDisplay == null) continue;
 
             String name = other.getName();
             if (renderedPlayers.contains(name.toLowerCase())) continue;
@@ -64,14 +63,11 @@ public class RegHUD {
                 foundReg = true;
             }
 
-            // 2. Format Display Name
             String displayName = other.getDisplayName().getFormattedText();
             displayName = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "R" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + displayName;
 
-            // 3. Get exact location / distance
             String dist = SpawnRegions.getLocationFormat(mc.thePlayer, other);
 
-            // 4. Combine and Draw
             String fullLine = displayName + EnumChatFormatting.GRAY + " - " + enchantsDisplay + EnumChatFormatting.GRAY + " - " + dist;
             fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
 
@@ -80,12 +76,11 @@ public class RegHUD {
             currentY += fr.FONT_HEIGHT;
         }
 
-        // PLACEHOLDER text for when you are moving the HUD in the GUI
         if (!foundReg) {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.DARK_RED + "" + EnumChatFormatting.BOLD + "Regularity Players:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "R" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[120] iTzRegPlayer" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.DARK_RED + "Reg" + EnumChatFormatting.WHITE + "/" + EnumChatFormatting.GOLD + "Abs" + EnumChatFormatting.WHITE + "/" + EnumChatFormatting.DARK_PURPLE + "GTGF" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
+                String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "R" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.DARK_RED + "Reg" + EnumChatFormatting.WHITE + "/" + EnumChatFormatting.WHITE + "Mirror" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -105,12 +100,8 @@ public class RegHUD {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
-    /**
-     * Scans pants for the Regularity enchant.
-     * Enforces that Regularity is ALWAYS first, and only whitelisted side-enchants are shown.
-     */
     private String getRegEnchants(EntityOtherPlayerMP player) {
-        ItemStack pants = player.inventory.armorInventory[1]; // Index 1 is leggings
+        ItemStack pants = player.inventory.armorInventory[1];
         if (pants == null || !pants.hasTagCompound()) return null;
 
         NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
@@ -122,10 +113,10 @@ public class RegHUD {
         List<String> sideEnchants = new ArrayList<>();
 
         for (int i = 0; i < enchants.tagCount(); i++) {
-            String key = enchants.getCompoundTagAt(i).getString("Key");
+            // APPLYING THE FIX: trim() and toLowerCase() to stop Hypixel NBT from breaking the match
+            String key = enchants.getCompoundTagAt(i).getString("Key").trim();
             String formatted = formatEnchant(key);
 
-            // If the enchant is on our final list, it will not be null
             if (formatted != null) {
                 if (key.equalsIgnoreCase("regularity")) {
                     hasRegularity = true;
@@ -136,29 +127,27 @@ public class RegHUD {
             }
         }
 
-        // Abort if they don't have regularity at all
         if (!hasRegularity) return null;
 
-        // Combine the lists: Force 'Reg' to be the absolute first item
         List<String> finalEnchants = new ArrayList<>();
         finalEnchants.add(regString);
-        finalEnchants.addAll(sideEnchants); // Adds the 1 or 2 other enchants after Reg
+        finalEnchants.addAll(sideEnchants);
 
-        // Joins them together like: Reg/Abs/GTGF
         return String.join(EnumChatFormatting.WHITE + "/", finalEnchants);
     }
 
-    /**
-     * The FINAL LIST of strictly whitelisted Regularity side-enchants.
-     * Anything not on this list is completely ignored and hidden.
-     */
-    public static String formatEnchant(String key) {
-        if (key == null) return null;
+    public static String formatEnchant(String rawKey) {
+        if (rawKey == null) return null;
 
-        switch (key.toLowerCase()) {
+        // FIX: Force key to lowercase and trim spaces so cases like "Mirror " work
+        String key = rawKey.trim().toLowerCase();
+
+        switch (key) {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
             case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
-            case "mirror": return EnumChatFormatting.WHITE + "Mirror";
+            case "mirror":
+            case "reflection":
+                return EnumChatFormatting.WHITE + "Mirror";
             case "critically_funky": return EnumChatFormatting.DARK_AQUA + "Crit Funky";
             case "solitude": return EnumChatFormatting.RED + "Soli";
             case "protection": return EnumChatFormatting.BLUE + "Prot";
@@ -170,14 +159,14 @@ public class RegHUD {
             case "escape_pod": return EnumChatFormatting.DARK_RED + "Pods";
             case "phoenix": return EnumChatFormatting.GOLD + "Phoenix";
             case "retro_gravity_microcosm": return EnumChatFormatting.GOLD + "RGM";
-            case "singularity": return EnumChatFormatting.RED + "singularity";
+            case "singularity": return EnumChatFormatting.GRAY + "Sing";
             case "gomraws_heart": return EnumChatFormatting.RED + "Gomraw";
-            case "last_stand": return EnumChatFormatting.RED + "Last Stand";
+            case "last_stand": return EnumChatFormatting.AQUA + "Stand";
             case "gotta_go_fast": return EnumChatFormatting.DARK_PURPLE + "GTGF";
             case "diamond_allergy": return EnumChatFormatting.AQUA + "Diamond Allergy";
             case "david_and_goliath": return EnumChatFormatting.YELLOW + "D&G";
             case "heigh_ho": return EnumChatFormatting.RED + "HeighHo";
-            default: return null; // CRITICAL: This hides ANY enchant not explicitly on this list!
+            default: return null;
         }
     }
 }
