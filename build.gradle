@@ -23,7 +23,8 @@ compileJava {
     targetCompatibility = '1.8'
 }
 
-version = "0.5.6"
+// Change your version here, and it will update everywhere automatically!
+version = "0.5.7"
 group = "com.linexstudios.foxtrot"
 archivesBaseName = "Foxtrot"
 
@@ -31,6 +32,9 @@ minecraft {
     version = "1.8.9-11.15.1.2318-1.8.9"
     runDir = "run"
     mappings = "stable_20"
+
+    // NEW: Tells ForgeGradle to replace this exact string in all Java files during build
+    replace '${version}', project.version
 }
 
 repositories {
@@ -44,12 +48,12 @@ dependencies {
 processResources {
     inputs.property "version", project.version
     inputs.property "mcversion", project.minecraft.version
-    
+
     from(sourceSets.main.resources.srcDirs) {
         include 'mcmod.info'
         expand 'version':project.version, 'mcversion':project.minecraft.version
     }
-    
+
     from(sourceSets.main.resources.srcDirs) {
         exclude 'mcmod.info'
     }
@@ -57,7 +61,7 @@ processResources {
 
 shadowJar {
     classifier = ""
-    
+
     // Updated relocation to your own package path
     relocate "org.json", "com.linexstudios.foxtrot.repack.org.json"
 }

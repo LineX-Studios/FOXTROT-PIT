@@ -2,6 +2,7 @@ package com.linexstudios.foxtrot.Hud;
 
 import com.linexstudios.foxtrot.Denick.CacheManager;
 import com.linexstudios.foxtrot.Denick.NickedManager;
+import com.linexstudios.foxtrot.Util.SpawnRegions; // IMPORTED NEW TRACKER
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -29,10 +30,10 @@ public class NickedHUD {
     public static boolean enabled = true;
     public static int hudX = 10;
     public static int hudY = 80;
-    
+
     public int width = 0;
     public int height = 0;
-    
+
     public static List<String> nickedPlayers = new ArrayList<>();
 
     private static final Pattern PREFIX_STRIP_PATTERN = Pattern.compile("^\\[.*?\\]\\s+");
@@ -51,19 +52,19 @@ public class NickedHUD {
         int currentY = hudY;
         int maxWidth = fr.getStringWidth("Nicked Players");
         boolean foundNicked = false;
-        
+
         Set<String> renderedNicks = new HashSet<>();
 
         NetHandlerPlayClient netHandler = mc.getNetHandler();
         if (netHandler != null) {
             for (NetworkPlayerInfo info : netHandler.getPlayerInfoMap()) {
                 if (info == null || info.getGameProfile() == null || info.getGameProfile().getId() == null) continue;
-                if (info.getGameProfile().getId().version() != 1) continue; 
-                
+                if (info.getGameProfile().getId().version() != 1) continue;
+
                 String nickedName = info.getGameProfile().getName();
                 if (nickedName.startsWith("§")) continue;
-                
-                if (renderedNicks.contains(nickedName.toLowerCase())) continue; 
+
+                if (renderedNicks.contains(nickedName.toLowerCase())) continue;
                 renderedNicks.add(nickedName.toLowerCase());
 
                 String realIGN = CacheManager.getFromCache(nickedName);
@@ -107,11 +108,14 @@ public class NickedHUD {
                 String finalDisplayName = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.RESET + nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
 
                 String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
-                String dist = other != null ? getDistanceOrSpawn(other) : EnumChatFormatting.GRAY + "Far";
+
+                // --- NEW: Using Centralized Spawn Tracker ---
+                // If 'other' is null, it means the nicked player is in the tab list but too far away to physically render yet.
+                String dist = other != null ? SpawnRegions.getLocationFormat(mc.thePlayer, other) : EnumChatFormatting.GRAY + "Far";
 
                 String fullLine = finalDisplayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
                 fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
-                
+
                 int lineWidth = fr.getStringWidth(fullLine);
                 if (lineWidth > maxWidth) maxWidth = lineWidth;
                 currentY += fr.FONT_HEIGHT;
@@ -153,16 +157,10 @@ public class NickedHUD {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
-    private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player.posY > 113.0D) {
-            return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-        }
-        float dist = player.getDistanceToEntity(mc.thePlayer);
-        return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
-    }
+    // THE OLD getDistanceOrSpawn() HAS BEEN COMPLETELY REMOVED!
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
-        ItemStack pants = player.inventory.armorInventory[1]; 
+        ItemStack pants = player.inventory.armorInventory[1];
         if (pants != null) {
             if (pants.hasTagCompound()) {
                 NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
@@ -177,7 +175,6 @@ public class NickedHUD {
                 }
                 if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
             }
-            // NEW: Diamond Pants Check
             if (pants.getItem() == net.minecraft.init.Items.diamond_leggings) {
                 return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "DIAMOND";
             }
@@ -191,7 +188,7 @@ public class NickedHUD {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
             case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
             case "mirror": return EnumChatFormatting.WHITE + "Mirror";
-            case "critically_funky": return EnumChatFormatting.DARK_BLUE + "Crit Funky";
+            case "critically_funky": return EnumChatFormatting.DARK_AQUA + "Crit Funky";
             case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
             case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
             case "solitude": return EnumChatFormatting.RED + "Soli";

@@ -1,5 +1,6 @@
 package com.linexstudios.foxtrot.Hud;
 
+import com.linexstudios.foxtrot.Util.SpawnRegions; // IMPORTED THE NEW TRACKER
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -27,7 +28,7 @@ public class FriendsHUD {
 
     public static int hudX = 350;
     public static int hudY = 80;
-    
+
     public int width = 0;
     public int height = 0;
 
@@ -36,7 +37,7 @@ public class FriendsHUD {
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
-        if (mc.currentScreen instanceof EditHUDGui) return; 
+        if (mc.currentScreen instanceof EditHUDGui) return;
         render(false);
     }
 
@@ -45,22 +46,22 @@ public class FriendsHUD {
 
         FontRenderer fr = mc.fontRendererObj;
         int currentY = hudY;
-        int maxWidth = fr.getStringWidth("[F] Friendslist");
+        int maxWidth = fr.getStringWidth("Friends List");
         boolean foundFriend = false;
-        
+
         Set<String> renderedFriends = new HashSet<>();
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
             String name = other.getName();
-            
+
             if (!isFriend(name)) continue;
-            if (renderedFriends.contains(name.toLowerCase())) continue; 
+            if (renderedFriends.contains(name.toLowerCase())) continue;
             renderedFriends.add(name.toLowerCase());
 
             if (!foundFriend) {
-                fr.drawStringWithShadow(EnumChatFormatting.DARK_GREEN + "" + EnumChatFormatting.BOLD + "Friends List:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "Friends List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 foundFriend = true;
             }
@@ -77,7 +78,9 @@ public class FriendsHUD {
             displayName = EnumChatFormatting.DARK_GREEN + "[" + EnumChatFormatting.GREEN + "F" + EnumChatFormatting.DARK_GREEN + "] " + EnumChatFormatting.RESET + displayName;
 
             String gear = getShortEnchants(other);
-            String dist = getDistanceOrSpawn(other);
+
+            // --- NEW: Using Centralized Spawn Tracker ---
+            String dist = SpawnRegions.getLocationFormat(mc.thePlayer, other);
 
             String fullLine = displayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
             fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
@@ -89,7 +92,7 @@ public class FriendsHUD {
 
         if (!foundFriend) {
             if (isEditing) {
-                fr.drawStringWithShadow(EnumChatFormatting.DARK_GREEN + "" + EnumChatFormatting.BOLD + "Friends List:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "Friends List:", hudX, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 String placeholder = EnumChatFormatting.DARK_GREEN + "[" + EnumChatFormatting.GREEN + "F" + EnumChatFormatting.DARK_GREEN + "] " + EnumChatFormatting.GRAY + "[96] Placeholder" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
@@ -97,7 +100,7 @@ public class FriendsHUD {
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
             } else {
                 this.width = 0; this.height = 0;
-                return; 
+                return;
             }
         }
 
@@ -111,16 +114,10 @@ public class FriendsHUD {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
-    private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player.posY > 113.0D) {
-            return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-        }
-        float dist = player.getDistanceToEntity(mc.thePlayer);
-        return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
-    }
+    // THE OLD getDistanceOrSpawn() HAS BEEN COMPLETELY REMOVED!
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
-        ItemStack pants = player.inventory.armorInventory[1]; 
+        ItemStack pants = player.inventory.armorInventory[1];
         if (pants != null) {
             if (pants.hasTagCompound()) {
                 NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
@@ -135,7 +132,6 @@ public class FriendsHUD {
                 }
                 if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
             }
-            // NEW: Diamond Pants Check
             if (pants.getItem() == net.minecraft.init.Items.diamond_leggings) {
                 return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "DIAMOND";
             }
@@ -149,7 +145,7 @@ public class FriendsHUD {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
             case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
             case "mirror": return EnumChatFormatting.WHITE + "Mirror";
-            case "critically_funky": return EnumChatFormatting.DARK_BLUE + "Crit Funky";
+            case "critically_funky": return EnumChatFormatting.DARK_AQUA + "Crit Funky";
             case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
             case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
             case "solitude": return EnumChatFormatting.RED + "Soli";

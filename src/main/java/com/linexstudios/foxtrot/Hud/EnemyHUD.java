@@ -1,5 +1,6 @@
 package com.linexstudios.foxtrot.Hud;
 
+import com.linexstudios.foxtrot.Util.SpawnRegions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -27,7 +28,7 @@ public class EnemyHUD {
 
     public static int hudX = 200;
     public static int hudY = 80;
-    
+
     public int width = 0;
     public int height = 0;
 
@@ -36,7 +37,7 @@ public class EnemyHUD {
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
-        if (mc.currentScreen instanceof EditHUDGui) return; 
+        if (mc.currentScreen instanceof EditHUDGui) return;
         render(false);
     }
 
@@ -47,16 +48,16 @@ public class EnemyHUD {
         int currentY = hudY;
         int maxWidth = fr.getStringWidth("Enemy List");
         boolean foundEnemy = false;
-        
+
         Set<String> renderedEnemies = new HashSet<>();
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
             String name = other.getName();
-            
+
             if (!isTarget(name)) continue;
-            if (renderedEnemies.contains(name.toLowerCase())) continue; 
+            if (renderedEnemies.contains(name.toLowerCase())) continue;
             renderedEnemies.add(name.toLowerCase());
 
             if (!foundEnemy) {
@@ -77,7 +78,9 @@ public class EnemyHUD {
             displayName = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + displayName;
 
             String gear = getShortEnchants(other);
-            String dist = getDistanceOrSpawn(other);
+
+            // --- NEW: Using Centralized Spawn Tracker ---
+            String dist = SpawnRegions.getLocationFormat(mc.thePlayer, other);
 
             String fullLine = displayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
             fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
@@ -97,7 +100,7 @@ public class EnemyHUD {
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
             } else {
                 this.width = 0; this.height = 0;
-                return; 
+                return;
             }
         }
 
@@ -111,16 +114,10 @@ public class EnemyHUD {
         return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
-    private String getDistanceOrSpawn(EntityOtherPlayerMP player) {
-        if (player.posY > 113.0D) {
-            return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-        }
-        float dist = player.getDistanceToEntity(mc.thePlayer);
-        return EnumChatFormatting.RED.toString() + String.format("%.0f", dist) + "m";
-    }
+    // THE OLD getDistanceOrSpawn() HAS BEEN COMPLETELY REMOVED!
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
-        ItemStack pants = player.inventory.armorInventory[1]; 
+        ItemStack pants = player.inventory.armorInventory[1];
         if (pants != null) {
             if (pants.hasTagCompound()) {
                 NBTTagCompound extra = pants.getTagCompound().getCompoundTag("ExtraAttributes");
@@ -135,7 +132,6 @@ public class EnemyHUD {
                 }
                 if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
             }
-            // NEW: Diamond Pants Check
             if (pants.getItem() == net.minecraft.init.Items.diamond_leggings) {
                 return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "DIAMOND";
             }
@@ -149,7 +145,7 @@ public class EnemyHUD {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
             case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
             case "mirror": return EnumChatFormatting.WHITE + "Mirror";
-            case "critically_funky": return EnumChatFormatting.DARK_BLUE + "Crit Funky";
+            case "critically_funky": return EnumChatFormatting.DARK_AQUA + "Crit Funky";
             case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
             case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
             case "solitude": return EnumChatFormatting.RED + "Soli";
