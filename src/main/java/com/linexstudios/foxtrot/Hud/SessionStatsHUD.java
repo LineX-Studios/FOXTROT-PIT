@@ -1,6 +1,7 @@
 package com.linexstudios.foxtrot.Hud;
 
-import com.linexstudios.foxtrot.Handler.APIHandler; // UPDATED IMPORT
+import com.linexstudios.foxtrot.Handler.APIHandler;
+import com.linexstudios.foxtrot.Handler.PitDataHandler; // Imported your PitDataHandler
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -25,44 +26,43 @@ public class SessionStatsHUD {
     private long sessionStartTime = 0;
     private boolean isInPit = false;
 
-    // Variables for calculating XP/Hour
-    private long startingXpLeft = -1;
-    private long xpGained = 0;
+    // Advanced variables for calculating XP/Hour dynamically
+    private long lastXpLeft = -1;
+    private long totalXpGained = 0;
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || mc.theWorld == null || mc.thePlayer == null) return;
 
-        // 1. Check if we are physically in The Hypixel Pit
         checkIfInPit();
 
-        // 2. If in the Pit, start the timer and fetch API data
         if (isInPit) {
             if (sessionStartTime == 0) {
                 sessionStartTime = System.currentTimeMillis();
             }
 
-            // This safely handles its own 30-second cooldown internally!
             APIHandler.updateStats(mc.thePlayer);
 
-            // Track XP gained for XP/Hour calculations
             if (APIHandler.isLoaded) {
-                if (startingXpLeft == -1) {
-                    startingXpLeft = APIHandler.xpLeft;
-                } else if (APIHandler.xpLeft < startingXpLeft) {
-                    xpGained = startingXpLeft - APIHandler.xpLeft;
+                if (lastXpLeft == -1) {
+                    // Initialize the tracker the first time the API loads
+                    lastXpLeft = APIHandler.xpLeft;
+                } else if (APIHandler.xpLeft < lastXpLeft) {
+                    // We gained XP! Add the difference to our total.
+                    totalXpGained += (lastXpLeft - APIHandler.xpLeft);
+                    lastXpLeft = APIHandler.xpLeft;
+                } else if (APIHandler.xpLeft > lastXpLeft) {
+                    // The player prestiged (XP left jumped up)! Just reset the tracker.
+                    lastXpLeft = APIHandler.xpLeft;
                 }
             }
         }
     }
 
-    /**
-     * Reads the sidebar scoreboard to verify we are actually in a Pit lobby.
-     */
     private void checkIfInPit() {
         Scoreboard scoreboard = mc.theWorld.getScoreboard();
         if (scoreboard != null) {
-            ScoreObjective objective = scoreboard.getObjectiveInDisplaySlot(1); // 1 is the Sidebar
+            ScoreObjective objective = scoreboard.getObjectiveInDisplaySlot(1);
             if (objective != null) {
                 String title = EnumChatFormatting.getTextWithoutFormattingCodes(objective.getDisplayName());
                 if (title != null && title.toUpperCase().contains("PIT")) {
@@ -83,8 +83,6 @@ public class SessionStatsHUD {
 
     public void render(boolean isEditing) {
         if (!enabled || mc.theWorld == null) return;
-
-        // Hide the HUD completely if we aren't in the Pit (unless we are editing the GUI)
         if (!isInPit && !isEditing) return;
 
         FontRenderer fr = mc.fontRendererObj;
@@ -95,11 +93,11 @@ public class SessionStatsHUD {
         currentY += fr.FONT_HEIGHT + 2;
 
         if (isEditing && !APIHandler.isLoaded) {
-            // Dummy Data so you can see the box while dragging it in your GUI
-            String timeStr = "Playtime: " + EnumChatFormatting.WHITE + "01h 15m";
-            String xpStr = "XP Needed: " + EnumChatFormatting.AQUA + "14,500 (85.0%)";
-            String goldStr = "Gold Needed: " + EnumChatFormatting.GOLD + "10,000g";
-            String xpPerHourStr = "XP/Hour: " + EnumChatFormatting.AQUA + "15,000";
+            // Dummy Data for the HUD Editor
+            String timeStr = EnumChatFormatting.GRAY + "Playtime: " + EnumChatFormatting.WHITE + "01h 15m";
+            String xpStr = EnumChatFormatting.GRAY + "XP Needed: " + EnumChatFormatting.AQUA + "14,500 " + EnumChatFormatting.GRAY + "(85.0%)";
+            String goldStr = EnumChatFormatting.GRAY + "Gold Needed: " + EnumChatFormatting.GOLD + "10,000g";
+            String xpPerHourStr = EnumChatFormatting.GRAY + "XP/Hour: " + EnumChatFormatting.AQUA + "15,000";
 
             fr.drawStringWithShadow(timeStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(timeStr));
@@ -119,7 +117,7 @@ public class SessionStatsHUD {
 
         } else if (APIHandler.isLoaded) {
 
-            // 1. Time Played Format (00h 00m)
+            // 1. Time Played Format (Gray text, White numbers)
             long elapsed = System.currentTimeMillis() - sessionStartTime;
             long hours = elapsed / 3600000;
             long minutes = (elapsed % 3600000) / 60000;
@@ -129,37 +127,39 @@ public class SessionStatsHUD {
             if (hours > 0) timeFormatted = String.format("%02dh %02dm", hours, minutes);
             else timeFormatted = String.format("%02dm %02ds", minutes, seconds);
 
-            String timeStr = "Playtime: " + EnumChatFormatting.WHITE + timeFormatted;
+            String timeStr = EnumChatFormatting.WHITE + "Playtime: " + EnumChatFormatting.GRAY + timeFormatted;
             fr.drawStringWithShadow(timeStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(timeStr));
             currentY += fr.FONT_HEIGHT;
 
-            // 2. XP Needed
-            String xpStr = "XP Needed: " + EnumChatFormatting.AQUA + String.format("%,d", APIHandler.xpLeft) + " (" + APIHandler.getXpPercentage() + ")";
+            // 2. XP Needed & Percentage Calculation
+            String percentFormatted = calculateXpPercentage();
+            String xpStr = EnumChatFormatting.WHITE + "XP Needed: " + EnumChatFormatting.AQUA + String.format("%,d", APIHandler.xpLeft) + EnumChatFormatting.GRAY + " (" + percentFormatted + ")";
+
             fr.drawStringWithShadow(xpStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpStr));
             currentY += fr.FONT_HEIGHT;
 
             // 3. Gold Needed
             String goldDisplay = APIHandler.isGoldReqMet() ? EnumChatFormatting.GREEN + "Met!" : EnumChatFormatting.GOLD + APIHandler.getFormattedGoldLeft() + "g";
-            String goldStr = "Gold Needed: " + goldDisplay;
+            String goldStr = EnumChatFormatting.WHITE + "Gold Needed: " + goldDisplay;
             fr.drawStringWithShadow(goldStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(goldStr));
             currentY += fr.FONT_HEIGHT;
 
             // 4. XP / Hour Calculation
             long xpPerHour = 0;
-            // Wait at least 1 minute before calculating to avoid wild inflated numbers in the first few seconds
-            if (elapsed > 60000 && xpGained > 0) {
-                xpPerHour = (long) ((xpGained / (double) elapsed) * 3600000);
+            // Wait at least 60 seconds before calculating to prevent crazy math spikes when you first join
+            if (elapsed > 60000 && totalXpGained > 0) {
+                xpPerHour = (long) ((totalXpGained / (double) elapsed) * 3600000);
             }
-            String xpPerHourStr = "XP/Hour: " + EnumChatFormatting.AQUA + String.format("%,d", xpPerHour);
+            String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + String.format("%,d", xpPerHour);
             fr.drawStringWithShadow(xpPerHourStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpPerHourStr));
             currentY += fr.FONT_HEIGHT;
 
         } else {
-            String loading = EnumChatFormatting.GRAY + "Loading API...";
+            String loading = EnumChatFormatting.YELLOW + "Loading API...";
             fr.drawStringWithShadow(loading, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(loading));
             currentY += fr.FONT_HEIGHT;
@@ -169,6 +169,33 @@ public class SessionStatsHUD {
         this.height = currentY - hudY;
 
         if (isEditing) Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
+    }
+
+    /**
+     * Calculates the exact completion percentage using PitDataHandler's max XP values.
+     * If it fails to parse the data, it gracefully falls back to Pitmart's API proportion.
+     */
+    private String calculateXpPercentage() {
+        try {
+            // Attempt to get the exact Max XP for this prestige from PitDataHandler
+            PitDataHandler.PrestigeData pData = PitDataHandler.getPrestige(String.valueOf(APIHandler.prestige));
+            if (pData != null && pData.totalXpNeeded != null) {
+                // Strip out any commas so we can do raw math on it
+                long totalXp = Long.parseLong(pData.totalXpNeeded.replace(",", ""));
+                if (totalXp > 0) {
+                    double percentCompleted = ((double) (totalXp - APIHandler.xpLeft) / totalXp) * 100.0;
+                    // Cap it between 0% and 100% just in case
+                    percentCompleted = Math.max(0.0, Math.min(100.0, percentCompleted));
+                    return String.format("%.1f%%", percentCompleted);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Fallback logic: If PitDataHandler fails, use Pitmart's built-in proportion
+        // Pitmart sends the proportion LEFT (e.g. 0.25). We want the proportion COMPLETED (1.0 - 0.25 = 75%)
+        double percentCompleted = (1.0 - APIHandler.xpProportion) * 100.0;
+        percentCompleted = Math.max(0.0, Math.min(100.0, percentCompleted));
+        return String.format("%.1f%%", percentCompleted);
     }
 
     public boolean isHovered(int mouseX, int mouseY) {
