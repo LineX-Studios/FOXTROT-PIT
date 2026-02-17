@@ -1,7 +1,6 @@
 package com.linexstudios.foxtrot.Hud;
 
 import com.linexstudios.foxtrot.Handler.APIHandler;
-import com.linexstudios.foxtrot.Handler.PitDataHandler; // Imported your PitDataHandler
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -93,11 +92,11 @@ public class SessionStatsHUD {
         currentY += fr.FONT_HEIGHT + 2;
 
         if (isEditing && !APIHandler.isLoaded) {
-            // Dummy Data for the HUD Editor
-            String timeStr = EnumChatFormatting.GRAY + "Playtime: " + EnumChatFormatting.WHITE + "01h 15m";
-            String xpStr = EnumChatFormatting.GRAY + "XP Needed: " + EnumChatFormatting.AQUA + "14,500 " + EnumChatFormatting.GRAY + "(85.0%)";
-            String goldStr = EnumChatFormatting.GRAY + "Gold Needed: " + EnumChatFormatting.GOLD + "10,000g";
-            String xpPerHourStr = EnumChatFormatting.GRAY + "XP/Hour: " + EnumChatFormatting.AQUA + "15,000";
+            // Dummy Data for the HUD Editor using your exact requested color formatting
+            String timeStr = EnumChatFormatting.WHITE + "Playtime: " + EnumChatFormatting.GRAY + "01h 15m";
+            String xpStr = EnumChatFormatting.WHITE + "XP Needed: " + EnumChatFormatting.AQUA + "14,500 " + EnumChatFormatting.GRAY + "(85.0%)";
+            String goldStr = EnumChatFormatting.WHITE + "Gold Needed: " + EnumChatFormatting.GOLD + "10,000g";
+            String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + "15,000";
 
             fr.drawStringWithShadow(timeStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(timeStr));
@@ -117,7 +116,7 @@ public class SessionStatsHUD {
 
         } else if (APIHandler.isLoaded) {
 
-            // 1. Time Played Format (Gray text, White numbers)
+            // 1. Time Played Format
             long elapsed = System.currentTimeMillis() - sessionStartTime;
             long hours = elapsed / 3600000;
             long minutes = (elapsed % 3600000) / 60000;
@@ -134,7 +133,7 @@ public class SessionStatsHUD {
 
             // 2. XP Needed & Percentage Calculation
             String percentFormatted = calculateXpPercentage();
-            String xpStr = EnumChatFormatting.WHITE + "XP Needed: " + EnumChatFormatting.AQUA + String.format("%,d", APIHandler.xpLeft) + EnumChatFormatting.GRAY + " (" + percentFormatted + ")";
+            String xpStr = EnumChatFormatting.WHITE + "XP Needed: " + EnumChatFormatting.AQUA + String.format("%,d", APIHandler.xpLeft) + EnumChatFormatting.DARK_AQUA + " (" + percentFormatted + ")";
 
             fr.drawStringWithShadow(xpStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpStr));
@@ -149,8 +148,8 @@ public class SessionStatsHUD {
 
             // 4. XP / Hour Calculation
             long xpPerHour = 0;
-            // Wait at least 60 seconds before calculating to prevent crazy math spikes when you first join
-            if (elapsed > 60000 && totalXpGained > 0) {
+            // The math will process immediately the moment the API registers an XP change
+            if (elapsed > 1000 && totalXpGained > 0) {
                 xpPerHour = (long) ((totalXpGained / (double) elapsed) * 3600000);
             }
             String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + String.format("%,d", xpPerHour);
@@ -172,28 +171,11 @@ public class SessionStatsHUD {
     }
 
     /**
-     * Calculates the exact completion percentage using PitDataHandler's max XP values.
-     * If it fails to parse the data, it gracefully falls back to Pitmart's API proportion.
+     * Calculates the exact completion percentage using Pitmart's proportion data.
      */
     private String calculateXpPercentage() {
-        try {
-            // Attempt to get the exact Max XP for this prestige from PitDataHandler
-            PitDataHandler.PrestigeData pData = PitDataHandler.getPrestige(String.valueOf(APIHandler.prestige));
-            if (pData != null && pData.totalXpNeeded != null) {
-                // Strip out any commas so we can do raw math on it
-                long totalXp = Long.parseLong(pData.totalXpNeeded.replace(",", ""));
-                if (totalXp > 0) {
-                    double percentCompleted = ((double) (totalXp - APIHandler.xpLeft) / totalXp) * 100.0;
-                    // Cap it between 0% and 100% just in case
-                    percentCompleted = Math.max(0.0, Math.min(100.0, percentCompleted));
-                    return String.format("%.1f%%", percentCompleted);
-                }
-            }
-        } catch (Exception ignored) {}
-
-        // Fallback logic: If PitDataHandler fails, use Pitmart's built-in proportion
-        // Pitmart sends the proportion LEFT (e.g. 0.25). We want the proportion COMPLETED (1.0 - 0.25 = 75%)
-        double percentCompleted = (1.0 - APIHandler.xpProportion) * 100.0;
+        // Pitmart sends the proportion completed (e.g. 0.2559 = 25.59%)
+        double percentCompleted = APIHandler.xpProportion * 100.0;
         percentCompleted = Math.max(0.0, Math.min(100.0, percentCompleted));
         return String.format("%.1f%%", percentCompleted);
     }

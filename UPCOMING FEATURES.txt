@@ -1,0 +1,25 @@
+                    ========================================================
+
+                                    UPCOMING FEATURES
+
+                    ========================================================
+
+
+- Pit ESP - ESP for sewer chests, dragon eggs, raffle tickets, and dropped mystic items (all togglable through edithud gui in their own category just like nametags its gonna be a drop down in render then ITEM ESP to toggle off whatever pit item thats dropped but we already got chest esp so make sure you add it to PIT ESP category dropdown)
+
+- Lobby player count
+
+- Focus mode - only renders enemies, friends, diamonds, etc.
+
+- FPS Booster
+
+- Pant Swap (safe) Right-click held armor to swap it on
+
+- Gamble Check - Prevents you from swinging with a gamble sword against someone with mirror pants
+
+- FOR SESSIONSTATS ADD THIS FEATURE The Reset Trigger: To ensure the streak info is accurate, the trackers automatically reset back to zero the moment your player dies, changes lobbies, or executes the /spawn command.
+
+- Auto Quick Maths
+
+- W-Tap - Automatically W-Taps for you when fighting, has checks to prevent slowing you down when chasing people
+
