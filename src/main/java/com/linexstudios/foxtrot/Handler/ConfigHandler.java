@@ -6,10 +6,10 @@ import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Hud.EditHUDGui;
 import com.linexstudios.foxtrot.Hud.SessionStatsHUD;
-import com.linexstudios.foxtrot.Hud.EventHUD; // ADDED EVENT HUD
+import com.linexstudios.foxtrot.Hud.EventHUD; 
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
-import com.linexstudios.foxtrot.Render.ChestESP;
+import com.linexstudios.foxtrot.Render.PitESP; // NEW PIT ESP
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.NickedRender;
 import com.linexstudios.foxtrot.Hud.RegHUD;
@@ -64,8 +64,6 @@ public class ConfigHandler {
                 SessionStatsHUD.hudY = Integer.parseInt(props.getProperty("sessionStatsY", "150"));
                 RegHUD.hudX = Integer.parseInt(props.getProperty("regHudX", "10"));
                 RegHUD.hudY = Integer.parseInt(props.getProperty("regHudY", "180"));
-
-                // NEW: Load Event HUD Position
                 EventHUD.hudX = Integer.parseInt(props.getProperty("eventHudX", "10"));
                 EventHUD.hudY = Integer.parseInt(props.getProperty("eventHudY", "250"));
 
@@ -80,6 +78,7 @@ public class ConfigHandler {
                 EditHUDGui.autoClickerDropdownExpanded = Boolean.parseBoolean(props.getProperty("autoClickerDropdownExpanded", "false"));
                 EditHUDGui.randomDropdownExpanded = Boolean.parseBoolean(props.getProperty("randomDropdownExpanded", "false"));
                 EditHUDGui.nameTagsDropdownExpanded = Boolean.parseBoolean(props.getProperty("nameTagsDropdownExpanded", "false"));
+                EditHUDGui.pitEspDropdownExpanded = Boolean.parseBoolean(props.getProperty("pitEspDropdownExpanded", "false")); // NEW PIT ESP DROPDOWN
 
                 // Load AutoClicker Settings
                 AutoClicker.enabled = Boolean.parseBoolean(props.getProperty("clickerEnabled", "false"));
@@ -98,10 +97,14 @@ public class ConfigHandler {
                 String whitelistStr = props.getProperty("clickerWhitelist", "sword,axe,pickaxe");
                 AutoClicker.itemWhitelist = new ArrayList<>(Arrays.asList(whitelistStr.split(",")));
 
-                // Load Modules
-                ChestESP.enabled = Boolean.parseBoolean(props.getProperty("chestEspEnabled", "false"));
+                // Load Render Modules & PIT ESP
                 AutoDenick.enabled = Boolean.parseBoolean(props.getProperty("autoDenick", "false"));
                 NickedRender.enabled = Boolean.parseBoolean(props.getProperty("nickedNametags", "true"));
+                
+                PitESP.espChests = Boolean.parseBoolean(props.getProperty("pitEspChests", "true"));
+                PitESP.espDragonEggs = Boolean.parseBoolean(props.getProperty("pitEspDragonEggs", "true"));
+                PitESP.espRaffleTickets = Boolean.parseBoolean(props.getProperty("pitEspRaffleTickets", "true"));
+                PitESP.espMystics = Boolean.parseBoolean(props.getProperty("pitEspMystics", "true"));
 
                 // Load HUD States
                 EnemyHUD.enabled = Boolean.parseBoolean(props.getProperty("enemyHudEnabled", "true"));
@@ -109,9 +112,8 @@ public class ConfigHandler {
                 EnemyHUD.debugMode = Boolean.parseBoolean(props.getProperty("enemyHudDebug", "false"));
                 NickedHUD.enabled = Boolean.parseBoolean(props.getProperty("nickedHudEnabled", "true"));
                 SessionStatsHUD.enabled = Boolean.parseBoolean(props.getProperty("sessionStatsEnabled", "true"));
-
-                // NEW: Load Event HUD State
                 EventHUD.enabled = Boolean.parseBoolean(props.getProperty("eventHudEnabled", "true"));
+                RegHUD.enabled = Boolean.parseBoolean(props.getProperty("regHudEnabled", "true"));
 
                 NameTags.enabled = Boolean.parseBoolean(props.getProperty("nameTagsEnabled", "false"));
                 NameTags.showHealth = Boolean.parseBoolean(props.getProperty("nameTagsShowHealth", "true"));
@@ -119,7 +121,6 @@ public class ConfigHandler {
 
                 FriendsHUD.enabled = Boolean.parseBoolean(props.getProperty("friendsHudEnabled", "true"));
                 FriendsESP.enabled = Boolean.parseBoolean(props.getProperty("friendsEspEnabled", "true"));
-                RegHUD.enabled = Boolean.parseBoolean(props.getProperty("regHudEnabled", "true"));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -153,12 +154,8 @@ public class ConfigHandler {
             props.setProperty("friendsHudY", String.valueOf(FriendsHUD.hudY));
             props.setProperty("sessionStatsX", String.valueOf(SessionStatsHUD.hudX));
             props.setProperty("sessionStatsY", String.valueOf(SessionStatsHUD.hudY));
-
-            // NEW: Save Event HUD Position
             props.setProperty("eventHudX", String.valueOf(EventHUD.hudX));
             props.setProperty("eventHudY", String.valueOf(EventHUD.hudY));
-
-            // SAVE REF HUD POSITION
             props.setProperty("regHudX", String.valueOf(RegHUD.hudX));
             props.setProperty("regHudY", String.valueOf(RegHUD.hudY));
 
@@ -173,6 +170,7 @@ public class ConfigHandler {
             props.setProperty("autoClickerDropdownExpanded", String.valueOf(EditHUDGui.autoClickerDropdownExpanded));
             props.setProperty("randomDropdownExpanded", String.valueOf(EditHUDGui.randomDropdownExpanded));
             props.setProperty("nameTagsDropdownExpanded", String.valueOf(EditHUDGui.nameTagsDropdownExpanded));
+            props.setProperty("pitEspDropdownExpanded", String.valueOf(EditHUDGui.pitEspDropdownExpanded));
 
             // Save AutoClicker Settings
             props.setProperty("clickerEnabled", String.valueOf(AutoClicker.enabled));
@@ -191,10 +189,14 @@ public class ConfigHandler {
             String whitelistStr = String.join(",", AutoClicker.itemWhitelist);
             props.setProperty("clickerWhitelist", whitelistStr);
 
-            // Save Modules
-            props.setProperty("chestEspEnabled", String.valueOf(ChestESP.enabled));
+            // Save Render Modules & PIT ESP
             props.setProperty("autoDenick", String.valueOf(AutoDenick.enabled));
             props.setProperty("nickedNametags", String.valueOf(NickedRender.enabled));
+            
+            props.setProperty("pitEspChests", String.valueOf(PitESP.espChests));
+            props.setProperty("pitEspDragonEggs", String.valueOf(PitESP.espDragonEggs));
+            props.setProperty("pitEspRaffleTickets", String.valueOf(PitESP.espRaffleTickets));
+            props.setProperty("pitEspMystics", String.valueOf(PitESP.espMystics));
 
             // Save HUD States
             props.setProperty("enemyHudEnabled", String.valueOf(EnemyHUD.enabled));
@@ -202,12 +204,8 @@ public class ConfigHandler {
             props.setProperty("enemyHudDebug", String.valueOf(EnemyHUD.debugMode));
             props.setProperty("nickedHudEnabled", String.valueOf(NickedHUD.enabled));
             props.setProperty("sessionStatsEnabled", String.valueOf(SessionStatsHUD.enabled));
-
-            // NEW: Save Event HUD State
             props.setProperty("eventHudEnabled", String.valueOf(EventHUD.enabled));
-            // REG HUD
             props.setProperty("regHudEnabled", String.valueOf(RegHUD.enabled));
-
 
             props.setProperty("nameTagsEnabled", String.valueOf(NameTags.enabled));
             props.setProperty("nameTagsShowHealth", String.valueOf(NameTags.showHealth));

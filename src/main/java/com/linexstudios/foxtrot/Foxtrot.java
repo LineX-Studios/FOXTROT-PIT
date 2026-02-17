@@ -12,7 +12,6 @@ import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Hud.FriendsHUD;
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
-import com.linexstudios.foxtrot.Render.ChestESP;
 import com.linexstudios.foxtrot.Hud.SessionStatsHUD;
 import com.linexstudios.foxtrot.Util.EnemyAlert;
 import net.minecraft.client.settings.KeyBinding;
@@ -53,7 +52,7 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(EnemyHUD.instance);
         MinecraftForge.EVENT_BUS.register(NickedHUD.instance);
         MinecraftForge.EVENT_BUS.register(new EnemyESP());
-        MinecraftForge.EVENT_BUS.register(ChestESP.instance);
+        MinecraftForge.EVENT_BUS.register(PitESP.instance);
         MinecraftForge.EVENT_BUS.register(FriendsHUD.instance);
         MinecraftForge.EVENT_BUS.register(new FriendsESP());
         MinecraftForge.EVENT_BUS.register(new com.linexstudios.foxtrot.Render.NickedRender());

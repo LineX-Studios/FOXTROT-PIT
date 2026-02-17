@@ -4,6 +4,7 @@ import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Render.ChestESP;
+import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.NickedRender;
@@ -20,7 +21,7 @@ public class EditHUDGui extends GuiScreen {
     private boolean draggingEnemy = false, draggingNicked = false, draggingPanel = false, draggingFriends = false;
     public boolean draggingStats = false;
     public boolean draggingEvent = false;
-    public boolean draggingReg = false; // Added RegHUD dragging state
+    public boolean draggingReg = false; 
 
     public static int panelX = -1, panelY = -1;
     public static boolean panelCollapsed = false;
@@ -30,6 +31,7 @@ public class EditHUDGui extends GuiScreen {
     public static boolean autoClickerDropdownExpanded = false;
     public static boolean randomDropdownExpanded = false;
     public static boolean nameTagsDropdownExpanded = false;
+    public static boolean pitEspDropdownExpanded = false;
 
     private int catCombatY = -1, catRenderY = -1, catDenickY = -1, catHudY = -1;
     private ModernTextField whitelistField;
@@ -77,20 +79,27 @@ public class EditHUDGui extends GuiScreen {
         this.buttonList.add(new ModernGUI(61, 0, 0, btnW - 10, 16, " > Enabled: " + (NameTags.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(62, 0, 0, btnW - 10, 16, " > Show Health: " + (NameTags.showHealth ? on : off)));
         this.buttonList.add(new ModernGUI(63, 0, 0, btnW - 10, 16, " > Show Armorstatus: " + (NameTags.showItems ? on : off)));
-        this.buttonList.add(new ModernGUI(64, 0, 0, btnW, 16, "Chest ESP: " + (ChestESP.enabled ? on : off)));
-        this.buttonList.add(new ModernGUI(65, 0, 0, btnW, 16, "Enemy ESP: " + (EnemyESP.enabled ? on : off)));
-        this.buttonList.add(new ModernGUI(66, 0, 0, btnW, 16, "Friends ESP: " + (FriendsESP.enabled ? on : off)));
+        
+        // Pit ESP Dropdown
+        this.buttonList.add(new ModernGUI(64, 0, 0, btnW, 16, "PIT ESP" + EnumChatFormatting.GRAY + (pitEspDropdownExpanded ? " ^" : " v")));
+        this.buttonList.add(new ModernGUI(65, 0, 0, btnW - 10, 16, " > Sewer Chests: " + (PitESP.espChests ? on : off)));
+        this.buttonList.add(new ModernGUI(66, 0, 0, btnW - 10, 16, " > Dragon Eggs: " + (PitESP.espDragonEggs ? on : off)));
+        this.buttonList.add(new ModernGUI(67, 0, 0, btnW - 10, 16, " > Raffle Tickets: " + (PitESP.espRaffleTickets ? on : off)));
+        this.buttonList.add(new ModernGUI(68, 0, 0, btnW - 10, 16, " > Mystic Drops: " + (PitESP.espMystics ? on : off)));
+
+        this.buttonList.add(new ModernGUI(69, 0, 0, btnW, 16, "Enemy ESP: " + (EnemyESP.enabled ? on : off)));
+        this.buttonList.add(new ModernGUI(70, 0, 0, btnW, 16, "Friends ESP: " + (FriendsESP.enabled ? on : off)));
 
         // --- DENICK & HUD ---
-        this.buttonList.add(new ModernGUI(70, 0, 0, btnW, 16, "Auto Denick: " + (AutoDenick.enabled ? on : off)));
-        this.buttonList.add(new ModernGUI(71, 0, 0, btnW, 16, "Nicked Tags: " + (NickedRender.enabled ? on : off)));
+        this.buttonList.add(new ModernGUI(75, 0, 0, btnW, 16, "Auto Denick: " + (AutoDenick.enabled ? on : off)));
+        this.buttonList.add(new ModernGUI(76, 0, 0, btnW, 16, "Nicked Tags: " + (NickedRender.enabled ? on : off)));
 
         this.buttonList.add(new ModernGUI(80, 0, 0, btnW, 16, "Enemy HUD: " + (EnemyHUD.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(81, 0, 0, btnW, 16, "Nicked HUD: " + (NickedHUD.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(82, 0, 0, btnW, 16, "Friends HUD: " + (FriendsHUD.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(85, 0, 0, btnW, 16, "Session Stats: " + (SessionStatsHUD.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(86, 0, 0, btnW, 16, "Event Tracker: " + (EventHUD.enabled ? on : off)));
-        this.buttonList.add(new ModernGUI(87, 0, 0, btnW, 16, "Reg HUD: " + (RegHUD.enabled ? on : off))); // NEW
+        this.buttonList.add(new ModernGUI(87, 0, 0, btnW, 16, "Reg HUD: " + (RegHUD.enabled ? on : off)));
     }
 
     @Override
@@ -101,7 +110,7 @@ public class EditHUDGui extends GuiScreen {
         if (FriendsHUD.enabled) FriendsHUD.instance.render(true);
         if (SessionStatsHUD.enabled) SessionStatsHUD.instance.render(true);
         if (EventHUD.enabled) EventHUD.instance.render(true);
-        if (RegHUD.enabled) RegHUD.instance.render(true); // Added RegHUD Render Preview
+        if (RegHUD.enabled) RegHUD.instance.render(true); 
 
         Gui.drawRect(panelX, panelY, panelX + 135, panelY + 18, 0xFF121212);
         this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Foxtrot Settings", panelX + 5, panelY + 5, -1);
@@ -119,19 +128,19 @@ public class EditHUDGui extends GuiScreen {
 
             int renderCount = 4;
             if (nameTagsDropdownExpanded) renderCount += 3;
+            if (pitEspDropdownExpanded) renderCount += 4;
             bgHeight += 12 + (renderExpanded ? (renderCount * 18) : 0) + 4;
 
             bgHeight += 12 + (denickExpanded ? (2 * 18) : 0) + 4;
 
-            // Height for 6 HUD buttons (Added Reg Tracker)
             bgHeight += 12 + (hudExpanded ? (6 * 18) : 0) + 4;
 
             Gui.drawRect(panelX, panelY + 18, panelX + 135, panelY + 18 + bgHeight, 0xDD121212);
 
             int currentY = panelY + 22;
             currentY = drawCategory(currentY, "Combat", combatExpanded, 40, 59, mouseX, mouseY);
-            currentY = drawCategory(currentY, "Render", renderExpanded, 60, 69, mouseX, mouseY);
-            currentY = drawCategory(currentY, "Denick", denickExpanded, 70, 79, mouseX, mouseY);
+            currentY = drawCategory(currentY, "Render", renderExpanded, 60, 70, mouseX, mouseY);
+            currentY = drawCategory(currentY, "Denick", denickExpanded, 75, 79, mouseX, mouseY);
             drawCategory(currentY, "HUD", hudExpanded, 80, 89, mouseX, mouseY);
 
             super.drawScreen(mouseX, mouseY, partialTicks);
@@ -169,6 +178,13 @@ public class EditHUDGui extends GuiScreen {
 
                 if (btn.id >= 61 && btn.id <= 63) {
                     if (expanded && nameTagsDropdownExpanded) {
+                        btn.visible = true; btn.xPosition = panelX + 5; btn.yPosition = y; y += 18;
+                    } else btn.visible = false;
+                    continue;
+                }
+
+                if (btn.id >= 65 && btn.id <= 68) {
+                    if (expanded && pitEspDropdownExpanded) {
                         btn.visible = true; btn.xPosition = panelX + 5; btn.yPosition = y; y += 18;
                     } else btn.visible = false;
                     continue;
@@ -235,19 +251,26 @@ public class EditHUDGui extends GuiScreen {
         if (button.id == 61) NameTags.enabled = !NameTags.enabled;
         if (button.id == 62) NameTags.showHealth = !NameTags.showHealth;
         if (button.id == 63) NameTags.showItems = !NameTags.showItems;
-        if (button.id == 64) ChestESP.enabled = !ChestESP.enabled;
-        if (button.id == 65) EnemyESP.enabled = !EnemyESP.enabled;
-        if (button.id == 66) FriendsESP.enabled = !FriendsESP.enabled;
+        
+        // Pit ESP
+        if (button.id == 64) pitEspDropdownExpanded = !pitEspDropdownExpanded;
+        if (button.id == 65) PitESP.espChests = !PitESP.espChests;
+        if (button.id == 66) PitESP.espDragonEggs = !PitESP.espDragonEggs;
+        if (button.id == 67) PitESP.espRaffleTickets = !PitESP.espRaffleTickets;
+        if (button.id == 68) PitESP.espMystics = !PitESP.espMystics;
+
+        if (button.id == 69) EnemyESP.enabled = !EnemyESP.enabled;
+        if (button.id == 70) FriendsESP.enabled = !FriendsESP.enabled;
 
         // Denick & HUD
-        if (button.id == 70) AutoDenick.enabled = !AutoDenick.enabled;
-        if (button.id == 71) NickedRender.enabled = !NickedRender.enabled;
+        if (button.id == 75) AutoDenick.enabled = !AutoDenick.enabled;
+        if (button.id == 76) NickedRender.enabled = !NickedRender.enabled;
         if (button.id == 80) EnemyHUD.enabled = !EnemyHUD.enabled;
         if (button.id == 81) NickedHUD.enabled = !NickedHUD.enabled;
         if (button.id == 82) FriendsHUD.enabled = !FriendsHUD.enabled;
         if (button.id == 85) SessionStatsHUD.enabled = !SessionStatsHUD.enabled;
         if (button.id == 86) EventHUD.enabled = !EventHUD.enabled;
-        if (button.id == 87) RegHUD.enabled = !RegHUD.enabled; // NEW ACTION
+        if (button.id == 87) RegHUD.enabled = !RegHUD.enabled; 
 
         ConfigHandler.saveConfig();
         this.initGui();
@@ -296,7 +319,7 @@ public class EditHUDGui extends GuiScreen {
                 draggingStats = true; lastX = mouseX; lastY = mouseY;
             } else if (EventHUD.enabled && EventHUD.instance.isHovered(mouseX, mouseY)) {
                 draggingEvent = true; lastX = mouseX; lastY = mouseY;
-            } else if (RegHUD.enabled && RegHUD.instance.isHovered(mouseX, mouseY)) { // Added Reg Hover Check
+            } else if (RegHUD.enabled && RegHUD.instance.isHovered(mouseX, mouseY)) { 
                 draggingReg = true; lastX = mouseX; lastY = mouseY;
             }
         }
@@ -333,7 +356,7 @@ public class EditHUDGui extends GuiScreen {
             EventHUD.hudX = Math.max(0, Math.min(this.width - EventHUD.instance.width, EventHUD.hudX + deltaX));
             EventHUD.hudY = Math.max(0, Math.min(this.height - EventHUD.instance.height, EventHUD.hudY + deltaY));
         }
-        else if (draggingReg) { // Added Reg Drag Clamp
+        else if (draggingReg) { 
             RegHUD.hudX = Math.max(0, Math.min(this.width - RegHUD.instance.width, RegHUD.hudX + deltaX));
             RegHUD.hudY = Math.max(0, Math.min(this.height - RegHUD.instance.height, RegHUD.hudY + deltaY));
         }
