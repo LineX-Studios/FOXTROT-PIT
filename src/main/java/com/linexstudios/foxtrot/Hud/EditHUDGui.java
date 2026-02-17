@@ -8,6 +8,7 @@ import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.NickedRender;
+import com.linexstudios.foxtrot.Render.ChestESP;
 import com.linexstudios.foxtrot.Foxtrot;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;

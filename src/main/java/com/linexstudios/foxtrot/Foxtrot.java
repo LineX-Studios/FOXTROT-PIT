@@ -11,6 +11,7 @@ import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Hud.FriendsHUD;
 import com.linexstudios.foxtrot.Render.FriendsESP;
+import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Hud.SessionStatsHUD;
 import com.linexstudios.foxtrot.Util.EnemyAlert;
