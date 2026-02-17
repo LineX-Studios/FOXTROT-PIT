@@ -1,33 +1,39 @@
 package com.linexstudios.foxtrot.Denick;
 
-import com.google.gson.*;
-import com.linexstudios.foxtrot.Util.ItemScraper;
+import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.event.ClickEvent;
+import net.minecraft.event.HoverEvent;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.IChatComponent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AutoDenick {
     public static final AutoDenick instance = new AutoDenick();
+    
+    private static final String prefix = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] ";
+    private static final ExecutorService executor = Executors.newCachedThreadPool();
     private static final Set<String> resolvingNicks = ConcurrentHashMap.newKeySet();
     private static final Set<String> notifiedScraping = new HashSet<>(); 
-    
-    // Tracks the exact time a player was last checked to enforce the 20-second retry loop
     private static final Map<String, Long> retryCooldowns = new ConcurrentHashMap<>(); 
     
     public static Minecraft mc = Minecraft.getMinecraft();
@@ -35,21 +41,20 @@ public class AutoDenick {
     public static boolean enabled = true; 
     
     private int tickTimer = 0;
-    private int heartbeatTimer = 0; // NEW: Tracks the 10-second heartbeat
+    private int heartbeatTimer = 0;
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
         if (!enabled || mc.theWorld == null || mc.getNetHandler() == null || event.phase != TickEvent.Phase.END) return;
-        
-        // --- HEARTBEAT LOGIC ---
+
         heartbeatTimer++;
-        if (heartbeatTimer >= 200) { // 200 ticks = 10 seconds
-            sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Heartbeat: AutoDenick is actively scanning...");
+        if (heartbeatTimer >= 200) { 
+            sendDebug("Heartbeat: AutoDenick is actively scanning...");
             heartbeatTimer = 0;
         }
 
         tickTimer++;
-        if (tickTimer >= 40) { // Runs every 2 seconds
+        if (tickTimer >= 40) { 
             tickTimer = 0;
             detectIfPlayerIsNicked();
         }
@@ -70,26 +75,36 @@ public class AutoDenick {
                 String nick = info.getGameProfile().getName();
                 currentNickedSet.add(nick);
                 
-                EntityPlayer p = mc.theWorld.getPlayerEntityByName(nick);
-                if (p == null) {
+                // Step 1: Find the target player (Exact logic from DenickRunnable)
+                EntityPlayer target = null;
+                for (EntityPlayer p : mc.theWorld.playerEntities) {
+                    if (p != null) {
+                        if (p.getName().equalsIgnoreCase(nick)) {
+                            target = p;
+                            break;
+                        } else if (target == null && p.getName().toLowerCase().contains(nick.toLowerCase())) {
+                            target = p; 
+                        }
+                    }
+                }
+
+                if (target == null) {
                     if (!notifiedScraping.contains(nick + "_null")) {
-                        sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] " + nick + " is in Tab but NOT in the World. Waiting for entity to render...");
+                        sendDebug(nick + " detected in Tab, but player entity not found in render distance.");
                         notifiedScraping.add(nick + "_null");
                     }
                     continue; 
                 }
                 
                 String currentStatus = NickedManager.getResolvedIGN(nick);
-                
                 boolean needsDenick = currentStatus == null || currentStatus.equals("Failed") || currentStatus.equals("No Nonce") || currentStatus.equals("Scraping...");
                 
                 if (needsDenick) {
-                    // Fail-safe: Prevents the background thread from deadlocking indefinitely
                     if (resolvingNicks.contains(nick)) {
                         long lastAttempt = retryCooldowns.getOrDefault(nick, 0L);
                         if (System.currentTimeMillis() - lastAttempt > 15000) {
-                             sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Thread deadlocked for " + nick + ". Force clearing.");
-                             resolvingNicks.remove(nick);
+                             sendDebug("Thread deadlocked for " + nick + ". Force clearing.");
+                             resolvingNicks.remove(nick); 
                         } else {
                              continue;
                         }
@@ -99,11 +114,29 @@ public class AutoDenick {
                     
                     if (System.currentTimeMillis() - lastAttempt >= 20000) {
                         
-                        ArrayList<Integer> nonces = ItemScraper.getNoncesFromPlayer(p);
+                        sendDebug("Checking items on " + nick + "...");
                         
-                        sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Scraped " + nonces.size() + " nonces from " + nick);
+                        // Step 2: Extract Nonce (Exact logic from DenickRunnable)
+                        int foundNonce = -1;
+                        List<ItemStack> items = new ArrayList<>();
+                        Collections.addAll(items, target.inventory.armorInventory);
+                        Collections.addAll(items, target.inventory.mainInventory);
+
+                        for (ItemStack item : items) {
+                            if (item != null && item.hasTagCompound()) {
+                                NBTTagCompound extra = item.getTagCompound().getCompoundTag("ExtraAttributes");
+                                if (extra.hasKey("Nonce")) {
+                                    int nonce = extra.getInteger("Nonce");
+                                    if (nonce > 0) {
+                                        foundNonce = nonce;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                         
-                        if (nonces.isEmpty()) {
+                        if (foundNonce == -1) {
+                            sendDebug("No PIT item with a valid nonce found on " + nick);
                             NickedManager.updateNicked(nick, "No Nonce");
                             retryCooldowns.put(nick, System.currentTimeMillis());
                             continue; 
@@ -117,45 +150,42 @@ public class AutoDenick {
                         }
                         
                         if (!notifiedScraping.contains(nick)) {
-                            // PRESERVED FORMATTING
                             sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
                             notifiedScraping.add(nick);
                         }
                         
-                        new Thread(() -> {
-                            String realName = null;
-                            long millisStarted = System.currentTimeMillis();
+                        // Step 3: Run API Request (Exact thread launch from DenickRunnable)
+                        final int finalNonce = foundNonce;
+                        final long millisStarted = System.currentTimeMillis();
+                        sendDebug("Found Nonce: " + finalNonce + " for " + nick + ". Resolving...");
+                        
+                        executor.submit(() -> {
                             try {
-                                realName = tryToResolveNick(nick, nonces);
-                            } catch (Exception e) {
-                                sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Thread Crash: " + e.getMessage());
-                            } finally {
-                                resolvingNicks.remove(nick); 
-                            }
-                            
-                            long time = System.currentTimeMillis() - millisStarted;
-                            final String finalRealName = realName;
-                            
-                            synchronized (CacheManager.class) {
-                                if (finalRealName != null) {
-                                    CacheManager.addToCache(nick, finalRealName);
-                                    NickedManager.updateNicked(nick, finalRealName);
-                                    
-                                    // PRESERVED FORMATTING + NEW ARROW
-                                    sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.GRAY + "\u27A1 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + EnumChatFormatting.YELLOW + finalRealName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
-                                } else {
-                                    sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Failed to resolve a real name for " + nick);
-                                    NickedManager.updateNicked(nick, "Failed");
-                                }
+                                String realName = resolveOwnerFromNonce(finalNonce);
+                                long time = System.currentTimeMillis() - millisStarted;
                                 
-                                mc.addScheduledTask(() -> {
-                                    EntityPlayer targetEntity = mc.theWorld.getPlayerEntityByName(nick);
-                                    if (targetEntity != null) {
-                                        targetEntity.refreshDisplayName();
+                                synchronized (CacheManager.class) {
+                                    if (realName != null) {
+                                        CacheManager.addToCache(nick, realName);
+                                        NickedManager.updateNicked(nick, realName);
+                                        
+                                        sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.GRAY + "\u27A1 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + EnumChatFormatting.YELLOW + realName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
+                                    } else {
+                                        sendClickableManualLink(finalNonce);
+                                        NickedManager.updateNicked(nick, "Failed");
                                     }
-                                });
+                                    
+                                    mc.addScheduledTask(() -> {
+                                        EntityPlayer targetEntity = mc.theWorld.getPlayerEntityByName(nick);
+                                        if (targetEntity != null) {
+                                            targetEntity.refreshDisplayName();
+                                        }
+                                    });
+                                }
+                            } finally {
+                                resolvingNicks.remove(nick);
                             }
-                        }).start();
+                        });
                     }
                 }
             }
@@ -163,7 +193,6 @@ public class AutoDenick {
         
         for (String name : currentNickedSet) {
             if (!lastNickedSet.contains(name)) {
-                // PRESERVED FORMATTING + NEW ARROW
                 sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "\u26A0 " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.GRAY + "\u27A1 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
             }
         }
@@ -171,137 +200,176 @@ public class AutoDenick {
         lastNickedSet.addAll(currentNickedSet);
     }
 
-    public static String tryToResolveNick(String nickedName, ArrayList<Integer> nonceList) {
-        Set<String> UUIDS = new HashSet<>();
-        
-        for (int nonce : nonceList) {
-            sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Requesting API for Nonce: " + nonce);
-            String UUID = getUUIDFromNonce(nonce);
-            if (UUID != null) {
-                sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Target Hit -> UUID: " + UUID);
-                UUIDS.add(UUID);
-            }
-        }
-        
-        if (!UUIDS.isEmpty()) {
-            for (String uuid : UUIDS) {
-                sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Converting UUID " + uuid + " to IGN...");
-                String realName = getNameFromUUID(uuid);
-                if (realName != null) return realName;
-            }
-        } else {
-            sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] APIs returned null for all nonces.");
-        }
-        return null; 
-    }
-
-    public static String getNameFromUUID(String UUID) {
-        String cleanUUID = UUID.replace("-", "");
-
+    // --- EXACT API LOGIC PORTED DIRECTLY FROM DENICKRUNNABLE ---
+    
+    private static String resolveOwnerFromNonce(int nonce) {
+        HttpURLConnection conn = null;
         try {
-            String mojangResponse = fetchJson("https://sessionserver.mojang.com/session/minecraft/profile/" + cleanUUID);
-            if (mojangResponse != null && !mojangResponse.isEmpty()) {
-                JsonObject json = getJsonObject(mojangResponse);
-                if (json.has("name")) {
-                    sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Mojang API Match -> " + json.get("name").getAsString());
-                    return json.get("name").getAsString();
-                }
-            }
-        } catch (Exception e) {}
+            String fullUrl = "https://pitpal.rocks/api/listings/items/nonce" + nonce;
+            sendDebug("Requesting URL: " + fullUrl);
 
-        try {
-            String pitPandaResponse = fetchJson("https://pitpanda.rocks/api/players/" + cleanUUID);
-            if (pitPandaResponse != null && !pitPandaResponse.isEmpty()) {
-                JsonObject json = getJsonObject(pitPandaResponse);
-                if (json.has("data") && !json.get("data").isJsonNull()) {
-                    JsonObject data = json.getAsJsonObject("data");
-                    if (data.has("name") && !data.get("name").isJsonNull()) {
-                        sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] PitPanda API Match -> " + data.get("name").getAsString());
-                        return data.get("name").getAsString();
-                    }
-                }
-            }
-        } catch (Exception e) {}
+            URL url = new URL(fullUrl);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
 
-        try {
-            String pitMartResponse = fetchJson("https://pitmart.net/api/player/" + cleanUUID);
-            if (pitMartResponse != null && !pitMartResponse.isEmpty()) {
-                JsonObject json = getJsonObject(pitMartResponse);
-                if (json.has("username") && !json.get("username").isJsonNull()) {
-                    sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Pitmart API Match -> " + json.get("username").getAsString());
-                    return json.get("username").getAsString(); 
-                }
-            }
-        } catch (Exception e) {}
-        
-        return null;
-    }
-
-    public static String getUUIDFromNonce(int nonce) {
-        try {
-            String pitPalURL = "https://pitpal.rocks/api/listings/items/nonce" + nonce;
-            String pitPalResponse = fetchJson(pitPalURL);
-            if (pitPalResponse != null) {
-                JsonElement element = new JsonParser().parse(pitPalResponse);
-                if (element.isJsonArray() && element.getAsJsonArray().size() > 0) {
-                    JsonObject first = element.getAsJsonArray().get(0).getAsJsonObject();
-                    if (first.has("uuid")) return first.get("uuid").getAsString();
-                    if (first.has("owner_uuid")) return first.get("owner_uuid").getAsString();
-                } else if (element.isJsonObject()) {
-                    JsonObject first = element.getAsJsonObject();
-                    if (first.has("uuid")) return first.get("uuid").getAsString();
-                    if (first.has("owner_uuid")) return first.get("owner_uuid").getAsString();
-                }
-            }
-        } catch (Exception e) {}
-
-        try {
-            String apiURL = "https://pitmart.net/api/searchitems?nonce=" + nonce;
-            String response = fetchJson(apiURL);
-            if (response != null) {
-                JsonArray docs = getJsonObject(response).getAsJsonArray("docs");
-                if (docs.size() > 0) {
-                    JsonElement ownerUUID = docs.get(0).getAsJsonObject().get("ownerUuid");
-                    if (ownerUUID != null) return ownerUUID.getAsString();
-                }
-            }
-        } catch (Exception e) {}
-        
-        return null;
-    }
-
-    private static JsonObject getJsonObject(String response) { return new JsonParser().parse(response).getAsJsonObject(); }
-
-    private static String fetchJson(String urlString) {
-        HttpURLConnection con = null;
-        try {
-            con = (HttpURLConnection) new URL(urlString).openConnection();
-            con.setRequestMethod("GET");
-            con.setRequestProperty("Content-Type", "application/json");
-            con.setRequestProperty("User-Agent", "Mozilla/5.0"); 
-            con.setConnectTimeout(3000); 
-            con.setReadTimeout(3000);
-
-            if (con.getResponseCode() != 200) {
-                sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Failed HTTP " + con.getResponseCode() + " on " + new URL(urlString).getHost());
+            if (conn.getResponseCode() != 200) {
+                sendDebug("PitPal API returned error code: " + conn.getResponseCode());
                 return null;
             }
 
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
-                StringBuilder content = new StringBuilder();
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) content.append(inputLine);
-                return content.toString();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+
+            String response = sb.toString();
+            if (response.isEmpty() || !response.startsWith("{")) return null;
+
+            JSONObject root = new JSONObject(response);
+
+            JSONArray itemsArr = null;
+            if (root.has("items") && !root.isNull("items")) {
+                itemsArr = root.getJSONArray("items");
+            } else if (root.has("data") && !root.isNull("data")) {
+                itemsArr = root.getJSONArray("data");
+            }
+
+            if (itemsArr != null) {
+                for (int i = 0; i < itemsArr.length(); i++) {
+                    JSONObject itemObj = itemsArr.getJSONObject(i);
+
+                    String ownerName = null;
+                    String ownerId = null;
+
+                    if (itemObj.has("ownerusername") && !itemObj.isNull("ownerusername")) {
+                        String raw = itemObj.getString("ownerusername");
+                        ownerName = raw.replaceAll("§.", "").replaceAll("\\$.", "").trim();
+                    }
+
+                    if (itemObj.has("ownerId") && !itemObj.isNull("ownerId")) {
+                        ownerId = itemObj.getString("ownerId").trim();
+                    } else if (itemObj.has("ownerid") && !itemObj.isNull("ownerid")) {
+                        ownerId = itemObj.getString("ownerid").trim();
+                    }
+
+                    if (ownerName != null && !ownerName.isEmpty()) {
+                        sendDebug("Found potential owner: " + ownerName + ". Verifying existence...");
+                        if (isValidMinecraftName(ownerName)) {
+                            sendDebug("Resolved valid owner: " + ownerName);
+                            return ownerName;
+                        } else {
+                            sendDebug("Invalid/Non-existent name found: " + ownerName);
+                            ownerName = null;
+                        }
+                    }
+
+                    if (ownerId != null && !ownerId.isEmpty()) {
+                        String resolvedName = resolveUsernameFromUUID(ownerId);
+                        if (resolvedName != null) {
+                            sendDebug("Resolved UUID " + ownerId + " to IGN: " + resolvedName);
+                            return resolvedName; 
+                        } else {
+                            sendDebug("Could not resolve UUID: " + ownerId);
+                            return null;
+                        }
+                    }
+                }
             }
         } catch (Exception e) {
-            sendMessage(EnumChatFormatting.DARK_GRAY + "[Debug] Disconnected from " + urlString);
-            return null;
+            sendDebug("Network error: " + e.getMessage());
         } finally {
-            if (con != null) con.disconnect();
+            if (conn != null) conn.disconnect();
+        }
+        return null;
+    }
+
+    private static boolean isValidMinecraftName(String name) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + name);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            return conn.getResponseCode() == 200;
+        } catch (Exception e) {
+            return false; 
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
 
-    private static void sendMessage(String text) {
-        if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText(text));
+    private static String resolveUsernameFromUUID(String uuid) {
+        HttpURLConnection conn = null;
+        try {
+            String fullUrl = "https://sessionserver.mojang.com/session/minecraft/profile/" + uuid.replace("-", "");
+            sendDebug("Resolving UUID via Mojang API: " + fullUrl);
+
+            URL url = new URL(fullUrl);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+
+            if (conn.getResponseCode() != 200) {
+                return null;
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+
+            String response = sb.toString();
+            if (response.isEmpty() || !response.startsWith("{")) return null;
+
+            JSONObject root = new JSONObject(response);
+            if (root.has("name")) {
+                return root.getString("name");
+            }
+        } catch (Exception e) {
+            sendDebug("UUID resolution error: " + e.getMessage());
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+        return null;
+    }
+
+    private static void sendClickableManualLink(int nonce) {
+        String url = "https://pitpal.rocks/api/listings/items/nonce" + nonce;
+        ChatComponentText msg = new ChatComponentText(prefix + EnumChatFormatting.RED + "Auto-denick failed. " + EnumChatFormatting.YELLOW + EnumChatFormatting.BOLD + "[CLICK TO VIEW JSON]");
+
+        ChatStyle style = new ChatStyle();
+        style.setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, url));
+        style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText(EnumChatFormatting.GRAY + "Open: " + url)));
+
+        msg.setChatStyle(style);
+        addChatMessage(msg);
+    }
+
+    private static void sendMessage(String msg) {
+        addChatMessage(new ChatComponentText(msg));
+    }
+
+    private static void sendDebug(String msg) {
+        if (EnemyHUD.debugMode) {
+            addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[DEBUG] " + msg));
+        }
+    }
+
+    private static void addChatMessage(IChatComponent component) {
+        mc.addScheduledTask(() -> {
+            if (mc.thePlayer != null) {
+                mc.thePlayer.addChatMessage(component);
+            }
+        });
     }
 }
