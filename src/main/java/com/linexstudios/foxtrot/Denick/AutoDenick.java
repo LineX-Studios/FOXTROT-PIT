@@ -24,14 +24,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class AutoDenick {
     public static final AutoDenick instance = new AutoDenick();
     
     private static final String prefix = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] ";
-    private static final ExecutorService executor = Executors.newCachedThreadPool();
+    
     private static final Set<String> resolvingNicks = ConcurrentHashMap.newKeySet();
     private static final Set<String> notifiedScraping = new HashSet<>(); 
     private static final Map<String, Long> retryCooldowns = new ConcurrentHashMap<>(); 
@@ -41,20 +39,13 @@ public class AutoDenick {
     public static boolean enabled = true; 
     
     private int tickTimer = 0;
-    private int heartbeatTimer = 0;
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
         if (!enabled || mc.theWorld == null || mc.getNetHandler() == null || event.phase != TickEvent.Phase.END) return;
 
-        heartbeatTimer++;
-        if (heartbeatTimer >= 200) { 
-            sendDebug("Heartbeat: AutoDenick is actively scanning...");
-            heartbeatTimer = 0;
-        }
-
         tickTimer++;
-        if (tickTimer >= 40) { 
+        if (tickTimer >= 40) { // Runs every 2 seconds
             tickTimer = 0;
             detectIfPlayerIsNicked();
         }
@@ -75,35 +66,18 @@ public class AutoDenick {
                 String nick = info.getGameProfile().getName();
                 currentNickedSet.add(nick);
                 
-                // Step 1: Find the target player (Exact logic from DenickRunnable)
-                EntityPlayer target = null;
-                for (EntityPlayer p : mc.theWorld.playerEntities) {
-                    if (p != null) {
-                        if (p.getName().equalsIgnoreCase(nick)) {
-                            target = p;
-                            break;
-                        } else if (target == null && p.getName().toLowerCase().contains(nick.toLowerCase())) {
-                            target = p; 
-                        }
-                    }
-                }
-
-                if (target == null) {
-                    if (!notifiedScraping.contains(nick + "_null")) {
-                        sendDebug(nick + " detected in Tab, but player entity not found in render distance.");
-                        notifiedScraping.add(nick + "_null");
-                    }
-                    continue; 
-                }
+                EntityPlayer p = mc.theWorld.getPlayerEntityByName(nick);
+                if (p == null) continue; // Waiting for them to render physically
                 
                 String currentStatus = NickedManager.getResolvedIGN(nick);
                 boolean needsDenick = currentStatus == null || currentStatus.equals("Failed") || currentStatus.equals("No Nonce") || currentStatus.equals("Scraping...");
                 
                 if (needsDenick) {
+                    
+                    // Fail-safe to clear deadlocked threads
                     if (resolvingNicks.contains(nick)) {
                         long lastAttempt = retryCooldowns.getOrDefault(nick, 0L);
                         if (System.currentTimeMillis() - lastAttempt > 15000) {
-                             sendDebug("Thread deadlocked for " + nick + ". Force clearing.");
                              resolvingNicks.remove(nick); 
                         } else {
                              continue;
@@ -114,78 +88,85 @@ public class AutoDenick {
                     
                     if (System.currentTimeMillis() - lastAttempt >= 20000) {
                         
-                        sendDebug("Checking items on " + nick + "...");
-                        
-                        // Step 2: Extract Nonce (Exact logic from DenickRunnable)
-                        int foundNonce = -1;
-                        List<ItemStack> items = new ArrayList<>();
-                        Collections.addAll(items, target.inventory.armorInventory);
-                        Collections.addAll(items, target.inventory.mainInventory);
+                        try {
+                            // Step 1: Extract Nonce (Exact logic from DenickRunnable)
+                            int foundNonce = -1;
+                            List<ItemStack> items = new ArrayList<>();
+                            
+                            // Prevent Null Pointers if inventory hasn't initialized yet
+                            if (p.inventory.armorInventory != null) Collections.addAll(items, p.inventory.armorInventory);
+                            if (p.inventory.mainInventory != null) Collections.addAll(items, p.inventory.mainInventory);
 
-                        for (ItemStack item : items) {
-                            if (item != null && item.hasTagCompound()) {
-                                NBTTagCompound extra = item.getTagCompound().getCompoundTag("ExtraAttributes");
-                                if (extra.hasKey("Nonce")) {
-                                    int nonce = extra.getInteger("Nonce");
-                                    if (nonce > 0) {
-                                        foundNonce = nonce;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        if (foundNonce == -1) {
-                            sendDebug("No PIT item with a valid nonce found on " + nick);
-                            NickedManager.updateNicked(nick, "No Nonce");
-                            retryCooldowns.put(nick, System.currentTimeMillis());
-                            continue; 
-                        }
-                        
-                        resolvingNicks.add(nick);
-                        retryCooldowns.put(nick, System.currentTimeMillis()); 
-                        
-                        if (!NickedHUD.nickedPlayers.contains(nick.toLowerCase())) {
-                            NickedHUD.nickedPlayers.add(nick.toLowerCase());
-                        }
-                        
-                        if (!notifiedScraping.contains(nick)) {
-                            sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
-                            notifiedScraping.add(nick);
-                        }
-                        
-                        // Step 3: Run API Request (Exact thread launch from DenickRunnable)
-                        final int finalNonce = foundNonce;
-                        final long millisStarted = System.currentTimeMillis();
-                        sendDebug("Found Nonce: " + finalNonce + " for " + nick + ". Resolving...");
-                        
-                        executor.submit(() -> {
-                            try {
-                                String realName = resolveOwnerFromNonce(finalNonce);
-                                long time = System.currentTimeMillis() - millisStarted;
-                                
-                                synchronized (CacheManager.class) {
-                                    if (realName != null) {
-                                        CacheManager.addToCache(nick, realName);
-                                        NickedManager.updateNicked(nick, realName);
-                                        
-                                        sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.GRAY + "\u27A1 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + EnumChatFormatting.YELLOW + realName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
-                                    } else {
-                                        sendClickableManualLink(finalNonce);
-                                        NickedManager.updateNicked(nick, "Failed");
-                                    }
-                                    
-                                    mc.addScheduledTask(() -> {
-                                        EntityPlayer targetEntity = mc.theWorld.getPlayerEntityByName(nick);
-                                        if (targetEntity != null) {
-                                            targetEntity.refreshDisplayName();
+                            for (ItemStack item : items) {
+                                if (item != null && item.hasTagCompound()) {
+                                    NBTTagCompound extra = item.getTagCompound().getCompoundTag("ExtraAttributes");
+                                    if (extra != null && extra.hasKey("Nonce")) {
+                                        int nonce = extra.getInteger("Nonce");
+                                        if (nonce > 0) {
+                                            foundNonce = nonce;
+                                            break;
                                         }
-                                    });
+                                    }
                                 }
-                            } finally {
-                                resolvingNicks.remove(nick);
                             }
-                        });
+                            
+                            if (foundNonce == -1) {
+                                NickedManager.updateNicked(nick, "No Nonce");
+                                retryCooldowns.put(nick, System.currentTimeMillis());
+                                continue; 
+                            }
+                            
+                            // Step 2: Prepare for API Scrape
+                            resolvingNicks.add(nick);
+                            retryCooldowns.put(nick, System.currentTimeMillis()); 
+                            
+                            if (!NickedHUD.nickedPlayers.contains(nick.toLowerCase())) {
+                                NickedHUD.nickedPlayers.add(nick.toLowerCase());
+                            }
+                            
+                            if (!notifiedScraping.contains(nick)) {
+                                sendChatMsg(prefix + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
+                                notifiedScraping.add(nick);
+                            }
+                            
+                            // Step 3: Run API Request (Exact thread launch from DenickRunnable)
+                            final int finalNonce = foundNonce;
+                            final long millisStarted = System.currentTimeMillis();
+                            sendDebug("Found Nonce: " + finalNonce + ". Resolving...");
+                            
+                            // Using a direct Thread so we never hit ExecutorService pool limits
+                            new Thread(() -> {
+                                try {
+                                    String realName = resolveOwnerFromNonce(finalNonce);
+                                    long time = System.currentTimeMillis() - millisStarted;
+                                    
+                                    synchronized (CacheManager.class) {
+                                        if (realName != null) {
+                                            CacheManager.addToCache(nick, realName);
+                                            NickedManager.updateNicked(nick, realName);
+                                            
+                                            sendChatMsg(prefix + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.GRAY + "\u27A1 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + EnumChatFormatting.YELLOW + realName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
+                                        } else {
+                                            sendClickableManualLink(finalNonce);
+                                            NickedManager.updateNicked(nick, "Failed");
+                                        }
+                                        
+                                        mc.addScheduledTask(() -> {
+                                            EntityPlayer targetEntity = mc.theWorld.getPlayerEntityByName(nick);
+                                            if (targetEntity != null) {
+                                                targetEntity.refreshDisplayName();
+                                            }
+                                        });
+                                    }
+                                } finally {
+                                    resolvingNicks.remove(nick);
+                                }
+                            }).start();
+                            
+                        } catch (Exception e) {
+                            sendDebug("Internal error while scanning inventory: " + e.getMessage());
+                            retryCooldowns.put(nick, System.currentTimeMillis());
+                        }
                     }
                 }
             }
@@ -193,7 +174,7 @@ public class AutoDenick {
         
         for (String name : currentNickedSet) {
             if (!lastNickedSet.contains(name)) {
-                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "\u26A0 " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.GRAY + "\u27A1 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
+                sendChatMsg(prefix + EnumChatFormatting.YELLOW + "\u26A0 " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.GRAY + "\u27A1 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
             }
         }
         lastNickedSet.clear();
@@ -232,6 +213,7 @@ public class AutoDenick {
 
             JSONObject root = new JSONObject(response);
 
+            // Handle both "items" and "data" arrays based on PitPal's formatting
             JSONArray itemsArr = null;
             if (root.has("items") && !root.isNull("items")) {
                 itemsArr = root.getJSONArray("items");
@@ -259,11 +241,14 @@ public class AutoDenick {
 
                     if (ownerName != null && !ownerName.isEmpty()) {
                         sendDebug("Found potential owner: " + ownerName + ". Verifying existence...");
+                        
+                        // VALIDATION PATCH: Checks if it's a fake/junk name
                         if (isValidMinecraftName(ownerName)) {
                             sendDebug("Resolved valid owner: " + ownerName);
                             return ownerName;
                         } else {
                             sendDebug("Invalid/Non-existent name found: " + ownerName);
+                            // Set to null so the code falls back to checking the UUID instead
                             ownerName = null;
                         }
                     }
@@ -352,20 +337,21 @@ public class AutoDenick {
         style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText(EnumChatFormatting.GRAY + "Open: " + url)));
 
         msg.setChatStyle(style);
-        addChatMessage(msg);
+        sendRawChatMessage(msg);
     }
 
-    private static void sendMessage(String msg) {
-        addChatMessage(new ChatComponentText(msg));
+    private static void sendChatMsg(String msg) {
+        sendRawChatMessage(new ChatComponentText(msg));
     }
 
     private static void sendDebug(String msg) {
         if (EnemyHUD.debugMode) {
-            addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[DEBUG] " + msg));
+            sendRawChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[DEBUG] " + msg));
         }
     }
 
-    private static void addChatMessage(IChatComponent component) {
+    // THE FIX: This safely forces the chat packet onto the Main Minecraft Thread so Forge doesn't delete it
+    private static void sendRawChatMessage(IChatComponent component) {
         mc.addScheduledTask(() -> {
             if (mc.thePlayer != null) {
                 mc.thePlayer.addChatMessage(component);
