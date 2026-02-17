@@ -34,7 +34,7 @@ public class AutoDenick {
     public static Minecraft mc = Minecraft.getMinecraft();
     public static Set<String> lastNickedSet = new HashSet<>();
     public static boolean enabled = true; 
-    public static boolean debugMode = true; // Set to false once you locate the issue
+    public static boolean debugMode = true; // KEEP TRUE FOR NOW
     
     private int tickTimer = 0;
 
@@ -65,18 +65,32 @@ public class AutoDenick {
                 currentNickedSet.add(nick);
                 
                 EntityPlayer p = mc.theWorld.getPlayerEntityByName(nick);
-                if (p == null) continue; 
+                if (p == null) {
+                    if (debugMode && !notifiedScraping.contains(nick)) {
+                        sendMessage(EnumChatFormatting.GRAY + "[Debug] " + nick + " is nicked but not rendered in world yet.");
+                    }
+                    continue; 
+                }
                 
                 String currentStatus = NickedManager.getResolvedIGN(nick);
-                
-                // If we don't have their real name yet, or it failed previously, they are eligible for a retry
                 boolean needsDenick = currentStatus == null || currentStatus.equals("Failed") || currentStatus.equals("No Nonce") || currentStatus.equals("Scraping...");
                 
-                if (needsDenick && !resolvingNicks.contains(nick)) {
+                if (needsDenick) {
+                    if (resolvingNicks.contains(nick)) {
+                        // It is deadlocked here. Let's force it out if it gets stuck for more than 10 seconds.
+                        long lastAttempt = retryCooldowns.getOrDefault(nick, 0L);
+                        if (System.currentTimeMillis() - lastAttempt > 10000) {
+                             if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] " + nick + " was deadlocked in resolvingNicks. Clearing deadlock.");
+                             resolvingNicks.remove(nick);
+                        } else {
+                             continue; // Wait for the thread to finish
+                        }
+                    }
+
                     long lastAttempt = retryCooldowns.getOrDefault(nick, 0L);
-                    
-                    // 20 Second Retry Cooldown
-                    if (System.currentTimeMillis() - lastAttempt >= 20000) {
+                    long timeSinceLastAttempt = System.currentTimeMillis() - lastAttempt;
+
+                    if (timeSinceLastAttempt >= 20000) {
                         
                         if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Attempting to scrape items for " + nick);
                         
@@ -85,6 +99,7 @@ public class AutoDenick {
                         if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Found " + nonces.size() + " nonces on " + nick);
                         
                         if (nonces.isEmpty()) {
+                            if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Scraper returned 0 nonces for " + nick + ". Setting status to No Nonce.");
                             NickedManager.updateNicked(nick, "No Nonce");
                             retryCooldowns.put(nick, System.currentTimeMillis());
                             continue; 
@@ -98,7 +113,6 @@ public class AutoDenick {
                         }
                         
                         if (!notifiedScraping.contains(nick)) {
-                            // Preserved your exact formatting
                             sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
                             notifiedScraping.add(nick);
                         }
@@ -121,8 +135,7 @@ public class AutoDenick {
                                 if (finalRealName != null) {
                                     CacheManager.addToCache(nick, finalRealName);
                                     NickedManager.updateNicked(nick, finalRealName);
-                                    // Preserved your exact formatting
-                                    sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.DARK_GRAY + "> " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + EnumChatFormatting.YELLOW + finalRealName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
+                                    sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.DARK_GRAY + "\u00BB " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + EnumChatFormatting.YELLOW + finalRealName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
                                 } else {
                                     if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Failed to resolve a real name for " + nick);
                                     NickedManager.updateNicked(nick, "Failed");
@@ -136,6 +149,11 @@ public class AutoDenick {
                                 });
                             }
                         }).start();
+                    } else {
+                        if (debugMode && !notifiedScraping.contains(nick + "_cooldown")) {
+                             sendMessage(EnumChatFormatting.GRAY + "[Debug] " + nick + " is on a 20s cooldown. " + (20000 - timeSinceLastAttempt)/1000 + "s remaining.");
+                             notifiedScraping.add(nick + "_cooldown");
+                        }
                     }
                 }
             }
@@ -143,8 +161,7 @@ public class AutoDenick {
         
         for (String name : currentNickedSet) {
             if (!lastNickedSet.contains(name)) {
-                // Preserved your exact formatting
-                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "> " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
+                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "\u26A0 " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "\u00BB " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
             }
         }
         lastNickedSet.clear();
@@ -187,12 +204,8 @@ public class AutoDenick {
                     if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Mojang API success: " + json.get("name").getAsString());
                     return json.get("name").getAsString();
                 }
-            } else {
-                 if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Mojang API returned null/empty.");
             }
-        } catch (Exception e) {
-             if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Mojang API Error: " + e.getMessage());
-        }
+        } catch (Exception e) {}
 
         // 2. Try Pit Panda Fallback
         try {
@@ -207,9 +220,7 @@ public class AutoDenick {
                     }
                 }
             }
-        } catch (Exception e) {
-             if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] PitPanda API Error: " + e.getMessage());
-        }
+        } catch (Exception e) {}
 
         // 3. Try Pitmart Fallback
         try {
@@ -221,9 +232,7 @@ public class AutoDenick {
                     return json.get("username").getAsString(); 
                 }
             }
-        } catch (Exception e) {
-            if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Pitmart API Error: " + e.getMessage());
-        }
+        } catch (Exception e) {}
         
         return null;
     }
@@ -245,9 +254,7 @@ public class AutoDenick {
                     if (first.has("owner_uuid")) return first.get("owner_uuid").getAsString();
                 }
             }
-        } catch (Exception e) {
-            if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] PitPal API Error for nonce " + nonce + ": " + e.getMessage());
-        }
+        } catch (Exception e) {}
 
         // Try Pitmart API
         try {
@@ -260,9 +267,7 @@ public class AutoDenick {
                     if (ownerUUID != null) return ownerUUID.getAsString();
                 }
             }
-        } catch (Exception e) {
-             if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Pitmart Item API Error for nonce " + nonce + ": " + e.getMessage());
-        }
+        } catch (Exception e) {}
         
         return null;
     }
