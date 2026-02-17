@@ -34,6 +34,8 @@ public class AutoDenick {
     public static Minecraft mc = Minecraft.getMinecraft();
     public static Set<String> lastNickedSet = new HashSet<>();
     public static boolean enabled = true; 
+    public static boolean debugMode = true; // Set to false once you locate the issue
+    
     private int tickTimer = 0;
 
     @SubscribeEvent
@@ -75,7 +77,12 @@ public class AutoDenick {
                     
                     // 20 Second Retry Cooldown
                     if (System.currentTimeMillis() - lastAttempt >= 20000) {
+                        
+                        if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Attempting to scrape items for " + nick);
+                        
                         ArrayList<Integer> nonces = ItemScraper.getNoncesFromPlayer(p);
+                        
+                        if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Found " + nonces.size() + " nonces on " + nick);
                         
                         if (nonces.isEmpty()) {
                             NickedManager.updateNicked(nick, "No Nonce");
@@ -91,6 +98,7 @@ public class AutoDenick {
                         }
                         
                         if (!notifiedScraping.contains(nick)) {
+                            // Preserved your exact formatting
                             sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.YELLOW + "Scraping " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + EnumChatFormatting.YELLOW + "...");
                             notifiedScraping.add(nick);
                         }
@@ -99,9 +107,9 @@ public class AutoDenick {
                             String realName = null;
                             long millisStarted = System.currentTimeMillis();
                             try {
-                                realName = tryToResolveNick(nick);
+                                realName = tryToResolveNick(nick, nonces);
                             } catch (Exception e) {
-                                // Ignored
+                                if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Exception in thread for " + nick + ": " + e.getMessage());
                             } finally {
                                 resolvingNicks.remove(nick); 
                             }
@@ -113,8 +121,10 @@ public class AutoDenick {
                                 if (finalRealName != null) {
                                     CacheManager.addToCache(nick, finalRealName);
                                     NickedManager.updateNicked(nick, finalRealName);
+                                    // Preserved your exact formatting
                                     sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GREEN + "Denicked " + EnumChatFormatting.DARK_GRAY + "> " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + nick + " " + EnumChatFormatting.GRAY + "\u2192 " + EnumChatFormatting.RESET + EnumChatFormatting.YELLOW + finalRealName + " " + EnumChatFormatting.GRAY + "(" + EnumChatFormatting.WHITE + time + "ms" + EnumChatFormatting.GRAY + ")");
                                 } else {
+                                    if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Failed to resolve a real name for " + nick);
                                     NickedManager.updateNicked(nick, "Failed");
                                 }
                                 
@@ -133,29 +143,34 @@ public class AutoDenick {
         
         for (String name : currentNickedSet) {
             if (!lastNickedSet.contains(name)) {
-                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "\u25B6 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
+                // Preserved your exact formatting
+                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "> " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
             }
         }
         lastNickedSet.clear();
         lastNickedSet.addAll(currentNickedSet);
     }
 
-    public static String tryToResolveNick(String nickedName) throws IOException {
-        EntityPlayer player = mc.theWorld.getPlayerEntityByName(nickedName);
-        if (player != null) {
-            ArrayList<Integer> nonceList = ItemScraper.getNoncesFromPlayer(player);
-            Set<String> UUIDS = new HashSet<>();
-            for (int nonce : nonceList) {
-                String UUID = getUUIDFromNonce(nonce);
-                if (UUID != null) UUIDS.add(UUID);
+    public static String tryToResolveNick(String nickedName, ArrayList<Integer> nonceList) {
+        Set<String> UUIDS = new HashSet<>();
+        
+        for (int nonce : nonceList) {
+            if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Looking up owner for Nonce: " + nonce);
+            String UUID = getUUIDFromNonce(nonce);
+            if (UUID != null) {
+                if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Found UUID: " + UUID + " from Nonce: " + nonce);
+                UUIDS.add(UUID);
             }
-            
-            if (!UUIDS.isEmpty()) {
-                for (String uuid : UUIDS) {
-                    String realName = getNameFromUUID(uuid);
-                    if (realName != null) return realName;
-                }
+        }
+        
+        if (!UUIDS.isEmpty()) {
+            for (String uuid : UUIDS) {
+                if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Attempting to convert UUID to Name: " + uuid);
+                String realName = getNameFromUUID(uuid);
+                if (realName != null) return realName;
             }
+        } else {
+            if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] No UUIDs could be found from the nonces.");
         }
         return null; 
     }
@@ -163,16 +178,23 @@ public class AutoDenick {
     public static String getNameFromUUID(String UUID) {
         String cleanUUID = UUID.replace("-", "");
 
-        // 1. Try Mojang API First (Fastest and most accurate)
+        // 1. Try Mojang API First
         try {
             String mojangResponse = fetchJson("https://sessionserver.mojang.com/session/minecraft/profile/" + cleanUUID);
             if (mojangResponse != null && !mojangResponse.isEmpty()) {
                 JsonObject json = getJsonObject(mojangResponse);
-                if (json.has("name")) return json.get("name").getAsString();
+                if (json.has("name")) {
+                    if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Mojang API success: " + json.get("name").getAsString());
+                    return json.get("name").getAsString();
+                }
+            } else {
+                 if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Mojang API returned null/empty.");
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+             if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Mojang API Error: " + e.getMessage());
+        }
 
-        // 2. Try Pit Panda Fallback (Triple Redundancy)
+        // 2. Try Pit Panda Fallback
         try {
             String pitPandaResponse = fetchJson("https://pitpanda.rocks/api/players/" + cleanUUID);
             if (pitPandaResponse != null && !pitPandaResponse.isEmpty()) {
@@ -180,11 +202,14 @@ public class AutoDenick {
                 if (json.has("data") && !json.get("data").isJsonNull()) {
                     JsonObject data = json.getAsJsonObject("data");
                     if (data.has("name") && !data.get("name").isJsonNull()) {
+                        if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] PitPanda API success: " + data.get("name").getAsString());
                         return data.get("name").getAsString();
                     }
                 }
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+             if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] PitPanda API Error: " + e.getMessage());
+        }
 
         // 3. Try Pitmart Fallback
         try {
@@ -192,15 +217,19 @@ public class AutoDenick {
             if (pitMartResponse != null && !pitMartResponse.isEmpty()) {
                 JsonObject json = getJsonObject(pitMartResponse);
                 if (json.has("username") && !json.get("username").isJsonNull()) {
+                    if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Pitmart API success: " + json.get("username").getAsString());
                     return json.get("username").getAsString(); 
                 }
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Pitmart API Error: " + e.getMessage());
+        }
         
         return null;
     }
 
     public static String getUUIDFromNonce(int nonce) {
+        // Try PitPal API
         try {
             String pitPalURL = "https://pitpal.rocks/api/listings/items/nonce" + nonce;
             String pitPalResponse = fetchJson(pitPalURL);
@@ -216,8 +245,11 @@ public class AutoDenick {
                     if (first.has("owner_uuid")) return first.get("owner_uuid").getAsString();
                 }
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] PitPal API Error for nonce " + nonce + ": " + e.getMessage());
+        }
 
+        // Try Pitmart API
         try {
             String apiURL = "https://pitmart.net/api/searchitems?nonce=" + nonce;
             String response = fetchJson(apiURL);
@@ -228,7 +260,10 @@ public class AutoDenick {
                     if (ownerUUID != null) return ownerUUID.getAsString();
                 }
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+             if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] Pitmart Item API Error for nonce " + nonce + ": " + e.getMessage());
+        }
+        
         return null;
     }
 
@@ -244,7 +279,10 @@ public class AutoDenick {
             con.setConnectTimeout(3000); 
             con.setReadTimeout(3000);
 
-            if (con.getResponseCode() != 200) return null;
+            if (con.getResponseCode() != 200) {
+                if(debugMode) sendMessage(EnumChatFormatting.GRAY + "[Debug] HTTP " + con.getResponseCode() + " for URL: " + urlString);
+                return null;
+            }
 
             try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()))) {
                 StringBuilder content = new StringBuilder();
