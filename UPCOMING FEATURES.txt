@@ -23,3 +23,12 @@
 
 - W-Tap - Automatically W-Taps for you when fighting, has checks to prevent slowing you down when chasing people
 
+- New Module: Potion HUD Displays your potion effects as an overlay. that is as customizable as cheatbreaker you can change the Headers colors and the footers colers aswell and size make the size resizable in the edithudgui also add Armor HUD (ARMRORSTATUS) just like the one in cheatbreaker aswell all colors customizable and resizable and have a switch to reset the size just in case and you can add custom colors or preset colors from red to all colors available in normal minecraft and also ability to add hex colors aswell full rgb no rgb mode tho
+
+- Dead Lobby Finder
+
+- Low-life item highlighting in inventory
+
+- Keep streak stats during major events
+
+-

@@ -22,15 +22,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class AutoDenick {
     public static final AutoDenick instance = new AutoDenick();
     private static final Set<String> resolvingNicks = ConcurrentHashMap.newKeySet();
     private static final Set<String> notifiedScraping = new HashSet<>(); 
     
-    // NEW: Tracks the exact time a player was last checked to enforce the 20-second retry loop
+    // Tracks the exact time a player was last checked to enforce the 20-second retry loop
     private static final Map<String, Long> retryCooldowns = new ConcurrentHashMap<>(); 
     
     public static Minecraft mc = Minecraft.getMinecraft();
@@ -75,7 +73,7 @@ public class AutoDenick {
                 if (needsDenick && !resolvingNicks.contains(nick)) {
                     long lastAttempt = retryCooldowns.getOrDefault(nick, 0L);
                     
-                    // FIXED: 20 Second Retry Cooldown!
+                    // 20 Second Retry Cooldown
                     if (System.currentTimeMillis() - lastAttempt >= 20000) {
                         ArrayList<Integer> nonces = ItemScraper.getNoncesFromPlayer(p);
                         
@@ -86,7 +84,7 @@ public class AutoDenick {
                         }
                         
                         resolvingNicks.add(nick);
-                        retryCooldowns.put(nick, System.currentTimeMillis()); // Set cooldown immediately so it doesn't spam
+                        retryCooldowns.put(nick, System.currentTimeMillis()); 
                         
                         if (!NickedHUD.nickedPlayers.contains(nick.toLowerCase())) {
                             NickedHUD.nickedPlayers.add(nick.toLowerCase());
@@ -135,7 +133,7 @@ public class AutoDenick {
         
         for (String name : currentNickedSet) {
             if (!lastNickedSet.contains(name)) {
-                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "> " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
+                sendMessage(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GOLD + "Nicked Player Detected " + EnumChatFormatting.DARK_GRAY + "\u25B6 " + EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.AQUA + name);
             }
         }
         lastNickedSet.clear();
@@ -163,27 +161,42 @@ public class AutoDenick {
     }
 
     public static String getNameFromUUID(String UUID) {
+        String cleanUUID = UUID.replace("-", "");
+
+        // 1. Try Mojang API First (Fastest and most accurate)
         try {
-            String cleanUUID = UUID.replace("-", "");
             String mojangResponse = fetchJson("https://sessionserver.mojang.com/session/minecraft/profile/" + cleanUUID);
-            if (mojangResponse != null) {
+            if (mojangResponse != null && !mojangResponse.isEmpty()) {
                 JsonObject json = getJsonObject(mojangResponse);
                 if (json.has("name")) return json.get("name").getAsString();
             }
         } catch (Exception e) {}
 
+        // 2. Try Pit Panda Fallback (Triple Redundancy)
         try {
-            String pitMartResponse = fetchJson("https://pitmart.net/api/player/" + UUID);
-            if (pitMartResponse != null) {
-                JsonObject json = getJsonObject(pitMartResponse);
-                if (json.has("success") && json.get("success").getAsBoolean() && json.has("player") && !json.get("player").isJsonNull()) {
-                    JsonObject player = json.getAsJsonObject("player");
-                    if (player.has("username") && !player.get("username").isJsonNull()) {
-                        return player.get("username").getAsString(); 
+            String pitPandaResponse = fetchJson("https://pitpanda.rocks/api/players/" + cleanUUID);
+            if (pitPandaResponse != null && !pitPandaResponse.isEmpty()) {
+                JsonObject json = getJsonObject(pitPandaResponse);
+                if (json.has("data") && !json.get("data").isJsonNull()) {
+                    JsonObject data = json.getAsJsonObject("data");
+                    if (data.has("name") && !data.get("name").isJsonNull()) {
+                        return data.get("name").getAsString();
                     }
                 }
             }
         } catch (Exception e) {}
+
+        // 3. Try Pitmart Fallback
+        try {
+            String pitMartResponse = fetchJson("https://pitmart.net/api/player/" + cleanUUID);
+            if (pitMartResponse != null && !pitMartResponse.isEmpty()) {
+                JsonObject json = getJsonObject(pitMartResponse);
+                if (json.has("username") && !json.get("username").isJsonNull()) {
+                    return json.get("username").getAsString(); 
+                }
+            }
+        } catch (Exception e) {}
+        
         return null;
     }
 
@@ -228,8 +241,8 @@ public class AutoDenick {
             con.setRequestMethod("GET");
             con.setRequestProperty("Content-Type", "application/json");
             con.setRequestProperty("User-Agent", "Mozilla/5.0"); 
-            con.setConnectTimeout(5000); 
-            con.setReadTimeout(5000);
+            con.setConnectTimeout(3000); 
+            con.setReadTimeout(3000);
 
             if (con.getResponseCode() != 200) return null;
 

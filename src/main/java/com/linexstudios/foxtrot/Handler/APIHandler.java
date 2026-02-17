@@ -10,93 +10,115 @@ import java.net.URL;
 
 public class APIHandler {
 
-    // Cached variables so we don't spam the API every single frame
+    // --- Pitmart Data (Used for Gold Remaining) ---
     public static int prestige = 0;
     public static int level = 0;
-    public static long xpLeft = 0;
-    public static double xpProportion = 0.0;
     public static double goldLeft = 0.0;
     public static double goldProportion = 0.0;
+
+    // --- Pit Panda Data (Used for XP and XP/Hour) ---
+    public static double pitPandaXpHourly = 0.0;
+    public static double pitPandaXpPercent = 0.0;
+    public static String pitPandaXpDescription = "";
+    public static long pitPandaXpCurrent = 0;
+    public static long pitPandaXpGoal = 0;
 
     public static boolean isLoaded = false;
     private static long lastFetchTime = 0;
 
-    /**
-     * Refreshes the player's stats via the web API.
-     * Automatically rate-limits itself to only check once every 30 seconds.
-     */
     public static void updateStats(EntityPlayer player) {
         if (player == null) return;
 
         long currentTime = System.currentTimeMillis();
-        // Only fetch once every 30 seconds (30,000 ms) to avoid getting API banned
+        // 30 seconds cooldown to prevent rate limiting
         if (currentTime - lastFetchTime < 30000) return;
 
         lastFetchTime = currentTime;
 
-        // Run on a separate thread so Minecraft doesn't freeze!
+        // Run async so Minecraft doesn't freeze
         new Thread(() -> {
             try {
-                // Remove dashes from the UUID to match the API format
                 String uuid = player.getUniqueID().toString().replace("-", "");
 
-                URL url = new URL("https://pitmart.net/api/player/" + uuid);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                // 1. Fetch from Pitmart
+                URL pitmartUrl = new URL("https://pitmart.net/api/player/" + uuid);
+                HttpURLConnection conn1 = (HttpURLConnection) pitmartUrl.openConnection();
+                conn1.setRequestMethod("GET");
+                conn1.setRequestProperty("User-Agent", "Mozilla/5.0");
 
-                if (conn.getResponseCode() == 200) {
-                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                if (conn1.getResponseCode() == 200) {
+                    BufferedReader in = new BufferedReader(new InputStreamReader(conn1.getInputStream()));
                     String inputLine;
                     StringBuilder content = new StringBuilder();
-                    while ((inputLine = in.readLine()) != null) {
-                        content.append(inputLine);
-                    }
+                    while ((inputLine = in.readLine()) != null) content.append(inputLine);
                     in.close();
 
-                    // Parse the JSON data
                     JSONObject json = new JSONObject(content.toString());
-
-                    // Use optInt/optDouble so it safely defaults to 0 if the API glitches
                     prestige = json.optInt("prestige", 0);
                     level = json.optInt("level", 1);
-                    xpLeft = json.optLong("prestigeXpLeft", 0);
-                    xpProportion = json.optDouble("prestigeXpReqProportion", 0.0);
                     goldLeft = json.optDouble("prestigeGoldLeft", 0.0);
                     goldProportion = json.optDouble("prestigeGoldReqProportion", 0.0);
-
-                    isLoaded = true;
                 }
-                conn.disconnect();
+                conn1.disconnect();
+
+                // 2. Fetch from Pit Panda
+                URL pandaUrl = new URL("https://pitpanda.rocks/api/players/" + uuid);
+                HttpURLConnection conn2 = (HttpURLConnection) pandaUrl.openConnection();
+                conn2.setRequestMethod("GET");
+                conn2.setRequestProperty("User-Agent", "Mozilla/5.0");
+
+                if (conn2.getResponseCode() == 200) {
+                    BufferedReader in = new BufferedReader(new InputStreamReader(conn2.getInputStream()));
+                    String inputLine;
+                    StringBuilder content = new StringBuilder();
+                    while ((inputLine = in.readLine()) != null) content.append(inputLine);
+                    in.close();
+
+                    JSONObject json = new JSONObject(content.toString());
+                    
+                    if (json.has("data")) {
+                        JSONObject data = json.getJSONObject("data");
+                        
+                        if (data.has("xpHourly")) pitPandaXpHourly = data.optDouble("xpHourly", 0.0);
+                        
+                        if (data.has("xpProgress")) {
+                            JSONObject xpProgress = data.getJSONObject("xpProgress");
+                            
+                            // ANTI-LAG: Only accept the API's current XP if it is HIGHER than our live local tracking
+                            long apiCurrent = xpProgress.optLong("displayCurrent", 0);
+                            if (apiCurrent > pitPandaXpCurrent || pitPandaXpCurrent == 0) {
+                                pitPandaXpCurrent = apiCurrent;
+                            }
+                            
+                            pitPandaXpGoal = xpProgress.optLong("displayGoal", 0);
+                            
+                            // Re-calculate the percent and description immediately after an API update
+                            if (pitPandaXpGoal > 0) {
+                                pitPandaXpPercent = ((double) pitPandaXpCurrent / pitPandaXpGoal);
+                                pitPandaXpDescription = String.format("%.2fk/%.2fk", pitPandaXpCurrent / 1000.0, pitPandaXpGoal / 1000.0);
+                            }
+                        }
+                    }
+                }
+                conn2.disconnect();
+
+                isLoaded = true;
             } catch (Exception e) {
-                System.out.println("[Foxtrot] Failed to fetch data from API.");
+                System.out.println("[Foxtrot] Failed to fetch data from APIs.");
                 e.printStackTrace();
             }
         }).start();
     }
 
-    /**
-     * Helper Method: Checks if the gold value is negative (meaning requirement is met)
-     */
     public static boolean isGoldReqMet() {
         return goldLeft <= 0;
     }
 
-    /**
-     * Helper Method: Formats the gold left dynamically
-     */
     public static String getFormattedGoldLeft() {
         if (isGoldReqMet()) {
             return "Met!";
         } else {
-            return String.format("%,.0f", goldLeft); // Formats 15000 to 15,000
+            return String.format("%,.0f", goldLeft);
         }
-    }
-
-    /**
-     * Helper Method: Returns XP proportion as a clean percentage (e.g. 85.5%)
-     */
-    public static String getXpPercentage() {
-        return String.format("%.1f%%", xpProportion * 100);
     }
 }

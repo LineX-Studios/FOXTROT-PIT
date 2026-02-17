@@ -7,9 +7,13 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SessionStatsHUD {
     public static final SessionStatsHUD instance = new SessionStatsHUD();
@@ -25,9 +29,9 @@ public class SessionStatsHUD {
     private long sessionStartTime = 0;
     private boolean isInPit = false;
 
-    // Advanced variables for calculating XP/Hour dynamically
-    private long lastXpLeft = -1;
-    private long totalXpGained = 0;
+    // Live variables for instant tracking
+    private long sessionXpGained = 0;
+    private static final Pattern XP_PATTERN = Pattern.compile("\\+(\\d+)XP");
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
@@ -39,21 +43,34 @@ public class SessionStatsHUD {
             if (sessionStartTime == 0) {
                 sessionStartTime = System.currentTimeMillis();
             }
-
+            // Trigger the dual API fetcher (handles 30s cooldown internally)
             APIHandler.updateStats(mc.thePlayer);
+        }
+    }
 
-            if (APIHandler.isLoaded) {
-                if (lastXpLeft == -1) {
-                    // Initialize the tracker the first time the API loads
-                    lastXpLeft = APIHandler.xpLeft;
-                } else if (APIHandler.xpLeft < lastXpLeft) {
-                    // We gained XP! Add the difference to our total.
-                    totalXpGained += (lastXpLeft - APIHandler.xpLeft);
-                    lastXpLeft = APIHandler.xpLeft;
-                } else if (APIHandler.xpLeft > lastXpLeft) {
-                    // The player prestiged (XP left jumped up)! Just reset the tracker.
-                    lastXpLeft = APIHandler.xpLeft;
-                }
+    // --- INSTANT HYBRID XP TRACKER ---
+    @SubscribeEvent
+    public void onChat(ClientChatReceivedEvent event) {
+        if (!enabled || !isInPit || !APIHandler.isLoaded) return;
+
+        // Strip colors to cleanly read the raw text
+        String message = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
+        
+        // Look for exact XP drops in chat (e.g. "+15XP")
+        Matcher matcher = XP_PATTERN.matcher(message.replace(",", ""));
+        if (matcher.find()) {
+            long xpEarned = Long.parseLong(matcher.group(1));
+            
+            // 1. Instantly track session XP for live XP/Hour math
+            sessionXpGained += xpEarned;
+            
+            // 2. Instantly update the API values locally
+            APIHandler.pitPandaXpCurrent += xpEarned;
+            
+            // 3. Instantly re-calculate the percentage and "k/k" description
+            if (APIHandler.pitPandaXpGoal > 0) {
+                APIHandler.pitPandaXpPercent = ((double) APIHandler.pitPandaXpCurrent / APIHandler.pitPandaXpGoal);
+                APIHandler.pitPandaXpDescription = String.format("%.2fk/%.2fk", APIHandler.pitPandaXpCurrent / 1000.0, APIHandler.pitPandaXpGoal / 1000.0);
             }
         }
     }
@@ -61,7 +78,7 @@ public class SessionStatsHUD {
     private void checkIfInPit() {
         Scoreboard scoreboard = mc.theWorld.getScoreboard();
         if (scoreboard != null) {
-            ScoreObjective objective = scoreboard.getObjectiveInDisplaySlot(1);
+            ScoreObjective objective = scoreboard.getObjectiveInDisplaySlot(1); 
             if (objective != null) {
                 String title = EnumChatFormatting.getTextWithoutFormattingCodes(objective.getDisplayName());
                 if (title != null && title.toUpperCase().contains("PIT")) {
@@ -92,9 +109,8 @@ public class SessionStatsHUD {
         currentY += fr.FONT_HEIGHT + 2;
 
         if (isEditing && !APIHandler.isLoaded) {
-            // Dummy Data for the HUD Editor using your exact requested color formatting
             String timeStr = EnumChatFormatting.WHITE + "Playtime: " + EnumChatFormatting.GRAY + "01h 15m";
-            String xpStr = EnumChatFormatting.WHITE + "XP Needed: " + EnumChatFormatting.AQUA + "14,500 " + EnumChatFormatting.GRAY + "(85.0%)";
+            String xpStr = EnumChatFormatting.WHITE + "XP Progress: " + EnumChatFormatting.AQUA + "25.93k/98.94k " + EnumChatFormatting.GRAY + "(26.2%)";
             String goldStr = EnumChatFormatting.WHITE + "Gold Needed: " + EnumChatFormatting.GOLD + "10,000g";
             String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + "15,000";
 
@@ -116,7 +132,7 @@ public class SessionStatsHUD {
 
         } else if (APIHandler.isLoaded) {
 
-            // 1. Time Played Format
+            // 1. Time Played 
             long elapsed = System.currentTimeMillis() - sessionStartTime;
             long hours = elapsed / 3600000;
             long minutes = (elapsed % 3600000) / 60000;
@@ -131,28 +147,31 @@ public class SessionStatsHUD {
             maxWidth = Math.max(maxWidth, fr.getStringWidth(timeStr));
             currentY += fr.FONT_HEIGHT;
 
-            // 2. XP Needed & Percentage Calculation
-            String percentFormatted = calculateXpPercentage();
-            String xpStr = EnumChatFormatting.WHITE + "XP Needed: " + EnumChatFormatting.AQUA + String.format("%,d", APIHandler.xpLeft) + EnumChatFormatting.DARK_AQUA + " (" + percentFormatted + ")";
-
+            // 2. Instant XP Progress
+            double percentCompleted = APIHandler.pitPandaXpPercent * 100.0;
+            // Cap it at 100% just in case of weird server behavior
+            percentCompleted = Math.max(0.0, Math.min(100.0, percentCompleted));
+            String percentFormatted = String.format("%.1f%%", percentCompleted);
+            
+            String xpStr = EnumChatFormatting.WHITE + "XP Progress: " + EnumChatFormatting.AQUA + APIHandler.pitPandaXpDescription + EnumChatFormatting.DARK_AQUA + " (" + percentFormatted + ")";
             fr.drawStringWithShadow(xpStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpStr));
             currentY += fr.FONT_HEIGHT;
 
             // 3. Gold Needed
-            String goldDisplay = APIHandler.isGoldReqMet() ? EnumChatFormatting.GREEN + "Met!" : EnumChatFormatting.GOLD + APIHandler.getFormattedGoldLeft() + "g";
+            String goldDisplay = APIHandler.isGoldReqMet() ? EnumChatFormatting.GREEN + "Done" : EnumChatFormatting.GOLD + APIHandler.getFormattedGoldLeft() + "g";
             String goldStr = EnumChatFormatting.WHITE + "Gold Needed: " + goldDisplay;
             fr.drawStringWithShadow(goldStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(goldStr));
             currentY += fr.FONT_HEIGHT;
 
-            // 4. XP / Hour Calculation
-            long xpPerHour = 0;
-            // The math will process immediately the moment the API registers an XP change
-            if (elapsed > 1000 && totalXpGained > 0) {
-                xpPerHour = (long) ((totalXpGained / (double) elapsed) * 3600000);
+            // 4. Instant Live XP/Hour Calculation
+            long instantXpPerHour = 0;
+            // Allow 5 seconds to pass before calculating to prevent crazy math spikes when you first join
+            if (elapsed > 5000 && sessionXpGained > 0) {
+                instantXpPerHour = (long) ((sessionXpGained / (double) elapsed) * 3600000);
             }
-            String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + String.format("%,d", xpPerHour);
+            String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + String.format("%,d", instantXpPerHour);
             fr.drawStringWithShadow(xpPerHourStr, hudX, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpPerHourStr));
             currentY += fr.FONT_HEIGHT;
@@ -168,16 +187,6 @@ public class SessionStatsHUD {
         this.height = currentY - hudY;
 
         if (isEditing) Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
-    }
-
-    /**
-     * Calculates the exact completion percentage using Pitmart's proportion data.
-     */
-    private String calculateXpPercentage() {
-        // Pitmart sends the proportion completed (e.g. 0.2559 = 25.59%)
-        double percentCompleted = APIHandler.xpProportion * 100.0;
-        percentCompleted = Math.max(0.0, Math.min(100.0, percentCompleted));
-        return String.format("%.1f%%", percentCompleted);
     }
 
     public boolean isHovered(int mouseX, int mouseY) {

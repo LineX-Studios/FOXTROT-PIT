@@ -90,11 +90,12 @@ public class WhoGotBanned {
             // --- TRIGGER THE CHAT ALERT ---
             if (mc.thePlayer != null) {
                 mc.thePlayer.addChatMessage(new ChatComponentText(
-                        EnumChatFormatting.GRAY + "[" +
-                                EnumChatFormatting.RED + "FOXTROT" +
-                                EnumChatFormatting.GRAY + "] " +
-                                EnumChatFormatting.RED + bannedPlayer + " " +
-                                EnumChatFormatting.GOLD + "Has been banned!"
+                        EnumChatFormatting.GRAY + "[" + 
+                        EnumChatFormatting.RED + "FOXTROT" + 
+                        EnumChatFormatting.GRAY + "] " + 
+                        EnumChatFormatting.YELLOW + "\u26A0 " + 
+                        EnumChatFormatting.RED + bannedPlayer + " " + 
+                        EnumChatFormatting.GOLD + "Has been banned!"
                 ));
             }
 
