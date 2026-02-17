@@ -94,8 +94,8 @@ public class WhoGotBanned {
                         EnumChatFormatting.RED + "FOXTROT" + 
                         EnumChatFormatting.GRAY + "] " + 
                         EnumChatFormatting.YELLOW + "\u26A0 " + 
-                        EnumChatFormatting.RED + bannedPlayer + " " + 
-                        EnumChatFormatting.GOLD + "Has been banned!"
+                        EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + bannedPlayer + " " + 
+                        EnumChatFormatting.YELLOW + "Has been banned!"
                 ));
             }
 
