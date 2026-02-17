@@ -3,7 +3,6 @@ package com.linexstudios.foxtrot.Hud;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
-import com.linexstudios.foxtrot.Render.ChestESP;
 import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Render.FriendsESP;
