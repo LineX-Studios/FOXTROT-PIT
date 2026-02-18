@@ -28,7 +28,7 @@ public class FriendsHUD extends DraggableHUD {
 
     public static List<String> friendsList = new ArrayList<>();
 
-    public FriendsHUD() { super("Friend List", 350, 80); }
+    public FriendsHUD() { super("Friends List", 350, 80); }
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {

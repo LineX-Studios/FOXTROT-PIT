@@ -43,11 +43,10 @@ public class AutoClicker {
     public static float maxCps = 13.0F;
     public static int randomMode = 1; 
     public static boolean breakBlocks = true;
-    private int blockHitTicks = 0;
 
     // --- Whitelist (Strictly for Left Click) ---
     public static boolean limitItems = false;
-    public static List<String> itemWhitelist = new ArrayList<>(Arrays.asList("sword", "axe", "pickaxe"));
+    public static List<String> itemWhitelist = new ArrayList<>(Arrays.asList("swords", "axes", "pickaxes"));
 
     private long lastLeftClickTime = 0L;
     private long nextLeftDelay = 0L;
@@ -66,24 +65,19 @@ public class AutoClicker {
 
     @SubscribeEvent
     public void onKeyInput(InputEvent.KeyInputEvent event) {
-        // --- AutoClicker Toggle (Down Arrow) ---
         if (Foxtrot.toggleCombatKey != null && Foxtrot.toggleCombatKey.isPressed()) {
             enabled = !enabled;
             if (mc.thePlayer != null) {
                 String state = enabled ? "\u00a7aON" : "\u00a7cOFF";
                 mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[PIT] \u00a77AutoClicker: " + state));
             }
-            if (debugMode) System.out.println("[Foxtrot-Debug] AutoClicker Toggled: " + enabled);
         }
-
-        // --- Inventory Fill Toggle (Right Arrow) ---
         if (Foxtrot.toggleInvFillKey != null && Foxtrot.toggleInvFillKey.isPressed()) {
             inventoryFill = !inventoryFill;
             if (mc.thePlayer != null) {
                 String state = inventoryFill ? "\u00a7aON" : "\u00a7cOFF";
                 mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[PIT] \u00a77Inventory Fill: " + state));
             }
-            if (debugMode) System.out.println("[Foxtrot-Debug] Inventory Fill Toggled: " + inventoryFill);
         }
     }
 
@@ -91,7 +85,6 @@ public class AutoClicker {
     public void onTick(TickEvent.ClientTickEvent event) {
         if (mc.thePlayer == null || mc.theWorld == null) return;
 
-        // Inventory Fill Logic (Independent of main AutoClicker toggle)
         if (mc.currentScreen instanceof net.minecraft.client.gui.inventory.GuiContainer) {
             if (inventoryFill && Mouse.isButtonDown(0)) {
                 long invDelay = inventoryFillCps >= 20.0F ? 0 : (long)(1000.0F / inventoryFillCps);
@@ -106,14 +99,24 @@ public class AutoClicker {
             return; 
         }
 
-        if (!enabled) return; // Rest of combat requires the main toggle
+        if (!enabled) return;
 
         int attackKey = mc.gameSettings.keyBindAttack.getKeyCode();
         int useKey = mc.gameSettings.keyBindUseItem.getKeyCode();
+        
+        ItemStack held = mc.thePlayer.getHeldItem();
+        boolean holdingBlock = (held != null && held.getItem() instanceof ItemBlock);
 
         if (event.phase == TickEvent.Phase.START) {
-            if (leftClick && holdToClick && Mouse.isButtonDown(0)) KeyBinding.setKeyBindState(attackKey, false);
-            if (fastPlaceEnabled && holdToClick && Mouse.isButtonDown(1)) KeyBinding.setKeyBindState(useKey, false);
+            boolean lookingAtBlock = (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK);
+            if (leftClick && holdToClick && Mouse.isButtonDown(0)) {
+                if (!(breakBlocks && lookingAtBlock)) {
+                    KeyBinding.setKeyBindState(attackKey, false);
+                }
+            }
+            if (fastPlaceEnabled && holdToClick && Mouse.isButtonDown(1)) {
+                if (holdingBlock) KeyBinding.setKeyBindState(useKey, false);
+            }
             return;
         }
 
@@ -122,18 +125,17 @@ public class AutoClicker {
         if (leftClick) {
             boolean shouldLeftClick = !holdToClick || Mouse.isButtonDown(0);
             if (breakBlocks && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-                blockHitTicks++;
-                if (blockHitTicks > 15) shouldLeftClick = false; 
-            } else blockHitTicks = 0;
-
-            if (limitItems && !isHoldingWhitelistedItem()) shouldLeftClick = false;
+                shouldLeftClick = false; 
+            }
+            if (limitItems && !isHoldingWhitelistedItem()) {
+                shouldLeftClick = false;
+            }
 
             if (shouldLeftClick && System.currentTimeMillis() - lastLeftClickTime >= nextLeftDelay) {
                 try {
                     if (leftClickCounterField != null) leftClickCounterField.set(mc, 0); 
                     KeyBinding.setKeyBindState(attackKey, true);
                     KeyBinding.onTick(attackKey);
-
                     net.minecraftforge.client.event.MouseEvent fakeEvent = new net.minecraftforge.client.event.MouseEvent();
                     Field btnField = net.minecraftforge.client.event.MouseEvent.class.getDeclaredField("button");
                     btnField.setAccessible(true);
@@ -142,11 +144,7 @@ public class AutoClicker {
                     stateField.setAccessible(true);
                     stateField.set(fakeEvent, true); 
                     net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(fakeEvent);
-
-                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
-                        new net.minecraftforge.fml.common.gameevent.InputEvent.MouseInputEvent()
-                    );
-
+                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.fml.common.gameevent.InputEvent.MouseInputEvent());
                 } catch (Exception e) {}
                 lastLeftClickTime = System.currentTimeMillis();
                 nextLeftDelay = generateNextDelay();
@@ -154,10 +152,7 @@ public class AutoClicker {
         }
 
         if (fastPlaceEnabled) {
-            ItemStack held = mc.thePlayer.getHeldItem();
-            boolean holdingBlock = (held != null && held.getItem() instanceof ItemBlock);
             boolean shouldRightClick = (!holdToClick || Mouse.isButtonDown(1)) && holdingBlock;
-            
             if (shouldRightClick && System.currentTimeMillis() - lastRightClickTime >= nextRightDelay) {
                 KeyBinding.setKeyBindState(useKey, true);
                 KeyBinding.onTick(useKey);
@@ -171,27 +166,40 @@ public class AutoClicker {
         float targetCps = minCps + (rand.nextFloat() * (maxCps - minCps));
         long baseDelay = (long) (1000.0F / targetCps);
         long randomOffset = 0;
-        
         switch (randomMode) {
             case 0: randomOffset = (long) ((rand.nextGaussian() * 15) - 7); break;
             case 1: randomOffset = (long) ((rand.nextGaussian() * 25) - 10); break;
             case 2: randomOffset = (long) ((rand.nextGaussian() * 35) - 15); break;
         }
-        
         return Math.max(20, baseDelay + randomOffset);
     }
 
+    // --- ADVANCED ALLOWLIST LOGIC ---
     private boolean isHoldingWhitelistedItem() {
         ItemStack held = mc.thePlayer.getHeldItem();
         if (held == null) return false;
         Item item = held.getItem();
         
-        if (item instanceof ItemSword && itemWhitelist.contains("sword")) return true;
-        if (item instanceof ItemAxe && itemWhitelist.contains("axe")) return true;
-        if (item instanceof ItemPickaxe && itemWhitelist.contains("pickaxe")) return true;
-
-        String name = item.getUnlocalizedName().toLowerCase();
-        for (String w : itemWhitelist) if (name.contains(w.toLowerCase())) return true;
+        for (String w : itemWhitelist) {
+            String check = w.toLowerCase().trim();
+            if (check.isEmpty()) continue;
+            
+            // Allow universal category parsing
+            if (check.equals("swords") || check.equals("sword")) {
+                if (item instanceof ItemSword) return true;
+            } else if (check.equals("axes") || check.equals("axe")) {
+                if (item instanceof ItemAxe) return true;
+            } else if (check.equals("pickaxes") || check.equals("pickaxe")) {
+                if (item instanceof ItemPickaxe) return true;
+            } else if (check.equals("shovels") || check.equals("shovel") || check.equals("spades") || check.equals("spade")) {
+                if (item instanceof ItemSpade) return true;
+            } else if (check.equals("blocks") || check.equals("block")) {
+                if (item instanceof ItemBlock) return true;
+            } else if (item.getUnlocalizedName().toLowerCase().contains(check)) {
+                // Failsafe for specific items
+                return true;
+            }
+        }
         return false;
     }
 }

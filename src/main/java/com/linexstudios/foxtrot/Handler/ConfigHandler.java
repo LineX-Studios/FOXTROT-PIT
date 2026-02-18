@@ -94,24 +94,15 @@ public class ConfigHandler {
                 PotionHUD.durationColor = Integer.parseInt(props.getProperty("potionDurationColor", "11184810")); // 0xAAAAAA
 
                 ArmorHUD.instance.isHorizontal = Boolean.parseBoolean(props.getProperty("armorHorizontal", "false"));
-                // REMOVED: armorDurabilityColor loader
 
                 CoordsHUD.instance.isHorizontal = Boolean.parseBoolean(props.getProperty("coordsHorizontal", "false"));
                 CoordsHUD.axisColor = Integer.parseInt(props.getProperty("coordsAxisColor", "16733525")); // 0xFF5555
                 CoordsHUD.numberColor = Integer.parseInt(props.getProperty("coordsNumberColor", "16777215"));
 
-                // Load GUI States
-                EditHUDGui.panelX = Integer.parseInt(props.getProperty("panelX", "-1"));
-                EditHUDGui.panelY = Integer.parseInt(props.getProperty("panelY", "-1"));
+                // Load GUI States (FIXED VARIABLES)
+                EditHUDGui.collapsedX = Integer.parseInt(props.getProperty("panelX", "-1"));
+                EditHUDGui.collapsedY = Integer.parseInt(props.getProperty("panelY", "-1"));
                 EditHUDGui.panelCollapsed = Boolean.parseBoolean(props.getProperty("panelCollapsed", "false"));
-                EditHUDGui.combatExpanded = Boolean.parseBoolean(props.getProperty("combatExpanded", "false"));
-                EditHUDGui.renderExpanded = Boolean.parseBoolean(props.getProperty("renderExpanded", "false"));
-                EditHUDGui.denickExpanded = Boolean.parseBoolean(props.getProperty("denickExpanded", "false"));
-                EditHUDGui.hudExpanded = Boolean.parseBoolean(props.getProperty("hudExpanded", "false"));
-                EditHUDGui.autoClickerDropdownExpanded = Boolean.parseBoolean(props.getProperty("autoClickerDropdownExpanded", "false"));
-                EditHUDGui.randomDropdownExpanded = Boolean.parseBoolean(props.getProperty("randomDropdownExpanded", "false"));
-                EditHUDGui.nameTagsDropdownExpanded = Boolean.parseBoolean(props.getProperty("nameTagsDropdownExpanded", "false"));
-                EditHUDGui.pitEspDropdownExpanded = Boolean.parseBoolean(props.getProperty("pitEspDropdownExpanded", "false"));
 
                 // Load AutoClicker Settings
                 AutoClicker.enabled = Boolean.parseBoolean(props.getProperty("clickerEnabled", "false"));
@@ -218,24 +209,15 @@ public class ConfigHandler {
             props.setProperty("potionDurationColor", String.valueOf(PotionHUD.durationColor));
 
             props.setProperty("armorHorizontal", String.valueOf(ArmorHUD.instance.isHorizontal));
-            // REMOVED: armorDurabilityColor saver
 
             props.setProperty("coordsHorizontal", String.valueOf(CoordsHUD.instance.isHorizontal));
             props.setProperty("coordsAxisColor", String.valueOf(CoordsHUD.axisColor));
             props.setProperty("coordsNumberColor", String.valueOf(CoordsHUD.numberColor));
 
-            // Save GUI States
-            props.setProperty("panelX", String.valueOf(EditHUDGui.panelX));
-            props.setProperty("panelY", String.valueOf(EditHUDGui.panelY));
+            // Save GUI States (FIXED VARIABLES)
+            props.setProperty("panelX", String.valueOf(EditHUDGui.collapsedX));
+            props.setProperty("panelY", String.valueOf(EditHUDGui.collapsedY));
             props.setProperty("panelCollapsed", String.valueOf(EditHUDGui.panelCollapsed));
-            props.setProperty("combatExpanded", String.valueOf(EditHUDGui.combatExpanded));
-            props.setProperty("renderExpanded", String.valueOf(EditHUDGui.renderExpanded));
-            props.setProperty("denickExpanded", String.valueOf(EditHUDGui.denickExpanded));
-            props.setProperty("hudExpanded", String.valueOf(EditHUDGui.hudExpanded));
-            props.setProperty("autoClickerDropdownExpanded", String.valueOf(EditHUDGui.autoClickerDropdownExpanded));
-            props.setProperty("randomDropdownExpanded", String.valueOf(EditHUDGui.randomDropdownExpanded));
-            props.setProperty("nameTagsDropdownExpanded", String.valueOf(EditHUDGui.nameTagsDropdownExpanded));
-            props.setProperty("pitEspDropdownExpanded", String.valueOf(EditHUDGui.pitEspDropdownExpanded));
 
             // Save AutoClicker Settings
             props.setProperty("clickerEnabled", String.valueOf(AutoClicker.enabled));
