@@ -14,6 +14,9 @@ import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Hud.SessionStatsHUD;
+import com.linexstudios.foxtrot.Hud.PotionHUD;
+import com.linexstudios.foxtrot.Hud.ArmorHUD;
+import com.linexstudios.foxtrot.Hud.CoordsHUD;
 import com.linexstudios.foxtrot.Util.EnemyAlert;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.client.ClientCommandHandler;
@@ -59,6 +62,9 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(new com.linexstudios.foxtrot.Render.NickedRender());
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.EventHUD.instance);
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.RegHUD.instance);
+        MinecraftForge.EVENT_BUS.register(PotionHUD.instance);
+        MinecraftForge.EVENT_BUS.register(ArmorHUD.instance);
+        MinecraftForge.EVENT_BUS.register(CoordsHUD.instance);
 
         // Register Combat modules
         MinecraftForge.EVENT_BUS.register(AutoClicker.instance); // REGISTERED AUTOCLICKER

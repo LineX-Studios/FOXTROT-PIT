@@ -144,7 +144,8 @@ public class CommandFoxtrot extends CommandBase {
                         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "Friends List (" + FriendsHUD.friendsList.size() + ")"));
                         sender.addChatMessage(new ChatComponentText(""));
                         for (String name : FriendsHUD.friendsList) {
-                            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "- " + FriendsHUD.getFormattedName(name)));
+                            // FIXED: Removed the missing getFormattedName call
+                            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "- " + EnumChatFormatting.GREEN + name));
                         }
                     }
                 } else {
@@ -187,7 +188,8 @@ public class CommandFoxtrot extends CommandBase {
                     sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "Enemy List (" + EnemyHUD.targetList.size() + ")"));
                     sender.addChatMessage(new ChatComponentText(""));
                     for (String name : EnemyHUD.targetList) {
-                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "- " + EnemyHUD.getFormattedName(name)));
+                        // FIXED: Removed the missing getFormattedName call
+                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "- " + EnumChatFormatting.RED + name));
                     }
                 }
                 break;

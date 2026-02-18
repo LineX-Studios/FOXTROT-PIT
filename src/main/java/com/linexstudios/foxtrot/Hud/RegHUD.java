@@ -18,29 +18,29 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class RegHUD {
+public class RegHUD extends DraggableHUD {
     public static final RegHUD instance = new RegHUD();
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
-    public static int hudX = 10;
-    public static int hudY = 180;
 
-    public int width = 0;
-    public int height = 0;
+    // Set the default position here
+    public RegHUD() { super("Regularity List", 10, 180); }
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return;
-        render(false);
+        if (mc.currentScreen instanceof HUDSettingsGui) return;
+        render(false, 0, 0); // Re-routes to the DraggableHUD render method
     }
 
-    public void render(boolean isEditing) {
+    @Override
+    public void draw(boolean isEditing) {
         if (!enabled || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
-        int currentY = hudY;
+        int currentY = 0; // Local Y starts at 0 now
         int maxWidth = fr.getStringWidth("Regularity Players");
         boolean foundReg = false;
 
@@ -58,7 +58,7 @@ public class RegHUD {
             renderedPlayers.add(name.toLowerCase());
 
             if (!foundReg) {
-                fr.drawStringWithShadow(EnumChatFormatting.DARK_RED + "" + EnumChatFormatting.BOLD + "Regularity Players:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.DARK_RED + "" + EnumChatFormatting.BOLD + "Regularity Players:", 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 foundReg = true;
             }
@@ -69,7 +69,7 @@ public class RegHUD {
             String dist = SpawnRegions.getLocationFormat(mc.thePlayer, other);
 
             String fullLine = displayName + EnumChatFormatting.GRAY + " - " + enchantsDisplay + EnumChatFormatting.GRAY + " - " + dist;
-            fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
+            fr.drawStringWithShadow(fullLine, 0, currentY, 0xFFFFFF);
 
             int lineWidth = fr.getStringWidth(fullLine);
             if (lineWidth > maxWidth) maxWidth = lineWidth;
@@ -78,10 +78,10 @@ public class RegHUD {
 
         if (!foundReg) {
             if (isEditing) {
-                fr.drawStringWithShadow(EnumChatFormatting.DARK_RED + "" + EnumChatFormatting.BOLD + "Regularity Players:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.DARK_RED + "" + EnumChatFormatting.BOLD + "Regularity Players:", 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "R" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.DARK_RED + "Reg" + EnumChatFormatting.WHITE + "/" + EnumChatFormatting.WHITE + "Mirror" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-                fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(placeholder, 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
             } else {
@@ -91,13 +91,7 @@ public class RegHUD {
         }
 
         this.width = maxWidth;
-        this.height = currentY - hudY;
-
-        if (isEditing) Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
-    }
-
-    public boolean isHovered(int mouseX, int mouseY) {
-        return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
+        this.height = currentY;
     }
 
     private String getRegEnchants(EntityOtherPlayerMP player) {
@@ -113,7 +107,6 @@ public class RegHUD {
         List<String> sideEnchants = new ArrayList<>();
 
         for (int i = 0; i < enchants.tagCount(); i++) {
-            // APPLYING THE FIX: trim() and toLowerCase() to stop Hypixel NBT from breaking the match
             String key = enchants.getCompoundTagAt(i).getString("Key").trim();
             String formatted = formatEnchant(key);
 
@@ -139,7 +132,6 @@ public class RegHUD {
     public static String formatEnchant(String rawKey) {
         if (rawKey == null) return null;
 
-        // FIX: Force key to lowercase and trim spaces so cases like "Mirror " work
         String key = rawKey.trim().toLowerCase();
 
         switch (key) {

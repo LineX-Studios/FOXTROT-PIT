@@ -17,10 +17,12 @@ import org.lwjgl.input.Keyboard;
 import java.io.IOException;
 
 public class EditHUDGui extends GuiScreen {
-    private boolean draggingEnemy = false, draggingNicked = false, draggingPanel = false, draggingFriends = false;
-    public boolean draggingStats = false;
-    public boolean draggingEvent = false;
-    public boolean draggingReg = false; 
+    private boolean draggingPanel = false;
+    
+    // NEW UNIFIED DRAGGING SYSTEM
+    private DraggableHUD draggingModule = null;
+    private DraggableHUD resizingModule = null;
+    private int resizingCorner = 0;
 
     public static int panelX = -1, panelY = -1;
     public static boolean panelCollapsed = false;
@@ -79,7 +81,6 @@ public class EditHUDGui extends GuiScreen {
         this.buttonList.add(new ModernGUI(62, 0, 0, btnW - 10, 16, " > Show Health: " + (NameTags.showHealth ? on : off)));
         this.buttonList.add(new ModernGUI(63, 0, 0, btnW - 10, 16, " > Show Armorstatus: " + (NameTags.showItems ? on : off)));
         
-        // Pit ESP Dropdown
         this.buttonList.add(new ModernGUI(64, 0, 0, btnW, 16, "PIT ESP" + EnumChatFormatting.GRAY + (pitEspDropdownExpanded ? " ^" : " v")));
         this.buttonList.add(new ModernGUI(65, 0, 0, btnW - 10, 16, " > Sewer Chests: " + (PitESP.espChests ? on : off)));
         this.buttonList.add(new ModernGUI(66, 0, 0, btnW - 10, 16, " > Dragon Eggs: " + (PitESP.espDragonEggs ? on : off)));
@@ -99,18 +100,32 @@ public class EditHUDGui extends GuiScreen {
         this.buttonList.add(new ModernGUI(85, 0, 0, btnW, 16, "Session Stats: " + (SessionStatsHUD.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(86, 0, 0, btnW, 16, "Event Tracker: " + (EventHUD.enabled ? on : off)));
         this.buttonList.add(new ModernGUI(87, 0, 0, btnW, 16, "Reg HUD: " + (RegHUD.enabled ? on : off)));
+        
+        // --- NEW HUD TOGGLES ---
+        this.buttonList.add(new ModernGUI(88, 0, 0, btnW, 16, "Potion HUD: " + (PotionHUD.enabled ? on : off)));
+        this.buttonList.add(new ModernGUI(89, 0, 0, btnW, 16, "Armor HUD: " + (ArmorHUD.enabled ? on : off)));
+        this.buttonList.add(new ModernGUI(90, 0, 0, btnW, 16, "Coords HUD: " + (CoordsHUD.enabled ? on : off)));
+        
+        // --- MASTER CUSTOMIZE BUTTON ---
+        this.buttonList.add(new ModernGUI(500, 0, 0, btnW, 16, EnumChatFormatting.YELLOW + "Customize HUDs"));
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
-        if (EnemyHUD.enabled) EnemyHUD.instance.render(true);
-        if (NickedHUD.enabled) NickedHUD.instance.render(true);
-        if (FriendsHUD.enabled) FriendsHUD.instance.render(true);
-        if (SessionStatsHUD.enabled) SessionStatsHUD.instance.render(true);
-        if (EventHUD.enabled) EventHUD.instance.render(true);
-        if (RegHUD.enabled) RegHUD.instance.render(true); 
+        
+        // --- UNIFIED HUD RENDERING (CHEATBREAKER VISUALS ENABLED) ---
+        if (EnemyHUD.enabled) EnemyHUD.instance.render(true, mouseX, mouseY);
+        if (NickedHUD.enabled) NickedHUD.instance.render(true, mouseX, mouseY);
+        if (FriendsHUD.enabled) FriendsHUD.instance.render(true, mouseX, mouseY);
+        if (SessionStatsHUD.enabled) SessionStatsHUD.instance.render(true, mouseX, mouseY);
+        if (EventHUD.enabled) EventHUD.instance.render(true, mouseX, mouseY);
+        if (RegHUD.enabled) RegHUD.instance.render(true, mouseX, mouseY); 
+        if (PotionHUD.enabled) PotionHUD.instance.render(true, mouseX, mouseY);
+        if (ArmorHUD.enabled) ArmorHUD.instance.render(true, mouseX, mouseY);
+        if (CoordsHUD.enabled) CoordsHUD.instance.render(true, mouseX, mouseY);
 
+        // --- RENDER SIDEBAR PANEL ---
         Gui.drawRect(panelX, panelY, panelX + 135, panelY + 18, 0xFF121212);
         this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Foxtrot Settings", panelX + 5, panelY + 5, -1);
         this.fontRendererObj.drawStringWithShadow(panelCollapsed ? "+" : "-", panelX + 122, panelY + 5, -1);
@@ -132,7 +147,7 @@ public class EditHUDGui extends GuiScreen {
 
             bgHeight += 12 + (denickExpanded ? (2 * 18) : 0) + 4;
 
-            bgHeight += 12 + (hudExpanded ? (6 * 18) : 0) + 4;
+            bgHeight += 12 + (hudExpanded ? (10 * 18) : 0) + 4;
 
             Gui.drawRect(panelX, panelY + 18, panelX + 135, panelY + 18 + bgHeight, 0xDD121212);
 
@@ -140,7 +155,7 @@ public class EditHUDGui extends GuiScreen {
             currentY = drawCategory(currentY, "Combat", combatExpanded, 40, 59, mouseX, mouseY);
             currentY = drawCategory(currentY, "Render", renderExpanded, 60, 70, mouseX, mouseY);
             currentY = drawCategory(currentY, "Denick", denickExpanded, 75, 79, mouseX, mouseY);
-            drawCategory(currentY, "HUD", hudExpanded, 80, 89, mouseX, mouseY);
+            drawCategory(currentY, "HUD", hudExpanded, 80, 500, mouseX, mouseY);
 
             super.drawScreen(mouseX, mouseY, partialTicks);
         }
@@ -233,7 +248,6 @@ public class EditHUDGui extends GuiScreen {
     protected void actionPerformed(GuiButton button) {
         if (button instanceof ModernSlider) return;
 
-        // Combat
         if (button.id == 40) autoClickerDropdownExpanded = !autoClickerDropdownExpanded;
         if (button.id == 41) AutoClicker.enabled = !AutoClicker.enabled;
         if (button.id == 43) AutoClicker.leftClick = !AutoClicker.leftClick;
@@ -245,13 +259,11 @@ public class EditHUDGui extends GuiScreen {
         if (button.id >= 52 && button.id <= 54) { AutoClicker.randomMode = button.id - 52; randomDropdownExpanded = false; }
         if (button.id == 55) AutoClicker.limitItems = !AutoClicker.limitItems;
 
-        // Render
         if (button.id == 60) nameTagsDropdownExpanded = !nameTagsDropdownExpanded;
         if (button.id == 61) NameTags.enabled = !NameTags.enabled;
         if (button.id == 62) NameTags.showHealth = !NameTags.showHealth;
         if (button.id == 63) NameTags.showItems = !NameTags.showItems;
         
-        // Pit ESP
         if (button.id == 64) pitEspDropdownExpanded = !pitEspDropdownExpanded;
         if (button.id == 65) PitESP.espChests = !PitESP.espChests;
         if (button.id == 66) PitESP.espDragonEggs = !PitESP.espDragonEggs;
@@ -261,15 +273,25 @@ public class EditHUDGui extends GuiScreen {
         if (button.id == 69) EnemyESP.enabled = !EnemyESP.enabled;
         if (button.id == 70) FriendsESP.enabled = !FriendsESP.enabled;
 
-        // Denick & HUD
         if (button.id == 75) AutoDenick.enabled = !AutoDenick.enabled;
         if (button.id == 76) NickedRender.enabled = !NickedRender.enabled;
+        
         if (button.id == 80) EnemyHUD.enabled = !EnemyHUD.enabled;
         if (button.id == 81) NickedHUD.enabled = !NickedHUD.enabled;
         if (button.id == 82) FriendsHUD.enabled = !FriendsHUD.enabled;
         if (button.id == 85) SessionStatsHUD.enabled = !SessionStatsHUD.enabled;
         if (button.id == 86) EventHUD.enabled = !EventHUD.enabled;
         if (button.id == 87) RegHUD.enabled = !RegHUD.enabled; 
+        
+        if (button.id == 88) PotionHUD.enabled = !PotionHUD.enabled;
+        if (button.id == 89) ArmorHUD.enabled = !ArmorHUD.enabled;
+        if (button.id == 90) CoordsHUD.enabled = !CoordsHUD.enabled;
+
+        // SWITCH TO THE MODERN HUD SETTINGS GUI
+        if (button.id == 500) {
+            this.mc.displayGuiScreen(new HUDSettingsGui(this));
+            return;
+        }
 
         ConfigHandler.saveConfig();
         this.initGui();
@@ -277,6 +299,7 @@ public class EditHUDGui extends GuiScreen {
 
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
+        // Handle Settings Sidebar Dragging
         if (mouseX >= panelX && mouseX <= panelX + 135 && mouseY >= panelY && mouseY <= panelY + 18) {
             if (mouseButton == 0) {
                 if (mouseX >= panelX + 115) panelCollapsed = !panelCollapsed;
@@ -307,19 +330,47 @@ public class EditHUDGui extends GuiScreen {
 
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
-        if (mouseButton == 0) {
-            if (EnemyHUD.enabled && EnemyHUD.instance.isHovered(mouseX, mouseY)) {
-                draggingEnemy = true; lastX = mouseX; lastY = mouseY;
-            } else if (NickedHUD.enabled && NickedHUD.instance.isHovered(mouseX, mouseY)) {
-                draggingNicked = true; lastX = mouseX; lastY = mouseY;
-            } else if (FriendsHUD.enabled && FriendsHUD.instance.isHovered(mouseX, mouseY)) {
-                draggingFriends = true; lastX = mouseX; lastY = mouseY;
-            } else if (SessionStatsHUD.enabled && SessionStatsHUD.instance.isHovered(mouseX, mouseY)) {
-                draggingStats = true; lastX = mouseX; lastY = mouseY;
-            } else if (EventHUD.enabled && EventHUD.instance.isHovered(mouseX, mouseY)) {
-                draggingEvent = true; lastX = mouseX; lastY = mouseY;
-            } else if (RegHUD.enabled && RegHUD.instance.isHovered(mouseX, mouseY)) { 
-                draggingReg = true; lastX = mouseX; lastY = mouseY;
+        // --- UNIFIED HUD DRAG & DROP LOGIC ---
+        DraggableHUD[] activeHuds = new DraggableHUD[]{
+            EnemyHUD.enabled ? EnemyHUD.instance : null,
+            NickedHUD.enabled ? NickedHUD.instance : null,
+            FriendsHUD.enabled ? FriendsHUD.instance : null,
+            SessionStatsHUD.enabled ? SessionStatsHUD.instance : null,
+            EventHUD.enabled ? EventHUD.instance : null,
+            RegHUD.enabled ? RegHUD.instance : null,
+            PotionHUD.enabled ? PotionHUD.instance : null,
+            ArmorHUD.enabled ? ArmorHUD.instance : null,
+            CoordsHUD.enabled ? CoordsHUD.instance : null
+        };
+
+        for (DraggableHUD hud : activeHuds) {
+            if (hud == null) continue;
+
+            // Cheatbreaker Feature: Middle click instantly resets scale
+            if (mouseButton == 2 && hud.isHovered(mouseX, mouseY)) {
+                hud.scale = 1.0f;
+                ConfigHandler.saveConfig();
+                return;
+            }
+
+            if (mouseButton == 0) {
+                // Check corners first (Scaling)
+                int corner = hud.getHoveredCorner(mouseX, mouseY);
+                if (corner != 0) {
+                    resizingModule = hud;
+                    resizingCorner = corner;
+                    lastX = mouseX;
+                    lastY = mouseY;
+                    return;
+                }
+
+                // Check main body (Dragging)
+                if (hud.isHovered(mouseX, mouseY)) {
+                    draggingModule = hud;
+                    lastX = mouseX;
+                    lastY = mouseY;
+                    return;
+                }
             }
         }
     }
@@ -335,29 +386,21 @@ public class EditHUDGui extends GuiScreen {
             panelX = Math.max(0, Math.min(this.width - 135, panelX + deltaX));
             panelY = Math.max(0, Math.min(this.height - 30, panelY + deltaY));
         }
-        else if (draggingEnemy) {
-            EnemyHUD.hudX = Math.max(0, Math.min(this.width - EnemyHUD.instance.width, EnemyHUD.hudX + deltaX));
-            EnemyHUD.hudY = Math.max(0, Math.min(this.height - EnemyHUD.instance.height, EnemyHUD.hudY + deltaY));
+        else if (resizingModule != null) {
+            resizingModule.handleResize(deltaX, deltaY, resizingCorner);
         }
-        else if (draggingNicked) {
-            NickedHUD.hudX = Math.max(0, Math.min(this.width - NickedHUD.instance.width, NickedHUD.hudX + deltaX));
-            NickedHUD.hudY = Math.max(0, Math.min(this.height - NickedHUD.instance.height, NickedHUD.hudY + deltaY));
-        }
-        else if (draggingFriends) {
-            FriendsHUD.hudX = Math.max(0, Math.min(this.width - FriendsHUD.instance.width, FriendsHUD.hudX + deltaX));
-            FriendsHUD.hudY = Math.max(0, Math.min(this.height - FriendsHUD.instance.height, FriendsHUD.hudY + deltaY));
-        }
-        else if (draggingStats) {
-            SessionStatsHUD.hudX = Math.max(0, Math.min(this.width - SessionStatsHUD.instance.width, SessionStatsHUD.hudX + deltaX));
-            SessionStatsHUD.hudY = Math.max(0, Math.min(this.height - SessionStatsHUD.instance.height, SessionStatsHUD.hudY + deltaY));
-        }
-        else if (draggingEvent) {
-            EventHUD.hudX = Math.max(0, Math.min(this.width - EventHUD.instance.width, EventHUD.hudX + deltaX));
-            EventHUD.hudY = Math.max(0, Math.min(this.height - EventHUD.instance.height, EventHUD.hudY + deltaY));
-        }
-        else if (draggingReg) { 
-            RegHUD.hudX = Math.max(0, Math.min(this.width - RegHUD.instance.width, RegHUD.hudX + deltaX));
-            RegHUD.hudY = Math.max(0, Math.min(this.height - RegHUD.instance.height, RegHUD.hudY + deltaY));
+        else if (draggingModule != null) {
+            draggingModule.x += deltaX;
+            draggingModule.y += deltaY;
+
+            // SCREEN CLAMPING
+            int scaledW = (int) (draggingModule.width * draggingModule.scale);
+            int scaledH = (int) (draggingModule.height * draggingModule.scale);
+
+            if (draggingModule.x < 0) draggingModule.x = 0;
+            if (draggingModule.x > this.width - scaledW) draggingModule.x = this.width - scaledW;
+            if (draggingModule.y < 0) draggingModule.y = 0;
+            if (draggingModule.y > this.height - scaledH) draggingModule.y = this.height - scaledH;
         }
 
         lastX = mouseX;
@@ -367,8 +410,10 @@ public class EditHUDGui extends GuiScreen {
     @Override
     protected void mouseReleased(int mouseX, int mouseY, int state) {
         super.mouseReleased(mouseX, mouseY, state);
-        draggingEnemy = false; draggingNicked = false; draggingPanel = false;
-        draggingFriends = false; draggingStats = false; draggingEvent = false; draggingReg = false;
+        draggingPanel = false;
+        draggingModule = null;
+        resizingModule = null;
+        resizingCorner = 0;
 
         for (GuiButton btn : this.buttonList) {
             if (btn instanceof ModernSlider) {

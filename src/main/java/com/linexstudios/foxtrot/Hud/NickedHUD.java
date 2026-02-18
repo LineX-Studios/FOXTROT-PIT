@@ -23,33 +23,32 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class NickedHUD {
+public class NickedHUD extends DraggableHUD {
     public static final NickedHUD instance = new NickedHUD();
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
-    public static int hudX = 10;
-    public static int hudY = 80;
-
-    public int width = 0;
-    public int height = 0;
 
     public static List<String> nickedPlayers = new ArrayList<>();
 
     private static final Pattern PREFIX_STRIP_PATTERN = Pattern.compile("^\\[.*?\\]\\s+");
 
+    public NickedHUD() { super("Nicked List", 10, 80); }
+
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return;
-        render(false);
+        if (mc.currentScreen instanceof HUDSettingsGui) return;
+        render(false, 0, 0);
     }
 
-    public void render(boolean isEditing) {
+    @Override
+    public void draw(boolean isEditing) {
         if (!enabled || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
-        int currentY = hudY;
+        int currentY = 0;
         int maxWidth = fr.getStringWidth("Nicked Players");
         boolean foundNicked = false;
 
@@ -73,7 +72,7 @@ public class NickedHUD {
                 }
 
                 if (!foundNicked) {
-                    fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
+                    fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", 0, currentY, 0xFFFFFF);
                     currentY += fr.FONT_HEIGHT + 2;
                     foundNicked = true;
                 }
@@ -108,11 +107,10 @@ public class NickedHUD {
                 String finalDisplayName = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.RESET + nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
 
                 String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
-
                 String dist = other != null ? SpawnRegions.getLocationFormat(mc.thePlayer, other) : EnumChatFormatting.GRAY + "Far";
 
                 String fullLine = finalDisplayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
-                fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(fullLine, 0, currentY, 0xFFFFFF);
 
                 int lineWidth = fr.getStringWidth(fullLine);
                 if (lineWidth > maxWidth) maxWidth = lineWidth;
@@ -122,10 +120,10 @@ public class NickedHUD {
 
         if (!foundNicked) {
             if (isEditing) {
-                fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.DARK_AQUA + "" + EnumChatFormatting.BOLD + "Nicked Players:", 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 String placeholder = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-                fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(placeholder, 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
             } else {
@@ -135,9 +133,7 @@ public class NickedHUD {
         }
 
         this.width = maxWidth;
-        this.height = currentY - hudY;
-
-        if (isEditing) Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
+        this.height = currentY;
     }
 
     private String stripAllPrefixes(String input) {
@@ -149,10 +145,6 @@ public class NickedHUD {
             matcher = PREFIX_STRIP_PATTERN.matcher(plain);
         }
         return plain.trim();
-    }
-
-    public boolean isHovered(int mouseX, int mouseY) {
-        return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
     private String getShortEnchants(EntityOtherPlayerMP player) {

@@ -2,7 +2,6 @@ package com.linexstudios.foxtrot.Hud;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -18,16 +17,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class EventHUD {
+public class EventHUD extends DraggableHUD {
     public static final EventHUD instance = new EventHUD();
     private final Minecraft mc = Minecraft.getMinecraft();
 
     public static boolean enabled = true;
-    public static int hudX = 10;
-    public static int hudY = 250;
-
-    public int width = 0;
-    public int height = 0;
 
     private int tickTimer = 0;
 
@@ -36,6 +30,7 @@ public class EventHUD {
     private final Object eventsLock = new Object();
 
     public EventHUD() {
+        super("Event Tracker", 10, 250); // FIXED CONSTRUCTOR
         fetchEvents();
     }
 
@@ -44,7 +39,6 @@ public class EventHUD {
         if (event.phase != TickEvent.Phase.END || mc.theWorld == null) return;
 
         tickTimer++;
-        // Refresh the API every 5 minutes (20 ticks * 60 seconds * 5 minutes)
         if (tickTimer >= 6000) {
             tickTimer = 0;
             fetchEvents();
@@ -81,7 +75,6 @@ public class EventHUD {
                         }
                     }
 
-                    // Sort them chronologically so the closest event is always on top
                     parsedEvents.sort(Comparator.comparingLong(e -> e.timestamp));
 
                     synchronized (eventsLock) {
@@ -101,17 +94,19 @@ public class EventHUD {
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return;
-        render(false);
+        if (mc.currentScreen instanceof HUDSettingsGui) return;
+        render(false, 0, 0); 
     }
 
-    public void render(boolean isEditing) {
+    @Override
+    public void draw(boolean isEditing) {
         if (!enabled || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
-        int currentY = hudY;
+        int currentY = 0; 
 
         String header = EnumChatFormatting.GOLD + "" + EnumChatFormatting.BOLD + "Upcoming Events:";
-        fr.drawStringWithShadow(header, hudX, currentY, 0xFFFFFF);
+        fr.drawStringWithShadow(header, 0, currentY, 0xFFFFFF);
         int maxWidth = fr.getStringWidth(header);
         currentY += fr.FONT_HEIGHT + 2;
 
@@ -120,46 +115,40 @@ public class EventHUD {
             long currentTime = System.currentTimeMillis();
 
             for (PitEvent e : upcomingEvents) {
-                // Instantly filter out events that have passed
                 if (e.timestamp <= currentTime) continue;
 
                 String timeStr = formatTime(e.timestamp, currentTime);
                 String line = e.color + e.name + EnumChatFormatting.GRAY + " in " + EnumChatFormatting.WHITE + timeStr;
 
-                fr.drawStringWithShadow(line, hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(line, 0, currentY, 0xFFFFFF);
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(line));
                 currentY += fr.FONT_HEIGHT + 2;
 
                 displayedCount++;
-                if (displayedCount >= 6) break; // Hard cap at top 6 events
+                if (displayedCount >= 6) break; 
             }
 
             if (displayedCount == 0 && !isEditing) {
                 String noneText = EnumChatFormatting.GRAY + "Loading events...";
-                fr.drawStringWithShadow(noneText, hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(noneText, 0, currentY, 0xFFFFFF);
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(noneText));
                 currentY += fr.FONT_HEIGHT + 2;
             } else if (displayedCount == 0 && isEditing) {
-                // Dummy data so you can see the box while dragging it in your GUI
                 String dummyText1 = EnumChatFormatting.DARK_PURPLE + "Dragon Egg" + EnumChatFormatting.GRAY + " in " + EnumChatFormatting.WHITE + "5m03s";
                 String dummyText2 = EnumChatFormatting.AQUA + "Squads" + EnumChatFormatting.GRAY + " in " + EnumChatFormatting.WHITE + "59s";
 
-                fr.drawStringWithShadow(dummyText1, hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(dummyText1, 0, currentY, 0xFFFFFF);
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(dummyText1));
                 currentY += fr.FONT_HEIGHT + 2;
 
-                fr.drawStringWithShadow(dummyText2, hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(dummyText2, 0, currentY, 0xFFFFFF);
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(dummyText2));
                 currentY += fr.FONT_HEIGHT + 2;
             }
         }
 
         this.width = maxWidth;
-        this.height = currentY - hudY;
-
-        if (isEditing) {
-            Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
-        }
+        this.height = currentY;
     }
 
     private String formatTime(long timestamp, long currentTime) {
@@ -210,10 +199,6 @@ public class EventHUD {
             case "all bounty": return EnumChatFormatting.GOLD;
             default: return EnumChatFormatting.WHITE;
         }
-    }
-
-    public boolean isHovered(int mouseX, int mouseY) {
-        return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
     }
 
     private static class PitEvent {

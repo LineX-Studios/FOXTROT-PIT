@@ -18,7 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class EnemyHUD {
+public class EnemyHUD extends DraggableHUD {
     public static final EnemyHUD instance = new EnemyHUD();
     private final Minecraft mc = Minecraft.getMinecraft();
 
@@ -26,26 +26,24 @@ public class EnemyHUD {
     public static boolean debugMode = false;
     public static boolean notificationsEnabled = true;
 
-    public static int hudX = 200;
-    public static int hudY = 80;
-
-    public int width = 0;
-    public int height = 0;
-
     public static List<String> targetList = new ArrayList<>();
+
+    public EnemyHUD() { super("Enemy List", 200, 80); }
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return;
-        render(false);
+        if (mc.currentScreen instanceof HUDSettingsGui) return;
+        render(false, 0, 0); // Re-routes to the DraggableHUD render method
     }
 
-    public void render(boolean isEditing) {
+    @Override
+    public void draw(boolean isEditing) {
         if (!enabled || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
-        int currentY = hudY;
+        int currentY = 0; // Local Y relative to the scaled box
         int maxWidth = fr.getStringWidth("Enemy List");
         boolean foundEnemy = false;
 
@@ -61,7 +59,7 @@ public class EnemyHUD {
             renderedEnemies.add(name.toLowerCase());
 
             if (!foundEnemy) {
-                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 foundEnemy = true;
             }
@@ -78,12 +76,10 @@ public class EnemyHUD {
             displayName = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + displayName;
 
             String gear = getShortEnchants(other);
-
-            // --- NEW: Using Centralized Spawn Tracker ---
             String dist = SpawnRegions.getLocationFormat(mc.thePlayer, other);
 
             String fullLine = displayName + EnumChatFormatting.GRAY + " - " + gear + EnumChatFormatting.GRAY + " - " + dist;
-            fr.drawStringWithShadow(fullLine, hudX, currentY, 0xFFFFFF);
+            fr.drawStringWithShadow(fullLine, 0, currentY, 0xFFFFFF);
 
             int lineWidth = fr.getStringWidth(fullLine);
             if (lineWidth > maxWidth) maxWidth = lineWidth;
@@ -92,10 +88,10 @@ public class EnemyHUD {
 
         if (!foundEnemy) {
             if (isEditing) {
-                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
                 String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-                fr.drawStringWithShadow(placeholder, hudX, currentY, 0xFFFFFF);
+                fr.drawStringWithShadow(placeholder, 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
             } else {
@@ -105,16 +101,8 @@ public class EnemyHUD {
         }
 
         this.width = maxWidth;
-        this.height = currentY - hudY;
-
-        if (isEditing) Gui.drawRect(hudX - 2, hudY - 2, hudX + width + 2, hudY + height + 2, 0x44888888);
+        this.height = currentY;
     }
-
-    public boolean isHovered(int mouseX, int mouseY) {
-        return mouseX >= hudX - 2 && mouseX <= hudX + width + 2 && mouseY >= hudY - 2 && mouseY <= hudY + height + 2;
-    }
-
-    // THE OLD getDistanceOrSpawn() HAS BEEN COMPLETELY REMOVED!
 
     private String getShortEnchants(EntityOtherPlayerMP player) {
         ItemStack pants = player.inventory.armorInventory[1];
@@ -158,9 +146,5 @@ public class EnemyHUD {
 
     public static boolean isTarget(String name) {
         return name != null && targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
-    }
-
-    public static String getFormattedName(String name) {
-        return EnumChatFormatting.RED + (name == null ? "null" : name) + EnumChatFormatting.RESET;
     }
 }
