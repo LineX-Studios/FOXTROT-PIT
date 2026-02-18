@@ -3,6 +3,7 @@ package com.linexstudios.foxtrot.Hud;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.util.EnumChatFormatting;
 import org.lwjgl.input.Keyboard;
@@ -16,7 +17,12 @@ public class HUDSettingsGui extends GuiScreen {
     private int selectedTab = 0;
     private boolean draggingSlider = false;
 
+    // The last color (0x000000) acts as the trigger for the Custom Color Box
     private int[] palette = {0xFFFFFF, 0xAAAAAA, 0x555555, 0xFF5555, 0x55FF55, 0x5555FF, 0xFFFF55, 0x55FFFF, 0xFFAA00, 0xFF55FF, 0x000000};
+
+    // --- CUSTOM HEX COLOR SYSTEM ---
+    private GuiTextField customColorField;
+    private int activeCustomColorTarget = -1; // 0=None, 1=PotionName, 2=PotionDur, 3=Armor, 4=CoordAxis, 5=CoordVal, 6=CoordDir
 
     public HUDSettingsGui(GuiScreen previousScreen) { 
         this.previousScreen = previousScreen; 
@@ -28,17 +34,28 @@ public class HUDSettingsGui extends GuiScreen {
     }
 
     @Override
+    public void initGui() {
+        super.initGui();
+        Keyboard.enableRepeatEvents(true);
+        if (this.width <= 0) return;
+
+        // Init text field for custom Hex codes
+        if (customColorField == null) {
+            customColorField = new GuiTextField(200, this.fontRendererObj, 0, 0, 60, 14);
+            customColorField.setMaxStringLength(6);
+            customColorField.setVisible(false);
+        }
+    }
+
+    @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        // Frosty background
         drawSolidRect(0, 0, this.width, this.height, 0x55000000);
         
-        // --- OPENGL SAFETY LOCK ---
         GlStateManager.enableTexture2D();
         GlStateManager.enableAlpha();
         GlStateManager.enableBlend();
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
-        // --- RENDER HUDS (FIXED: Passed 'true' so dummy data shows up!) ---
         if (PotionHUD.enabled) PotionHUD.instance.render(true, mouseX, mouseY);
         if (ArmorHUD.enabled) ArmorHUD.instance.render(true, mouseX, mouseY);
         if (CoordsHUD.enabled) CoordsHUD.instance.render(true, mouseX, mouseY);
@@ -49,7 +66,6 @@ public class HUDSettingsGui extends GuiScreen {
         if (EventHUD.enabled) EventHUD.instance.render(true, mouseX, mouseY);
         if (RegHUD.enabled) RegHUD.instance.render(true, mouseX, mouseY);
 
-        // --- RESTORE PURE OPENGL STATE AFTER RENDERING HUDS ---
         GlStateManager.disableLighting();
         GlStateManager.enableBlend();
 
@@ -58,23 +74,18 @@ public class HUDSettingsGui extends GuiScreen {
         int panelX = (this.width - panelW) / 2;
         int panelY = (this.height - panelH) / 2;
 
-        // --- SEAMLESS GRADIENT BASE ---
         drawRoundedRect(panelX + 4, panelY + 4, panelW, panelH, 6, 0x33000000); 
         drawGradientRoundedRect(panelX, panelY, panelW, panelH, 6, 0xFA1E1E1E, 0xFA141414); 
         
-        // Seamless sidebar
         drawSolidRect(panelX + 130, panelY + 15, 1, panelH - 30, 0x1AFFFFFF); 
         
         this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.WHITE + "Settings", panelX + 15, panelY + 15, -1);
 
-        // --- TABS ---
         int tY = panelY + 35;
         for (int i = 0; i < tabs.length; i++) {
             boolean hovered = isInside(mouseX, mouseY, panelX + 10, tY, 115, 18);
             if (selectedTab == i) {
-                // REDUCED UNDERGLOW: Spread is now 3.0f, Opacity is 0x66
                 drawNeonGlow(panelX + 10, tY, 115, 18, 6, 3.0f, 0x66FF3333); 
-                
                 drawGradientRoundedRect(panelX + 10, tY, 115, 18, 4, 0xFFFF4444, 0xFFE53935); 
                 this.fontRendererObj.drawStringWithShadow(tabs[i], panelX + 22, tY + 5, -1);
             } else {
@@ -84,46 +95,50 @@ public class HUDSettingsGui extends GuiScreen {
             tY += 24; 
         }
 
-        // --- CONTENT AREA ---
         int rX = panelX + 145; 
         int rY = panelY + 15;
         
         this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + tabs[selectedTab], rX, rY, -1);
         rY += 30; 
 
-        // 1. Scale Card
         drawSettingsCard(rX, rY, 300, 60); 
         this.fontRendererObj.drawStringWithShadow("HUD Scale", rX + 10, rY + 8, 0xDDDDDD);
         drawIOSSlider(rX + 10, rY + 22, getScaleForTab(), 0.5f, 1.5f, 210); 
-        
-        // Reset Button underneath the slider
         drawIOSButton(rX + 10, rY + 40, 45, 14, "Reset", mouseX, mouseY); 
         
         rY += 70; 
 
         // 2. Module Settings
-        if (selectedTab == 0) { 
-            drawSettingsCard(rX, rY, 300, 80);
+        if (selectedTab == 0) { // POTIONS
+            drawSettingsCard(rX, rY, 300, 115);
             drawIOSToggle(rX + 10, rY + 10, "Horizontal Layout", PotionHUD.instance.isHorizontal, mouseX, mouseY);
             drawSolidRect(rX + 10, rY + 32, 280, 1, 0x11FFFFFF); 
-            this.fontRendererObj.drawStringWithShadow("Text Color", rX + 10, rY + 42, 0xDDDDDD);
-            drawPalette(rX + 10, rY + 55, PotionHUD.nameColor, mouseX, mouseY);
-        } else if (selectedTab == 1) { 
-            drawSettingsCard(rX, rY, 300, 35);
+            
+            this.fontRendererObj.drawStringWithShadow("Name Color", rX + 10, rY + 42, 0xDDDDDD);
+            drawPalette(rX + 10, rY + 55, PotionHUD.nameColor, mouseX, mouseY, 1);
+            
+            this.fontRendererObj.drawStringWithShadow("Duration Color", rX + 10, rY + 82, 0xDDDDDD);
+            drawPalette(rX + 10, rY + 95, PotionHUD.durationColor, mouseX, mouseY, 2);
+        } else if (selectedTab == 1) { // ARMOR
+            drawSettingsCard(rX, rY, 300, 75);
             drawIOSToggle(rX + 10, rY + 10, "Horizontal Layout", ArmorHUD.instance.isHorizontal, mouseX, mouseY);
-        } else if (selectedTab == 2) { 
+            drawSolidRect(rX + 10, rY + 32, 280, 1, 0x11FFFFFF);
+            
+            this.fontRendererObj.drawStringWithShadow("Durability Color", rX + 10, rY + 42, 0xDDDDDD);
+            drawPalette(rX + 10, rY + 55, ArmorHUD.durabilityColor, mouseX, mouseY, 3);
+        } else if (selectedTab == 2) { // COORDS
             drawSettingsCard(rX, rY, 300, 135);
             drawIOSToggle(rX + 10, rY + 10, "Horizontal Layout", CoordsHUD.instance.isHorizontal, mouseX, mouseY);
             drawSolidRect(rX + 10, rY + 30, 280, 1, 0x11FFFFFF);
             
             this.fontRendererObj.drawStringWithShadow("Axis Color (X: Y: Z:)", rX + 10, rY + 40, 0xDDDDDD);
-            drawPalette(rX + 10, rY + 52, CoordsHUD.axisColor, mouseX, mouseY);
+            drawPalette(rX + 10, rY + 52, CoordsHUD.axisColor, mouseX, mouseY, 4);
             
             this.fontRendererObj.drawStringWithShadow("Value Color (+100)", rX + 10, rY + 72, 0xDDDDDD);
-            drawPalette(rX + 10, rY + 84, CoordsHUD.numberColor, mouseX, mouseY);
+            drawPalette(rX + 10, rY + 84, CoordsHUD.numberColor, mouseX, mouseY, 5);
             
             this.fontRendererObj.drawStringWithShadow("Cardinal Color (NE, +)", rX + 10, rY + 104, 0xDDDDDD);
-            drawPalette(rX + 10, rY + 116, CoordsHUD.directionColor, mouseX, mouseY);
+            drawPalette(rX + 10, rY + 116, CoordsHUD.directionColor, mouseX, mouseY, 6);
         }
 
         drawIOSButton(panelX + panelW - 75, panelY + panelH - 25, 60, 16, "Return", mouseX, mouseY);
@@ -172,7 +187,6 @@ public class HUDSettingsGui extends GuiScreen {
         GlStateManager.color(r, g, b, a);
     }
 
-    // ADJUSTABLE NEON GLOW (Spread dictates width, Alpha dictates brightness)
     private void drawNeonGlow(float x, float y, float width, float height, float radius, float spread, int color) {
         setupSmoothRender(true);
         
@@ -301,9 +315,20 @@ public class HUDSettingsGui extends GuiScreen {
         drawRoundedRect(x, y, w, h, 0, color);
     }
 
-    // --- REFINED SMALLER COMPONENTS ---
+    // --- REFINED PALETTE & CUSTOM HEX INPUT ---
 
-    private void drawPalette(float x, float y, int current, int mx, int my) {
+    private void drawPalette(float x, float y, int current, int mx, int my, int targetId) {
+        if (activeCustomColorTarget == targetId) {
+            // Render text box for Hex Input instead of circles
+            customColorField.xPosition = (int)x;
+            customColorField.yPosition = (int)y - 1;
+            customColorField.setVisible(true);
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+            customColorField.drawTextBox();
+            this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.GRAY + "(Press ENTER)", x + 65, y + 2, -1);
+            return;
+        }
+
         for (int i = 0; i < palette.length; i++) {
             float cx = x + (i * 22) + 6; 
             float cy = y + 6;
@@ -313,9 +338,14 @@ public class HUDSettingsGui extends GuiScreen {
                 drawCircleOutline(cx, cy, 7.5f, 1.5f, 0x55FFFFFF);
             }
             
-            drawCircle(cx, cy, 5.5f, palette[i] | 0xFF000000);
-            if (palette[i] == current) {
-                drawCircleOutline(cx, cy, 7.5f, 1.5f, 0xFFFFFFFF);
+            if (i == palette.length - 1) { // The last option (Custom Black Circle)
+                drawCircle(cx, cy, 5.5f, 0xFF111111); // Dark grey base
+                this.fontRendererObj.drawStringWithShadow("+", cx - 2.5f, cy - 3.5f, 0xAAAAAA);
+            } else {
+                drawCircle(cx, cy, 5.5f, palette[i] | 0xFF000000);
+                if (palette[i] == current) {
+                    drawCircleOutline(cx, cy, 7.5f, 1.5f, 0xFFFFFFFF);
+                }
             }
         }
     }
@@ -348,7 +378,6 @@ public class HUDSettingsGui extends GuiScreen {
         boolean hovered = isInside(mx, my, swX, swY, swW, swH);
         
         if (isOn) {
-            // REDUCED TOGGLE GLOW (Spread 2.5f, Opacity 0x55)
             drawNeonGlow(swX, swY, swW, swH, swH / 2, 2.5f, 0x55E53935); 
             drawRoundedRect(swX, swY, swW, swH, swH / 2, 0xFFE53935); 
         } else {
@@ -371,6 +400,36 @@ public class HUDSettingsGui extends GuiScreen {
     // --- INTERACTION LOGIC ---
 
     @Override
+    protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        if (activeCustomColorTarget != -1 && customColorField != null && customColorField.isFocused()) {
+            customColorField.textboxKeyTyped(typedChar, keyCode);
+            
+            // Allow user to hit ENTER to apply the hex code
+            if (keyCode == Keyboard.KEY_RETURN || keyCode == Keyboard.KEY_NUMPADENTER) {
+                try {
+                    String hex = customColorField.getText().replace("#", "");
+                    if (hex.length() == 6) {
+                        int parsedColor = Integer.parseInt(hex, 16);
+                        
+                        if (activeCustomColorTarget == 1) PotionHUD.nameColor = parsedColor;
+                        else if (activeCustomColorTarget == 2) PotionHUD.durationColor = parsedColor;
+                        else if (activeCustomColorTarget == 3) ArmorHUD.durabilityColor = parsedColor;
+                        else if (activeCustomColorTarget == 4) CoordsHUD.axisColor = parsedColor;
+                        else if (activeCustomColorTarget == 5) CoordsHUD.numberColor = parsedColor;
+                        else if (activeCustomColorTarget == 6) CoordsHUD.directionColor = parsedColor;
+                    }
+                } catch (NumberFormatException ignored) {} // Invalid hex code typed
+                
+                activeCustomColorTarget = -1; // Close the box
+                customColorField.setVisible(false);
+                ConfigHandler.saveConfig();
+            }
+            return;
+        }
+        super.keyTyped(typedChar, keyCode);
+    }
+
+    @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         if (mouseButton != 0) return;
         
@@ -384,39 +443,93 @@ public class HUDSettingsGui extends GuiScreen {
 
         int tY = panelY + 35;
         for (int i = 0; i < tabs.length; i++) {
-            if (isInside(mouseX, mouseY, panelX + 10, tY, 115, 18)) { selectedTab = i; return; }
+            if (isInside(mouseX, mouseY, panelX + 10, tY, 115, 18)) { 
+                selectedTab = i; 
+                activeCustomColorTarget = -1; // Reset custom color state on tab change
+                if (customColorField != null) customColorField.setVisible(false);
+                return; 
+            }
             tY += 24;
         }
 
         int rX = panelX + 145; 
         int rY = panelY + 45; 
 
-        // Update Reset Hitbox for new location
         if (isInside(mouseX, mouseY, rX + 10, rY + 40, 45, 14)) { resetScaleForTab(); return; } 
         if (isInside(mouseX, mouseY, rX + 10, rY + 20, 210, 10)) { draggingSlider = true; return; } 
         rY += 70; 
 
+        // If the custom color box is active, pass the click to it
+        if (activeCustomColorTarget != -1 && customColorField != null && customColorField.getVisible()) {
+            customColorField.mouseClicked(mouseX, mouseY, mouseButton);
+            
+            // If they clicked outside the text box while it's active, close it
+            if (!isInside(mouseX, mouseY, customColorField.xPosition, customColorField.yPosition, customColorField.width, customColorField.height)) {
+                activeCustomColorTarget = -1;
+                customColorField.setVisible(false);
+            }
+            return;
+        }
+
         if (selectedTab == 0) { 
             if (isInside(mouseX, mouseY, rX + 260, rY + 10, 28, 14)) { PotionHUD.instance.isHorizontal = !PotionHUD.instance.isHorizontal; return; } 
+            
             for (int i = 0; i < palette.length; i++) {
-                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 55, 12, 12)) { PotionHUD.nameColor = palette[i]; return; }
+                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 55, 12, 12)) {
+                    if (i == palette.length - 1) { openCustomColorBox(1); } // Trigger custom hex box
+                    else { PotionHUD.nameColor = palette[i]; }
+                    return; 
+                }
+            }
+            
+            for (int i = 0; i < palette.length; i++) {
+                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 95, 12, 12)) {
+                    if (i == palette.length - 1) { openCustomColorBox(2); }
+                    else { PotionHUD.durationColor = palette[i]; }
+                    return; 
+                }
             }
         }
         else if (selectedTab == 1) { 
             if (isInside(mouseX, mouseY, rX + 260, rY + 10, 28, 14)) { ArmorHUD.instance.isHorizontal = !ArmorHUD.instance.isHorizontal; return; }
+            for (int i = 0; i < palette.length; i++) {
+                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 55, 12, 12)) {
+                    if (i == palette.length - 1) { openCustomColorBox(3); }
+                    else { ArmorHUD.durabilityColor = palette[i]; }
+                    return; 
+                }
+            }
         }
         else if (selectedTab == 2) { 
             if (isInside(mouseX, mouseY, rX + 260, rY + 10, 28, 14)) { CoordsHUD.instance.isHorizontal = !CoordsHUD.instance.isHorizontal; return; }
             for (int i = 0; i < palette.length; i++) {
-                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 52, 12, 12)) { CoordsHUD.axisColor = palette[i]; return; }
+                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 52, 12, 12)) {
+                    if (i == palette.length - 1) { openCustomColorBox(4); }
+                    else { CoordsHUD.axisColor = palette[i]; }
+                    return; 
+                }
             }
             for (int i = 0; i < palette.length; i++) {
-                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 84, 12, 12)) { CoordsHUD.numberColor = palette[i]; return; }
+                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 84, 12, 12)) {
+                    if (i == palette.length - 1) { openCustomColorBox(5); }
+                    else { CoordsHUD.numberColor = palette[i]; }
+                    return; 
+                }
             }
             for (int i = 0; i < palette.length; i++) {
-                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 116, 12, 12)) { CoordsHUD.directionColor = palette[i]; return; }
+                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 116, 12, 12)) {
+                    if (i == palette.length - 1) { openCustomColorBox(6); }
+                    else { CoordsHUD.directionColor = palette[i]; }
+                    return; 
+                }
             }
         }
+    }
+
+    private void openCustomColorBox(int targetId) {
+        activeCustomColorTarget = targetId;
+        customColorField.setText("");
+        customColorField.setFocused(true);
     }
 
     private boolean isInside(float mx, float my, float x, float y, float w, float h) {

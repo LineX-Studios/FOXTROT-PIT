@@ -91,7 +91,7 @@ public class EditHUDGui extends GuiScreen {
         GlStateManager.enableBlend();
 
         if (panelCollapsed) {
-            drawGradientRoundedRect(collapsedX, collapsedY, 115, 18, 3.0f, 0xFFE53935, 0xFFD32F2F);
+            drawGradientRoundedRect(collapsedX, collapsedY, 115, 18, 3.0f, 0xFA1E1E1E, 0xFA141414);
             
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.WHITE + "Foxtrot Settings", collapsedX + 8, collapsedY + 5, -1);
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.WHITE + "+", collapsedX + 102, collapsedY + 5, -1);
@@ -108,9 +108,7 @@ public class EditHUDGui extends GuiScreen {
             for (int i = 0; i < tabs.length; i++) {
                 boolean hovered = isInside(mouseX, mouseY, mainPanelX + 6, tY, 70, 16);
                 if (selectedTab == i) {
-                    // Soft, feathered RED underglow for the active tab
-                    drawNeonGlow(mainPanelX + 6, tY, 70, 16, 3, 5.0f, 0x2AFF1111); 
-                    // Solid red button base
+                    drawNeonGlow(mainPanelX + 6, tY, 70, 16, 3, 10.0f, 0x1AFF1111); // Faint soft red underglow
                     drawGradientRoundedRect(mainPanelX + 6, tY, 70, 16, 3, 0xFFE53935, 0xFFC62828); 
                     this.fontRendererObj.drawStringWithShadow(tabs[i], mainPanelX + 10, tY + 4, -1);
                 } else {
@@ -131,14 +129,15 @@ public class EditHUDGui extends GuiScreen {
             if (selectedTab == 0) { // COMBAT
                 int y1 = rY; int y2 = rY;
                 
-                drawSettingsCard(c1, y1, 105, AutoClicker.limitItems ? 155 : 135);
-                drawIOSToggle(c1 + 5, y1 + 5, 105, "Enabled", AutoClicker.enabled, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1 + 5, 105, "Left Click", AutoClicker.leftClick, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1 + 5, 105, "Hold Click", AutoClicker.holdToClick, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1 + 5, 105, "Fast Place", AutoClicker.fastPlaceEnabled, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1 + 5, 105, "Break Blocks", AutoClicker.breakBlocks, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1 + 5, 105, "Inventory Fill", AutoClicker.inventoryFill, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1 + 5, 105, "Limit Items", AutoClicker.limitItems, mouseX, mouseY); y1 += 18;
+                drawSettingsCard(c1, y1, 105, AutoClicker.limitItems ? 165 : 145);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Autoclicker", c1 + 5, y1 + 5, -1); y1 += 16;
+                drawIOSToggle(c1 + 5, y1, 105, "Enabled", AutoClicker.enabled, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Left Click", AutoClicker.leftClick, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Hold Click", AutoClicker.holdToClick, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Fast Place", AutoClicker.fastPlaceEnabled, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Break Blocks", AutoClicker.breakBlocks, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Inventory Fill", AutoClicker.inventoryFill, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Limit Items", AutoClicker.limitItems, mouseX, mouseY); y1 += 18;
                 
                 if (AutoClicker.limitItems) {
                     whitelistField.xPosition = c1 + 5; 
@@ -158,9 +157,9 @@ public class EditHUDGui extends GuiScreen {
                 y2 += 16;
                 
                 if (randomDropdownExpanded) {
-                    drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 0 ? EnumChatFormatting.RED : EnumChatFormatting.GOLD) + "Normal", mouseX, mouseY); y2 += 14;
-                    drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 1 ? EnumChatFormatting.RED : EnumChatFormatting.YELLOW) + "Extra", mouseX, mouseY); y2 += 14;
-                    drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 2 ? EnumChatFormatting.RED : EnumChatFormatting.GREEN) + "Extra+", mouseX, mouseY);
+                    drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 0 ? EnumChatFormatting.RED : EnumChatFormatting.GRAY) + "Normal", mouseX, mouseY); y2 += 14;
+                    drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 1 ? EnumChatFormatting.RED : EnumChatFormatting.GRAY) + "Extra", mouseX, mouseY); y2 += 14;
+                    drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 2 ? EnumChatFormatting.RED : EnumChatFormatting.GRAY) + "Extra+", mouseX, mouseY);
                 }
             } 
             else if (selectedTab == 1) { // RENDER
@@ -168,18 +167,18 @@ public class EditHUDGui extends GuiScreen {
                 int y1 = rY; int y2 = rY;
                 
                 drawSettingsCard(c1, y1, 105, 70);
-                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "NameTags", c1 + 5, y1 + 5, -1); y1 += 18;
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "NameTags", c1 + 5, y1 + 5, -1); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Enabled", NameTags.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Show Health", NameTags.showHealth, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Show Items", NameTags.showItems, mouseX, mouseY); y1 += 22;
                 
                 drawSettingsCard(c1, y1, 105, 52);
-                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Player ESP", c1 + 5, y1 + 5, -1); y1 += 18;
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Player ESP", c1 + 5, y1 + 5, -1); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Enemy ESP", EnemyESP.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Friends ESP", FriendsESP.enabled, mouseX, mouseY);
 
                 drawSettingsCard(c2, y2, 100, 90);
-                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Pit ESP", c2 + 5, y2 + 5, -1); y2 += 18;
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Pit ESP", c2 + 5, y2 + 5, -1); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Sewer Chests", PitESP.espChests, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Dragon Eggs", PitESP.espDragonEggs, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Raffle Tickets", PitESP.espRaffleTickets, mouseX, mouseY); y2 += 18;
@@ -217,19 +216,13 @@ public class EditHUDGui extends GuiScreen {
         drawRoundedRect(x, y, w, h, 3.0f, 0x11FFFFFF); 
     }
 
-    // ====================================================================
-    // --- VECTORIZED PURE OPENGL SHAPES ---
-    // ====================================================================
-
     private void setupSmoothRender(boolean isGradient) {
         GlStateManager.pushMatrix(); 
         GlStateManager.enableBlend(); 
         GlStateManager.disableTexture2D();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0); 
-        GL11.glEnable(GL11.GL_LINE_SMOOTH);
-        GL11.glEnable(GL11.GL_POLYGON_SMOOTH); 
-        GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
-        GL11.glHint(GL11.GL_POLYGON_SMOOTH_HINT, GL11.GL_NICEST);
+        GL11.glDisable(GL11.GL_LINE_SMOOTH); 
+        GL11.glDisable(GL11.GL_POLYGON_SMOOTH); 
         GL11.glDisable(GL11.GL_CULL_FACE); 
         if (isGradient) GlStateManager.shadeModel(GL11.GL_SMOOTH);
     }
@@ -237,8 +230,6 @@ public class EditHUDGui extends GuiScreen {
     private void endSmoothRender() {
         GlStateManager.shadeModel(GL11.GL_FLAT);
         GL11.glEnable(GL11.GL_CULL_FACE);
-        GL11.glDisable(GL11.GL_POLYGON_SMOOTH);
-        GL11.glDisable(GL11.GL_LINE_SMOOTH);
         GlStateManager.enableTexture2D(); 
         GlStateManager.disableBlend(); 
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F); 
@@ -341,10 +332,11 @@ public class EditHUDGui extends GuiScreen {
         float swW = 16; float swH = 8; 
         float swX = x + cardW - swW - 4; 
         float swY = y + 1;
-        boolean hovered = isInside(mx, my, swX, swY, swW, swH);
+        // EXPANDED HITBOX FOR TOGGLE: Includes the text and the switch area
+        boolean hovered = isInside(mx, my, x, y, cardW, 12);
         
         if (isOn) {
-            drawNeonGlow(swX, swY, swW, swH, swH / 2, 6.0f, 0x12FF3333); 
+            drawNeonGlow(swX, swY, swW, swH, swH / 2, 6.0f, 0x1AFF3333); 
             drawRoundedRect(swX, swY, swW, swH, swH / 2, 0xFFE53935); 
         } else {
             drawRoundedRect(swX, swY, swW, swH, swH / 2, hovered ? 0xFF555555 : 0xFF444444); 
@@ -359,7 +351,6 @@ public class EditHUDGui extends GuiScreen {
         int topColor = hovered ? 0xFF3D3D3D : 0xFF2F2F2F;
         int botColor = hovered ? 0xFF2A2A2A : 0xFF1C1C1C;
         
-        drawNeonGlow(x, y, w, h, 3, 3.0f, 0x0CFFFFFF);
         drawGradientRoundedRect(x, y, w, h, 3, topColor, botColor); 
         
         this.fontRendererObj.drawStringWithShadow(text, x + (w - this.fontRendererObj.getStringWidth(text)) / 2, y + (h - 8) / 2, -1);
@@ -368,10 +359,6 @@ public class EditHUDGui extends GuiScreen {
     private boolean isInside(float mx, float my, float x, float y, float w, float h) {
         return mx >= x && mx <= x + w && my >= y && my <= y + h;
     }
-
-    // ====================================================================
-    // --- EXACT HITBOX MAPPING (NO GUIBUTTONS) ---
-    // ====================================================================
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
@@ -418,13 +405,17 @@ public class EditHUDGui extends GuiScreen {
                 
                 if (AutoClicker.limitItems && whitelistField != null) whitelistField.mouseClicked(mouseX, mouseY, mouseButton);
 
-                if (isInside(mouseX, mouseY, c1 + 80, y1 + 5, 20, 10)) AutoClicker.enabled = !AutoClicker.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1 + 5, 20, 10)) AutoClicker.leftClick = !AutoClicker.leftClick; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1 + 5, 20, 10)) AutoClicker.holdToClick = !AutoClicker.holdToClick; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1 + 5, 20, 10)) AutoClicker.fastPlaceEnabled = !AutoClicker.fastPlaceEnabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1 + 5, 20, 10)) AutoClicker.breakBlocks = !AutoClicker.breakBlocks; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1 + 5, 20, 10)) AutoClicker.inventoryFill = !AutoClicker.inventoryFill; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1 + 5, 20, 10)) AutoClicker.limitItems = !AutoClicker.limitItems;
+                // SYNCED OFFSETS FOR THE AUTOCLICKER HEADER (+16 pixels)
+                y1 += 16;
+
+                // MASSIVELY EXPANDED HITBOXES FOR TOGGLES (Width 100 instead of 20, covering the whole row)
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.enabled = !AutoClicker.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.leftClick = !AutoClicker.leftClick; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.holdToClick = !AutoClicker.holdToClick; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.fastPlaceEnabled = !AutoClicker.fastPlaceEnabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.breakBlocks = !AutoClicker.breakBlocks; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.inventoryFill = !AutoClicker.inventoryFill; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.limitItems = !AutoClicker.limitItems;
                 
                 boolean clickedDropdownContent = false;
                 
@@ -446,38 +437,42 @@ public class EditHUDGui extends GuiScreen {
                 }
             }
             else if (selectedTab == 1) { 
-                int y1 = rY + 14; int y2 = rY + 14;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) NameTags.enabled = !NameTags.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) NameTags.showHealth = !NameTags.showHealth; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) NameTags.showItems = !NameTags.showItems;
-                
-                y1 += 32;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) EnemyESP.enabled = !EnemyESP.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) FriendsESP.enabled = !FriendsESP.enabled;
+                int y1 = rY + 18; int y2 = rY + 18; // SYNCED HEADER OFFSETS
 
-                if (isInside(mouseX, mouseY, c2 + 75, y2, 20, 10)) PitESP.espChests = !PitESP.espChests; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 75, y2, 20, 10)) PitESP.espDragonEggs = !PitESP.espDragonEggs; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 75, y2, 20, 10)) PitESP.espRaffleTickets = !PitESP.espRaffleTickets; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 75, y2, 20, 10)) PitESP.espMystics = !PitESP.espMystics;
+                // MASSIVELY EXPANDED HITBOXES
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.enabled = !NameTags.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.showHealth = !NameTags.showHealth; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.showItems = !NameTags.showItems;
+                
+                y1 += 36; // Skip past second header
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) EnemyESP.enabled = !EnemyESP.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) FriendsESP.enabled = !FriendsESP.enabled;
+
+                if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espChests = !PitESP.espChests; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espDragonEggs = !PitESP.espDragonEggs; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espRaffleTickets = !PitESP.espRaffleTickets; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espMystics = !PitESP.espMystics;
             }
             else if (selectedTab == 2) { 
-                if (isInside(mouseX, mouseY, c1 + 80, rY, 20, 10)) AutoDenick.enabled = !AutoDenick.enabled; 
-                if (isInside(mouseX, mouseY, c1 + 80, rY + 18, 20, 10)) NickedRender.enabled = !NickedRender.enabled;
+                int y1 = rY;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) AutoDenick.enabled = !AutoDenick.enabled; 
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 24, 100, 12)) NickedRender.enabled = !NickedRender.enabled;
             }
             else if (selectedTab == 3) { 
                 int y1 = rY; int y2 = rY;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) EnemyHUD.enabled = !EnemyHUD.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) NickedHUD.enabled = !NickedHUD.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) FriendsHUD.enabled = !FriendsHUD.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) SessionStatsHUD.enabled = !SessionStatsHUD.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 80, y1, 20, 10)) EventHUD.enabled = !EventHUD.enabled;
+                
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) EnemyHUD.enabled = !EnemyHUD.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) NickedHUD.enabled = !NickedHUD.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) FriendsHUD.enabled = !FriendsHUD.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) SessionStatsHUD.enabled = !SessionStatsHUD.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) EventHUD.enabled = !EventHUD.enabled;
 
-                if (isInside(mouseX, mouseY, c2 + 75, y2, 20, 10)) RegHUD.enabled = !RegHUD.enabled; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 75, y2, 20, 10)) PotionHUD.enabled = !PotionHUD.enabled; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 75, y2, 20, 10)) ArmorHUD.enabled = !ArmorHUD.enabled; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 75, y2, 20, 10)) CoordsHUD.enabled = !CoordsHUD.enabled; y2 += 34;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) RegHUD.enabled = !RegHUD.enabled; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) PotionHUD.enabled = !PotionHUD.enabled; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) ArmorHUD.enabled = !ArmorHUD.enabled; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) CoordsHUD.enabled = !CoordsHUD.enabled; y2 += 28;
 
-                if (isInside(mouseX, mouseY, c2, y2, 95, 14)) { 
+                if (isInside(mouseX, mouseY, c2, y2 + 4, 100, 14)) { 
                     this.mc.displayGuiScreen(new HUDSettingsGui(this)); 
                     return; 
                 }

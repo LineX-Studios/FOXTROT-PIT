@@ -92,6 +92,7 @@ public class ConfigHandler {
                 PotionHUD.instance.isHorizontal = Boolean.parseBoolean(props.getProperty("potionHorizontal", "false"));
                 PotionHUD.nameColor = Integer.parseInt(props.getProperty("potionNameColor", "16777215")); // 0xFFFFFF
                 PotionHUD.durationColor = Integer.parseInt(props.getProperty("potionDurationColor", "11184810")); // 0xAAAAAA
+                ArmorHUD.durabilityColor = Integer.parseInt(props.getProperty("armorDurabilityColor", "16777215"));
 
                 ArmorHUD.instance.isHorizontal = Boolean.parseBoolean(props.getProperty("armorHorizontal", "false"));
 
@@ -207,6 +208,7 @@ public class ConfigHandler {
             props.setProperty("potionHorizontal", String.valueOf(PotionHUD.instance.isHorizontal));
             props.setProperty("potionNameColor", String.valueOf(PotionHUD.nameColor));
             props.setProperty("potionDurationColor", String.valueOf(PotionHUD.durationColor));
+            props.setProperty("armorDurabilityColor", String.valueOf(ArmorHUD.durabilityColor));
 
             props.setProperty("armorHorizontal", String.valueOf(ArmorHUD.instance.isHorizontal));
 
