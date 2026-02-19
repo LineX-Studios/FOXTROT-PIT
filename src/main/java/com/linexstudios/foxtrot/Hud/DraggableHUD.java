@@ -3,8 +3,14 @@ package com.linexstudios.foxtrot.Hud;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import org.lwjgl.opengl.GL11;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class DraggableHUD {
+    
+    // --- AUTO-REGISTRY ---
+    private static final List<DraggableHUD> REGISTRY = new ArrayList<>();
+
     public int x, y;
     public int width, height;
     public float scale = 1.0f;
@@ -19,6 +25,23 @@ public abstract class DraggableHUD {
         this.name = name;
         this.x = startX;
         this.y = startY;
+        // Register itself upon creation
+        if (!REGISTRY.contains(this)) {
+            REGISTRY.add(this);
+        }
+    }
+
+    public static List<DraggableHUD> getRegistry() {
+        return REGISTRY;
+    }
+
+    // Auto-detects if the specific module is enabled using Reflection
+    public boolean isEnabled() {
+        try {
+            return this.getClass().getField("enabled").getBoolean(this);
+        } catch (Exception e) {
+            return true; // Default to true if no 'enabled' field exists
+        }
     }
 
     public abstract void draw(boolean isEditing);
@@ -30,7 +53,6 @@ public abstract class DraggableHUD {
         GL11.glTranslatef(x, y, 0);
 
         if (isEditing) {
-            // Label cleanly floating above the box (CheatBreaker Style)
             GL11.glPushMatrix();
             GL11.glScalef(0.8f, 0.8f, 1.0f);
             Minecraft.getMinecraft().fontRendererObj.drawStringWithShadow(name, 0, -11, 0xFFFFFF);
@@ -40,15 +62,8 @@ public abstract class DraggableHUD {
         GL11.glScalef(scale, scale, 1);
 
         if (isEditing) {
-            // EXACT WHITE OPACITY FIX
-            // 0x25FFFFFF = Constant low-opacity white background (always visible)
-            // 0x45FFFFFF = Brighter white when hovered
             int bgColor = hovered ? 0x45FFFFFF : 0x25FFFFFF; 
-            
-            // Thin white border color
             int borderColor = 0x55FFFFFF; 
-            
-            // Draw the smooth CheatBreaker box
             drawCleanBox(0, 0, width, height, bgColor, borderColor);
         }
 
@@ -56,27 +71,22 @@ public abstract class DraggableHUD {
 
         GL11.glPopMatrix();
 
-        // RED RESIZING CORNERS: Only draws the exact corner your mouse is on
         if (isEditing && hovered) {
             int corner = getHoveredCorner(mouseX, mouseY);
-            int boxSize = 2; // Small and elegant
+            int boxSize = 2; 
             int actualW = (int)(width * scale);
             int actualH = (int)(height * scale);
 
-            if (corner == 1) drawCornerBox(x - boxSize, y - boxSize, boxSize); // Top-Left
-            else if (corner == 2) drawCornerBox(x + actualW, y - boxSize, boxSize); // Top-Right
-            else if (corner == 3) drawCornerBox(x - boxSize, y + actualH, boxSize); // Bottom-Left
-            else if (corner == 4) drawCornerBox(x + actualW, y + actualH, boxSize); // Bottom-Right
+            if (corner == 1) drawCornerBox(x - boxSize, y - boxSize, boxSize); 
+            else if (corner == 2) drawCornerBox(x + actualW, y - boxSize, boxSize); 
+            else if (corner == 3) drawCornerBox(x - boxSize, y + actualH, boxSize); 
+            else if (corner == 4) drawCornerBox(x + actualW, y + actualH, boxSize); 
         }
     }
 
-    // --- SMOOTH OPENGL RENDERING ---
-    // This replaces the ugly overlapping rectangles with a perfect 1-pixel OpenGL line
     private void drawCleanBox(float x, float y, float w, float h, int bgColor, int borderColor) {
-        // Draw the inner white translucent background
         Gui.drawRect((int)x, (int)y, (int)(x + w), (int)(y + h), bgColor);
         
-        // Extract ARGB for OpenGL
         float alpha = (float)(borderColor >> 24 & 255) / 255.0F;
         float red = (float)(borderColor >> 16 & 255) / 255.0F;
         float green = (float)(borderColor >> 8 & 255) / 255.0F;
@@ -88,7 +98,6 @@ public abstract class DraggableHUD {
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GL11.glColor4f(red, green, blue, alpha);
         
-        // This forces the border to be EXACTLY 1 pixel thick, fixing the "wonky" look entirely.
         GL11.glLineWidth(1.0F); 
         
         GL11.glBegin(GL11.GL_LINE_LOOP);
@@ -104,7 +113,7 @@ public abstract class DraggableHUD {
     }
 
     private void drawCornerBox(int boxX, int boxY, int size) {
-        Gui.drawRect(boxX, boxY, boxX + size, boxY + size, 0xFFFF0000); // Solid Red
+        Gui.drawRect(boxX, boxY, boxX + size, boxY + size, 0xFFFF0000); 
     }
 
     public boolean isHovered(int mouseX, int mouseY) {

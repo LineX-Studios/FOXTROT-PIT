@@ -56,7 +56,6 @@ public class NickedManager {
         // 3. Nicked Check
         if (com.linexstudios.foxtrot.Denick.AutoDenick.isNicked(event.entityPlayer.getUniqueID())) {
             
-            // Apply the [N] tag since they are nicked
             if (!display.contains("[N]")) {
                 display = EnumChatFormatting.DARK_BLUE + "[" + EnumChatFormatting.BLUE + "N" + EnumChatFormatting.DARK_BLUE + "] " + EnumChatFormatting.RESET + display;
             }
@@ -66,10 +65,18 @@ public class NickedManager {
                 realName = getResolvedIGN(username); 
             }
             
-            // STRICT CHECK: ONLY append if it's a valid resolved name. NEVER append statuses.
-            if (realName != null && !realName.equals("Scraping") && !realName.equals("Failed") && !realName.equals("No Nonce")) {
-                if (!display.contains("(" + realName + ")")) {
-                    display = display + " " + EnumChatFormatting.YELLOW + "(" + realName + ")";
+            // Apply the same fix: Strip color codes before checking
+            if (realName != null) {
+                String cleanName = EnumChatFormatting.getTextWithoutFormattingCodes(realName).trim();
+                
+                if (!cleanName.equalsIgnoreCase("Scraping") && 
+                    !cleanName.equalsIgnoreCase("Scraping...") && 
+                    !cleanName.equalsIgnoreCase("Failed") && 
+                    !cleanName.equalsIgnoreCase("No Nonce")) {
+                    
+                    if (!display.contains("(" + realName + ")")) {
+                        display = display + " " + EnumChatFormatting.YELLOW + "(" + realName + ")";
+                    }
                 }
             }
         }

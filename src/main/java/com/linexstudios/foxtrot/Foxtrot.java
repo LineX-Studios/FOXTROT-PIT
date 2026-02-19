@@ -17,6 +17,7 @@ import com.linexstudios.foxtrot.Hud.SessionStatsHUD;
 import com.linexstudios.foxtrot.Hud.PotionHUD;
 import com.linexstudios.foxtrot.Hud.ArmorHUD;
 import com.linexstudios.foxtrot.Hud.CoordsHUD;
+import com.linexstudios.foxtrot.Hud.ToggleSprintModule;
 import com.linexstudios.foxtrot.Util.EnemyAlert;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.client.ClientCommandHandler;
@@ -24,35 +25,33 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import org.lwjgl.input.Keyboard;
 
-// The version is now linked to your build.gradle via the placeholder!
 @Mod(modid = "foxtrot", name = "Foxtrot", version = "${version}", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
 
-    // The shared KeyBinding for the AutoClicker
     public static KeyBinding toggleCombatKey;
-
-    // NEW: The KeyBinding for toggling Inventory Fill
     public static KeyBinding toggleInvFillKey;
 
     @Mod.EventHandler
+    public void preInit(FMLPreInitializationEvent event) {
+        // --- 1. DISABLE FORGE SPLASH SCREEN ---
+        ConfigHandler.disableForgeSplashScreen();
+    }
+
+    @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
-        // Load saved configuration
         ConfigHandler.loadConfig();
 
-        // 1. Initialize vanilla Keybinds
         KeybindHandler.init();
 
-        // 2. Setup the "Toggle Combat" key (Arrow Down) for the AutoClicker
         toggleCombatKey = new KeyBinding("Toggle Combat", Keyboard.KEY_DOWN, "Foxtrot");
         ClientRegistry.registerKeyBinding(toggleCombatKey);
 
-        // 3. Setup the "Toggle Inv Fill" key (Arrow Right)
         toggleInvFillKey = new KeyBinding("Toggle Inv Fill", Keyboard.KEY_RIGHT, "Foxtrot");
         ClientRegistry.registerKeyBinding(toggleInvFillKey);
 
-        // Register HUDs and ESP overlays
         MinecraftForge.EVENT_BUS.register(EnemyHUD.instance);
         MinecraftForge.EVENT_BUS.register(NickedHUD.instance);
         MinecraftForge.EVENT_BUS.register(new EnemyESP());
@@ -65,27 +64,16 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(PotionHUD.instance);
         MinecraftForge.EVENT_BUS.register(ArmorHUD.instance);
         MinecraftForge.EVENT_BUS.register(CoordsHUD.instance);
-
-        // Register Combat modules
-        MinecraftForge.EVENT_BUS.register(AutoClicker.instance); // REGISTERED AUTOCLICKER
-
-        // Register the NameTags module
+        MinecraftForge.EVENT_BUS.register(ToggleSprintModule.instance); // <--- Added Toggle Sprint here
+        MinecraftForge.EVENT_BUS.register(AutoClicker.instance); 
         MinecraftForge.EVENT_BUS.register(NameTags.instance);
-
-        // Register ban detection
         MinecraftForge.EVENT_BUS.register(new WhoGotBanned());
-
-        // Register AutoDenick and NickScanner listeners
         MinecraftForge.EVENT_BUS.register(AutoDenick.instance);
         MinecraftForge.EVENT_BUS.register(NickScanner.instance);
-
         MinecraftForge.EVENT_BUS.register(SessionStatsHUD.instance);
         MinecraftForge.EVENT_BUS.register(new EnemyAlert());
-
-        // Register the KeybindHandler to listen for keyboard events
         MinecraftForge.EVENT_BUS.register(new KeybindHandler());
 
-        // Register commands
         ClientCommandHandler.instance.registerCommand(new CommandFoxtrot());
 
         System.out.println("[Foxtrot] Loaded.");

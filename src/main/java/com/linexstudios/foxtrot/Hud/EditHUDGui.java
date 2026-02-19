@@ -75,15 +75,12 @@ public class EditHUDGui extends GuiScreen {
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         RenderHelper.disableStandardItemLighting();
 
-        if (EnemyHUD.enabled) EnemyHUD.instance.render(true, mouseX, mouseY);
-        if (NickedHUD.enabled) NickedHUD.instance.render(true, mouseX, mouseY);
-        if (FriendsHUD.enabled) FriendsHUD.instance.render(true, mouseX, mouseY);
-        if (SessionStatsHUD.enabled) SessionStatsHUD.instance.render(true, mouseX, mouseY);
-        if (EventHUD.enabled) EventHUD.instance.render(true, mouseX, mouseY);
-        if (RegHUD.enabled) RegHUD.instance.render(true, mouseX, mouseY); 
-        if (PotionHUD.enabled) PotionHUD.instance.render(true, mouseX, mouseY);
-        if (ArmorHUD.enabled) ArmorHUD.instance.render(true, mouseX, mouseY);
-        if (CoordsHUD.enabled) CoordsHUD.instance.render(true, mouseX, mouseY);
+        // 1. DYNAMICALLY RENDER ALL ACTIVE HUDS FROM REGISTRY
+        for (DraggableHUD hud : DraggableHUD.getRegistry()) {
+            if (hud.isEnabled()) {
+                hud.render(true, mouseX, mouseY);
+            }
+        }
 
         GlStateManager.popMatrix();
 
@@ -332,7 +329,6 @@ public class EditHUDGui extends GuiScreen {
         float swW = 16; float swH = 8; 
         float swX = x + cardW - swW - 4; 
         float swY = y + 1;
-        // EXPANDED HITBOX FOR TOGGLE: Includes the text and the switch area
         boolean hovered = isInside(mx, my, x, y, cardW, 12);
         
         if (isOn) {
@@ -405,10 +401,8 @@ public class EditHUDGui extends GuiScreen {
                 
                 if (AutoClicker.limitItems && whitelistField != null) whitelistField.mouseClicked(mouseX, mouseY, mouseButton);
 
-                // SYNCED OFFSETS FOR THE AUTOCLICKER HEADER (+16 pixels)
                 y1 += 16;
 
-                // MASSIVELY EXPANDED HITBOXES FOR TOGGLES (Width 100 instead of 20, covering the whole row)
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.enabled = !AutoClicker.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.leftClick = !AutoClicker.leftClick; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.holdToClick = !AutoClicker.holdToClick; y1 += 18;
@@ -437,14 +431,13 @@ public class EditHUDGui extends GuiScreen {
                 }
             }
             else if (selectedTab == 1) { 
-                int y1 = rY + 18; int y2 = rY + 18; // SYNCED HEADER OFFSETS
+                int y1 = rY + 18; int y2 = rY + 18; 
 
-                // MASSIVELY EXPANDED HITBOXES
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.enabled = !NameTags.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.showHealth = !NameTags.showHealth; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.showItems = !NameTags.showItems;
                 
-                y1 += 36; // Skip past second header
+                y1 += 36; 
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) EnemyESP.enabled = !EnemyESP.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) FriendsESP.enabled = !FriendsESP.enabled;
 
@@ -481,27 +474,49 @@ public class EditHUDGui extends GuiScreen {
         }
 
         super.mouseClicked(mouseX, mouseY, mouseButton);
-        DraggableHUD[] activeHuds = new DraggableHUD[]{
-            PotionHUD.enabled ? PotionHUD.instance : null, ArmorHUD.enabled ? ArmorHUD.instance : null,
-            CoordsHUD.enabled ? CoordsHUD.instance : null, EnemyHUD.enabled ? EnemyHUD.instance : null,
-            NickedHUD.enabled ? NickedHUD.instance : null, FriendsHUD.enabled ? FriendsHUD.instance : null,
-            SessionStatsHUD.enabled ? SessionStatsHUD.instance : null, EventHUD.enabled ? EventHUD.instance : null,
-            RegHUD.enabled ? RegHUD.instance : null
-        };
 
-        for (int i = 0; i < activeHuds.length; i++) {
-            DraggableHUD hud = activeHuds[i];
-            if (hud == null) continue;
-            if (mouseButton == 2 && hud.isHovered(mouseX, mouseY)) { hud.scale = 1.0f; ConfigHandler.saveConfig(); return; }
+        // 2. AUTOMATICALLY LOOP THROUGH ALL REGISTRY HUDS FOR DRAGGING/CLICKING
+        for (DraggableHUD hud : DraggableHUD.getRegistry()) {
+            if (!hud.isEnabled()) continue;
+            
+            if (mouseButton == 2 && hud.isHovered(mouseX, mouseY)) { 
+                hud.scale = 1.0f; ConfigHandler.saveConfig(); return; 
+            }
+            
             if (mouseButton == 0 && hud.isHovered(mouseX, mouseY)) {
                 long currentTime = System.currentTimeMillis();
-                if (hud == lastClickedHUD && (currentTime - lastClickTime < 300)) { this.mc.displayGuiScreen(new HUDSettingsGui(this, i)); return; }
-                lastClickTime = currentTime; lastClickedHUD = hud;
+                
+                // Double-click automatically maps to the correct Settings tab
+                if (hud == lastClickedHUD && (currentTime - lastClickTime < 300)) { 
+                    this.mc.displayGuiScreen(new HUDSettingsGui(this, getTabIndexFromName(hud.name))); 
+                    return; 
+                }
+                
+                lastClickTime = currentTime; 
+                lastClickedHUD = hud;
+                
                 int corner = hud.getHoveredCorner(mouseX, mouseY);
                 if (corner != 0) { resizingModule = hud; resizingCorner = corner; lastX = mouseX; lastY = mouseY; return; }
+                
                 draggingModule = hud; lastX = mouseX; lastY = mouseY; return;
             }
         }
+    }
+
+    // Helper method to automatically map HUD names to the correct tab index in HUDSettingsGui
+    private int getTabIndexFromName(String name) {
+        String lower = name.toLowerCase();
+        if (lower.contains("potion")) return 0;
+        if (lower.contains("armor")) return 1;
+        if (lower.contains("coord")) return 2;
+        if (lower.contains("enemy")) return 3;
+        if (lower.contains("nick")) return 4;
+        if (lower.contains("friend")) return 5;
+        if (lower.contains("session")) return 6;
+        if (lower.contains("event")) return 7;
+        if (lower.contains("reg")) return 8;
+        if (lower.contains("sprint")) return 9;
+        return 0; // Default to first tab
     }
 
     @Override

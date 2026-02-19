@@ -33,7 +33,6 @@ public class NickScanner {
 
             UUID playerUUID = info.getGameProfile().getId();
 
-            // BETTERPIT MAGIC CHECK: Hypixel Nicks use Version 1 UUIDs!
             if (playerUUID.version() == 1) {
                 String nickName = info.getGameProfile().getName();
 

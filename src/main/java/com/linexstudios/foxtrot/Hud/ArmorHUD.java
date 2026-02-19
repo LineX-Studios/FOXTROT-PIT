@@ -30,18 +30,6 @@ public class ArmorHUD extends DraggableHUD {
         render(false, 0, 0); 
     }
 
-    // Fixed unicode to stop "Weird A" symbol
-    private String getDamageColor(int current, int max) {
-        if (max == 0) return "\u00A7f";
-        int percent = (current * 100) / max;
-        if (percent <= 10) return "\u00A74"; // Dark Red
-        if (percent <= 25) return "\u00A7c"; // Red
-        if (percent <= 40) return "\u00A76"; // Gold
-        if (percent <= 60) return "\u00A7e"; // Yellow
-        if (percent <= 80) return "\u00A77"; // Gray
-        return "\u00A7f"; // White
-    }
-
     @Override
     public void draw(boolean isEditing) {
         if (!enabled || mc.thePlayer == null) return;
@@ -87,15 +75,16 @@ public class ArmorHUD extends DraggableHUD {
             if (item.isItemStackDamageable()) {
                 int max = item.getMaxDamage();
                 int dmg = max - item.getItemDamage();
-                String dmgStr = getDamageColor(dmg, max) + dmg;
+                String dmgStr = String.valueOf(dmg);
                 
                 GlStateManager.disableDepth();
                 GlStateManager.disableLighting();
                 
+                // Using the dynamic durabilityColor instead of standard hex overrides
                 if (isHorizontal) {
-                    fr.drawStringWithShadow(dmgStr, currentX + 8 - fr.getStringWidth(String.valueOf(dmg)) / 2, currentY + 18, 0xFFFFFF);
+                    fr.drawStringWithShadow(dmgStr, currentX + 8 - fr.getStringWidth(dmgStr) / 2, currentY + 18, durabilityColor);
                 } else {
-                    fr.drawStringWithShadow(dmgStr, currentX - fr.getStringWidth(String.valueOf(dmg)) - 4, currentY + 4, 0xFFFFFF);
+                    fr.drawStringWithShadow(dmgStr, currentX - fr.getStringWidth(dmgStr) - 4, currentY + 4, durabilityColor);
                 }
                 
                 GlStateManager.enableLighting();

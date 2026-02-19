@@ -23,7 +23,7 @@ public class NickedRender {
     public void onRenderNametag(RenderLivingEvent.Specials.Pre event) {
         if (!enabled) return; 
         
-        // Prevent double-rendering! If NameTags module is ON, don't draw this one.
+        // Prevent double-rendering
         if (com.linexstudios.foxtrot.Hud.NameTags.enabled) return;
         
         if (!(event.entity instanceof EntityOtherPlayerMP)) return;
@@ -35,35 +35,32 @@ public class NickedRender {
         boolean isEnemy = com.linexstudios.foxtrot.Hud.EnemyHUD.isTarget(nick);
         boolean isNicked = com.linexstudios.foxtrot.Denick.AutoDenick.isNicked(player.getUniqueID());
 
-        // Takes over nametag rendering for any tracked player
         if (isFriend || isEnemy || isNicked) {
             event.setCanceled(true); 
             
-            // Grabs the base name
             String formattedName = player.getDisplayName().getFormattedText();
 
-            // Fetch the Real IGN
             String realName = CacheManager.getFromCache(nick);
             if (realName == null) {
                 realName = NickedManager.getResolvedIGN(nick);
             }
 
-            // EXACT MATCH: Ignores "Scraping" (no dots), "Failed", and "No Nonce"
-            if (realName != null && !realName.equals("Scraping") && !realName.equals("Scraping...") && !realName.equals("Failed") && !realName.equals("No Nonce")) {
-                if (!formattedName.contains("(" + realName + ")")) {
-                    formattedName = formattedName + " " + EnumChatFormatting.YELLOW + "(" + realName + ")";
+            // Strip the color codes from the resolved name so our check actually works
+            if (realName != null) {
+                String cleanName = EnumChatFormatting.getTextWithoutFormattingCodes(realName).trim();
+                
+                // If it is NOT a status message, safely append the real IGN
+                if (!cleanName.equalsIgnoreCase("Scraping") && 
+                    !cleanName.equalsIgnoreCase("Scraping...") && 
+                    !cleanName.equalsIgnoreCase("Failed") && 
+                    !cleanName.equalsIgnoreCase("No Nonce")) {
+                    
+                    if (!formattedName.contains("(" + realName + ")")) {
+                        formattedName = formattedName + " " + EnumChatFormatting.YELLOW + "(" + realName + ")";
+                    }
                 }
             }
             
-            // STRICT FAIL-SAFE: Forcibly delete status texts so they NEVER render over their head
-            // Targets exactly "(Scraping)" without the dots
-            formattedName = formattedName.replace(EnumChatFormatting.YELLOW + " (Scraping)", "");
-            formattedName = formattedName.replace(EnumChatFormatting.YELLOW + " (Failed)", "");
-            formattedName = formattedName.replace(EnumChatFormatting.YELLOW + " (No Nonce)", "");
-            formattedName = formattedName.replace(" (Scraping)", "");
-            formattedName = formattedName.replace(" (Failed)", "");
-            formattedName = formattedName.replace(" (No Nonce)", "");
-
             renderVanillaNametag(player, formattedName, event.x, event.y, event.z);
         }
     }

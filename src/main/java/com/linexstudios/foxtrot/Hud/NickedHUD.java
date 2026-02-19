@@ -99,9 +99,13 @@ public class NickedHUD extends DraggableHUD {
 
                 String cleanedRealIGN = "Scraping";
                 if (realIGN != null && !realIGN.isEmpty()) {
-                    if (realIGN.equals("Failed")) cleanedRealIGN = "Failed";
-                    else if (realIGN.equals("No Nonce")) cleanedRealIGN = "No Nonce";
-                    else cleanedRealIGN = stripAllPrefixes(realIGN);
+                    // Strip the formatting codes from the status message
+                    String unformattedIGN = EnumChatFormatting.getTextWithoutFormattingCodes(realIGN).trim();
+                    
+                    if (unformattedIGN.equalsIgnoreCase("Failed")) cleanedRealIGN = "Failed";
+                    else if (unformattedIGN.equalsIgnoreCase("No Nonce")) cleanedRealIGN = "No Nonce";
+                    else if (unformattedIGN.equalsIgnoreCase("Scraping") || unformattedIGN.equalsIgnoreCase("Scraping...")) cleanedRealIGN = "Scraping";
+                    else cleanedRealIGN = stripAllPrefixes(realIGN); // It's an actual name, process it
                 }
 
                 String finalDisplayName = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.RESET + nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";

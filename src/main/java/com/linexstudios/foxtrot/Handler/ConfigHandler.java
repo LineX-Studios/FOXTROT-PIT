@@ -11,12 +11,14 @@ import com.linexstudios.foxtrot.Hud.RegHUD;
 import com.linexstudios.foxtrot.Hud.PotionHUD;
 import com.linexstudios.foxtrot.Hud.ArmorHUD;
 import com.linexstudios.foxtrot.Hud.CoordsHUD;
-
+import com.linexstudios.foxtrot.Hud.ToggleSprintModule; // <--- NEW IMPORT
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Render.PitESP; 
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.NickedRender;
+
+import net.minecraft.client.Minecraft;
 
 import java.io.*;
 import java.util.*;
@@ -26,6 +28,32 @@ public class ConfigHandler {
     private static final File enemyFile = new File(configDir, "enemies.txt");
     private static final File friendsFile = new File(configDir, "friends.txt");
     private static final File settingsFile = new File(configDir, "settings.txt");
+
+    // This safely edits the Forge config to disable the ugly Anvil screen.
+    // It will fall back to the clean, default Mojang red screen on startup.
+    public static void disableForgeSplashScreen() {
+        try {
+            File forgeConfigDir = new File(Minecraft.getMinecraft().mcDataDir, "config");
+            File splashFile = new File(forgeConfigDir, "splash.properties");
+            
+            if (splashFile.exists()) {
+                Properties props = new Properties();
+                FileInputStream in = new FileInputStream(splashFile);
+                props.load(in);
+                in.close();
+
+                if ("true".equals(props.getProperty("enabled", "true"))) {
+                    props.setProperty("enabled", "false"); 
+                    FileOutputStream out = new FileOutputStream(splashFile);
+                    props.store(out, "Automatically disabled by Foxtrot Client");
+                    out.close();
+                    System.out.println("[Foxtrot] Disabled Forge Splash Screen for future launches.");
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("[Foxtrot] Failed to edit splash.properties.");
+        }
+    }
 
     public static void loadConfig() {
         try {
@@ -76,6 +104,8 @@ public class ConfigHandler {
                 ArmorHUD.instance.y = Integer.parseInt(props.getProperty("armorHudY", "100"));
                 CoordsHUD.instance.x = Integer.parseInt(props.getProperty("coordsHudX", "10"));
                 CoordsHUD.instance.y = Integer.parseInt(props.getProperty("coordsHudY", "10"));
+                ToggleSprintModule.instance.x = Integer.parseInt(props.getProperty("toggleSprintX", "2"));
+                ToggleSprintModule.instance.y = Integer.parseInt(props.getProperty("toggleSprintY", "12"));
 
                 // Load HUD Scales
                 NickedHUD.instance.scale = Float.parseFloat(props.getProperty("nickedHudScale", "1.0"));
@@ -87,6 +117,7 @@ public class ConfigHandler {
                 PotionHUD.instance.scale = Float.parseFloat(props.getProperty("potionHudScale", "1.0"));
                 ArmorHUD.instance.scale = Float.parseFloat(props.getProperty("armorHudScale", "1.0"));
                 CoordsHUD.instance.scale = Float.parseFloat(props.getProperty("coordsHudScale", "1.0"));
+                ToggleSprintModule.instance.scale = Float.parseFloat(props.getProperty("toggleSprintScale", "1.0"));
 
                 // Load HUD Layouts & Colors
                 PotionHUD.instance.isHorizontal = Boolean.parseBoolean(props.getProperty("potionHorizontal", "false"));
@@ -99,8 +130,17 @@ public class ConfigHandler {
                 CoordsHUD.instance.isHorizontal = Boolean.parseBoolean(props.getProperty("coordsHorizontal", "false"));
                 CoordsHUD.axisColor = Integer.parseInt(props.getProperty("coordsAxisColor", "16733525")); // 0xFF5555
                 CoordsHUD.numberColor = Integer.parseInt(props.getProperty("coordsNumberColor", "16777215"));
+                
+                // Load Toggle Sprint Specific Settings
+                ToggleSprintModule.instance.enabled = Boolean.parseBoolean(props.getProperty("toggleSprintEnabled", "true"));
+                ToggleSprintModule.instance.toggleSprint = Boolean.parseBoolean(props.getProperty("tsSprint", "true"));
+                ToggleSprintModule.instance.toggleSneak = Boolean.parseBoolean(props.getProperty("tsSneak", "false"));
+                ToggleSprintModule.instance.wTapFix = Boolean.parseBoolean(props.getProperty("tsWTapFix", "true"));
+                ToggleSprintModule.instance.flyBoost = Boolean.parseBoolean(props.getProperty("tsFlyBoost", "true"));
+                ToggleSprintModule.instance.flyBoostAmount = Float.parseFloat(props.getProperty("tsFlyBoostAmount", "4.0"));
+                ToggleSprintModule.instance.textColor = Integer.parseInt(props.getProperty("tsTextColor", "16777215"));
 
-                // Load GUI States (FIXED VARIABLES)
+                // Load GUI States
                 EditHUDGui.collapsedX = Integer.parseInt(props.getProperty("panelX", "-1"));
                 EditHUDGui.collapsedY = Integer.parseInt(props.getProperty("panelY", "-1"));
                 EditHUDGui.panelCollapsed = Boolean.parseBoolean(props.getProperty("panelCollapsed", "false"));
@@ -192,6 +232,8 @@ public class ConfigHandler {
             props.setProperty("armorHudY", String.valueOf(ArmorHUD.instance.y));
             props.setProperty("coordsHudX", String.valueOf(CoordsHUD.instance.x));
             props.setProperty("coordsHudY", String.valueOf(CoordsHUD.instance.y));
+            props.setProperty("toggleSprintX", String.valueOf(ToggleSprintModule.instance.x));
+            props.setProperty("toggleSprintY", String.valueOf(ToggleSprintModule.instance.y));
 
             // Save HUD Scales
             props.setProperty("nickedHudScale", String.valueOf(NickedHUD.instance.scale));
@@ -203,6 +245,7 @@ public class ConfigHandler {
             props.setProperty("potionHudScale", String.valueOf(PotionHUD.instance.scale));
             props.setProperty("armorHudScale", String.valueOf(ArmorHUD.instance.scale));
             props.setProperty("coordsHudScale", String.valueOf(CoordsHUD.instance.scale));
+            props.setProperty("toggleSprintScale", String.valueOf(ToggleSprintModule.instance.scale));
 
             // Save HUD Layouts & Colors
             props.setProperty("potionHorizontal", String.valueOf(PotionHUD.instance.isHorizontal));
@@ -215,8 +258,17 @@ public class ConfigHandler {
             props.setProperty("coordsHorizontal", String.valueOf(CoordsHUD.instance.isHorizontal));
             props.setProperty("coordsAxisColor", String.valueOf(CoordsHUD.axisColor));
             props.setProperty("coordsNumberColor", String.valueOf(CoordsHUD.numberColor));
+            
+            // Save Toggle Sprint Specific Settings
+            props.setProperty("toggleSprintEnabled", String.valueOf(ToggleSprintModule.instance.enabled));
+            props.setProperty("tsSprint", String.valueOf(ToggleSprintModule.instance.toggleSprint));
+            props.setProperty("tsSneak", String.valueOf(ToggleSprintModule.instance.toggleSneak));
+            props.setProperty("tsWTapFix", String.valueOf(ToggleSprintModule.instance.wTapFix));
+            props.setProperty("tsFlyBoost", String.valueOf(ToggleSprintModule.instance.flyBoost));
+            props.setProperty("tsFlyBoostAmount", String.valueOf(ToggleSprintModule.instance.flyBoostAmount));
+            props.setProperty("tsTextColor", String.valueOf(ToggleSprintModule.instance.textColor));
 
-            // Save GUI States (FIXED VARIABLES)
+            // Save GUI States
             props.setProperty("panelX", String.valueOf(EditHUDGui.collapsedX));
             props.setProperty("panelY", String.valueOf(EditHUDGui.collapsedY));
             props.setProperty("panelCollapsed", String.valueOf(EditHUDGui.panelCollapsed));
