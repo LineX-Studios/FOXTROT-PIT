@@ -165,7 +165,7 @@ public class NickedHUD extends DraggableHUD {
                     }
                     if (!shortNames.isEmpty()) return String.join(EnumChatFormatting.WHITE + "/", shortNames);
                 }
-                if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "Darks";
+                if (pants.hasDisplayName() && pants.getDisplayName().contains("Dark Pants")) return EnumChatFormatting.DARK_PURPLE + "DARKS";
             }
             if (pants.getItem() == net.minecraft.init.Items.diamond_leggings) {
                 return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "DIAMOND";

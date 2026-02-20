@@ -7,6 +7,10 @@ import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.NickedRender;
+import com.linexstudios.foxtrot.Render.LowLifeMystic;
+import com.linexstudios.foxtrot.Misc.AutoPantSwap;
+import com.linexstudios.foxtrot.Misc.AutoGhead;
+import com.linexstudios.foxtrot.Misc.AutoQuickMath;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.renderer.GlStateManager;
@@ -18,7 +22,6 @@ import org.lwjgl.opengl.GL11;
 import java.io.IOException;
 
 public class EditHUDGui extends GuiScreen {
-    // --- INDEPENDENT POSITIONING ---
     public static int collapsedX = -1, collapsedY = -1;
     public static boolean panelCollapsed = true;
     
@@ -39,7 +42,8 @@ public class EditHUDGui extends GuiScreen {
     private long lastClickTime = 0;
     private DraggableHUD lastClickedHUD = null;
 
-    private String[] tabs = {"Combat", "Render", "Denick", "HUD"};
+    // Added "Misc" to the Tabs array
+    private String[] tabs = {"Combat", "Render", "Denick", "HUD", "Misc"};
     private GuiTextField whitelistField;
 
     @Override
@@ -75,7 +79,6 @@ public class EditHUDGui extends GuiScreen {
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         RenderHelper.disableStandardItemLighting();
 
-        // 1. DYNAMICALLY RENDER ALL ACTIVE HUDS FROM REGISTRY
         for (DraggableHUD hud : DraggableHUD.getRegistry()) {
             if (hud.isEnabled()) {
                 hud.render(true, mouseX, mouseY);
@@ -90,7 +93,7 @@ public class EditHUDGui extends GuiScreen {
         if (panelCollapsed) {
             drawGradientRoundedRect(collapsedX, collapsedY, 115, 18, 3.0f, 0xFA1E1E1E, 0xFA141414);
             
-            this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.WHITE + "Foxtrot Settings", collapsedX + 8, collapsedY + 5, -1);
+            this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Foxtrot Settings", collapsedX + 8, collapsedY + 5, -1);
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.WHITE + "+", collapsedX + 102, collapsedY + 5, -1);
         } else {
             drawGradientRoundedRect(mainPanelX, mainPanelY, panelW, panelH, 3.0f, 0xFA1E1E1E, 0xFA141414);
@@ -100,12 +103,11 @@ public class EditHUDGui extends GuiScreen {
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Foxtrot", mainPanelX + 8, mainPanelY + 8, -1);
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.WHITE + "-", mainPanelX + 300, mainPanelY + 8, -1);
 
-            // --- LEFT TABS ---
             int tY = mainPanelY + 25;
             for (int i = 0; i < tabs.length; i++) {
                 boolean hovered = isInside(mouseX, mouseY, mainPanelX + 6, tY, 70, 16);
                 if (selectedTab == i) {
-                    drawNeonGlow(mainPanelX + 6, tY, 70, 16, 3, 10.0f, 0x1AFF1111); // Faint soft red underglow
+                    drawNeonGlow(mainPanelX + 6, tY, 70, 16, 3, 10.0f, 0x1AFF1111); 
                     drawGradientRoundedRect(mainPanelX + 6, tY, 70, 16, 3, 0xFFE53935, 0xFFC62828); 
                     this.fontRendererObj.drawStringWithShadow(tabs[i], mainPanelX + 10, tY + 4, -1);
                 } else {
@@ -115,7 +117,6 @@ public class EditHUDGui extends GuiScreen {
                 tY += 20; 
             }
 
-            // --- RIGHT CONTENT AREA ---
             int c1 = mainPanelX + 90; 
             int c2 = mainPanelX + 205; 
             int rY = mainPanelY + 10;
@@ -123,7 +124,7 @@ public class EditHUDGui extends GuiScreen {
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + tabs[selectedTab], c1, rY, -1);
             rY += 15;
 
-            if (selectedTab == 0) { // COMBAT
+            if (selectedTab == 0) { 
                 int y1 = rY; int y2 = rY;
                 
                 drawSettingsCard(c1, y1, 105, AutoClicker.limitItems ? 165 : 145);
@@ -159,7 +160,7 @@ public class EditHUDGui extends GuiScreen {
                     drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 2 ? EnumChatFormatting.RED : EnumChatFormatting.GRAY) + "Extra+", mouseX, mouseY);
                 }
             } 
-            else if (selectedTab == 1) { // RENDER
+            else if (selectedTab == 1) { 
                 if (whitelistField != null) whitelistField.setVisible(false);
                 int y1 = rY; int y2 = rY;
                 
@@ -167,27 +168,28 @@ public class EditHUDGui extends GuiScreen {
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "NameTags", c1 + 5, y1 + 5, -1); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Enabled", NameTags.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Show Health", NameTags.showHealth, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1, 105, "Show Items", NameTags.showItems, mouseX, mouseY); y1 += 22;
+                drawIOSToggle(c1 + 5, y1, 105, "Show Items", NameTags.showItems, mouseX, mouseY); y1 += 22; 
                 
                 drawSettingsCard(c1, y1, 105, 52);
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Player ESP", c1 + 5, y1 + 5, -1); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Enemy ESP", EnemyESP.enabled, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1, 105, "Friends ESP", FriendsESP.enabled, mouseX, mouseY);
+                drawIOSToggle(c1 + 5, y1, 105, "Friends ESP", FriendsESP.enabled, mouseX, mouseY); 
 
-                drawSettingsCard(c2, y2, 100, 90);
-                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Pit ESP", c2 + 5, y2 + 5, -1); y2 += 18;
+                drawSettingsCard(c2, y2, 100, 108);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Pit Misc", c2 + 5, y2 + 5, -1); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Sewer Chests", PitESP.espChests, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Dragon Eggs", PitESP.espDragonEggs, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Raffle Tickets", PitESP.espRaffleTickets, mouseX, mouseY); y2 += 18;
-                drawIOSToggle(c2 + 5, y2, 100, "Mystic Drops", PitESP.espMystics, mouseX, mouseY);
+                drawIOSToggle(c2 + 5, y2, 100, "Mystic Drops", PitESP.espMystics, mouseX, mouseY); y2 += 18;
+                drawIOSToggle(c2 + 5, y2, 100, "Low Life Mystic", LowLifeMystic.enabled, mouseX, mouseY); 
             }
-            else if (selectedTab == 2) { // DENICK
+            else if (selectedTab == 2) { 
                 if (whitelistField != null) whitelistField.setVisible(false);
                 drawSettingsCard(c1, rY, 105, 50);
                 drawIOSToggle(c1 + 5, rY + 6, 105, "Auto Denick", AutoDenick.enabled, mouseX, mouseY); 
                 drawIOSToggle(c1 + 5, rY + 24, 105, "Nicked Tags", NickedRender.enabled, mouseX, mouseY);
             }
-            else if (selectedTab == 3) { // HUD
+            else if (selectedTab == 3) { 
                 if (whitelistField != null) whitelistField.setVisible(false);
                 int y1 = rY; int y2 = rY;
                 
@@ -205,6 +207,21 @@ public class EditHUDGui extends GuiScreen {
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Coords HUD", CoordsHUD.enabled, mouseX, mouseY); y2 += 28;
 
                 drawIOSButton(c2, y2 + 4, 100, 14, "HUD Customization", mouseX, mouseY);
+            }
+            else if (selectedTab == 4) { // MISC TAB
+                if (whitelistField != null) whitelistField.setVisible(false);
+                int y1 = rY; int y2 = rY;
+                
+                drawSettingsCard(c1, y1, 105, 108);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Inventory", c1 + 5, y1 + 5, -1); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Pant Swap", AutoPantSwap.pantSwapEnabled, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Venom Swap", AutoPantSwap.venomSwapEnabled, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Auto GHead, First Aid", AutoGhead.enabled, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Auto Escape Pod", AutoPantSwap.autoPodEnabled, mouseX, mouseY); y1 += 18;
+
+                drawSettingsCard(c2, y2, 100, 36);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Chat", c2 + 5, y2 + 5, -1); y2 += 18;
+                drawIOSToggle(c2 + 5, y2, 100, "Quick Math", AutoQuickMath.enabled, mouseX, mouseY); 
             }
         }
     }
@@ -444,7 +461,8 @@ public class EditHUDGui extends GuiScreen {
                 if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espChests = !PitESP.espChests; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espDragonEggs = !PitESP.espDragonEggs; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espRaffleTickets = !PitESP.espRaffleTickets; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espMystics = !PitESP.espMystics;
+                if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) PitESP.espMystics = !PitESP.espMystics; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) LowLifeMystic.enabled = !LowLifeMystic.enabled; 
             }
             else if (selectedTab == 2) { 
                 int y1 = rY;
@@ -470,12 +488,21 @@ public class EditHUDGui extends GuiScreen {
                     return; 
                 }
             }
+            else if (selectedTab == 4) { // MISC CLICKS
+                int y1 = rY + 18; int y2 = rY + 18;
+                
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.pantSwapEnabled = !AutoPantSwap.pantSwapEnabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.venomSwapEnabled = !AutoPantSwap.venomSwapEnabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoGhead.enabled = !AutoGhead.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.autoPodEnabled = !AutoPantSwap.autoPodEnabled; 
+                
+                if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) AutoQuickMath.enabled = !AutoQuickMath.enabled;
+            }
             ConfigHandler.saveConfig();
         }
 
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
-        // 2. AUTOMATICALLY LOOP THROUGH ALL REGISTRY HUDS FOR DRAGGING/CLICKING
         for (DraggableHUD hud : DraggableHUD.getRegistry()) {
             if (!hud.isEnabled()) continue;
             
@@ -486,7 +513,6 @@ public class EditHUDGui extends GuiScreen {
             if (mouseButton == 0 && hud.isHovered(mouseX, mouseY)) {
                 long currentTime = System.currentTimeMillis();
                 
-                // Double-click automatically maps to the correct Settings tab
                 if (hud == lastClickedHUD && (currentTime - lastClickTime < 300)) { 
                     this.mc.displayGuiScreen(new HUDSettingsGui(this, getTabIndexFromName(hud.name))); 
                     return; 
@@ -503,7 +529,6 @@ public class EditHUDGui extends GuiScreen {
         }
     }
 
-    // Helper method to automatically map HUD names to the correct tab index in HUDSettingsGui
     private int getTabIndexFromName(String name) {
         String lower = name.toLowerCase();
         if (lower.contains("potion")) return 0;
@@ -516,7 +541,8 @@ public class EditHUDGui extends GuiScreen {
         if (lower.contains("event")) return 7;
         if (lower.contains("reg")) return 8;
         if (lower.contains("sprint")) return 9;
-        return 0; // Default to first tab
+        if (lower.contains("cps")) return 10;
+        return 0; 
     }
 
     @Override

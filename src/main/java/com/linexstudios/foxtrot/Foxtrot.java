@@ -12,6 +12,7 @@ import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Hud.FriendsHUD;
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.PitESP;
+import com.linexstudios.foxtrot.Render.LowLifeMystic;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Hud.SessionStatsHUD;
 import com.linexstudios.foxtrot.Hud.PotionHUD;
@@ -27,6 +28,11 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import org.lwjgl.input.Keyboard;
+import com.linexstudios.foxtrot.Misc.AutoPantSwap;
+import com.linexstudios.foxtrot.Misc.AutoGhead;
+import com.linexstudios.foxtrot.Misc.AutoQuickMath;
+import com.linexstudios.foxtrot.Hud.CPSModule;
+
 
 @Mod(modid = "foxtrot", name = "Foxtrot", version = "${version}", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
@@ -56,15 +62,17 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(NickedHUD.instance);
         MinecraftForge.EVENT_BUS.register(new EnemyESP());
         MinecraftForge.EVENT_BUS.register(PitESP.instance);
+        MinecraftForge.EVENT_BUS.register(LowLifeMystic.instance);
         MinecraftForge.EVENT_BUS.register(FriendsHUD.instance);
         MinecraftForge.EVENT_BUS.register(new FriendsESP());
+        MinecraftForge.EVENT_BUS.register(CPSModule.instance);
         MinecraftForge.EVENT_BUS.register(new com.linexstudios.foxtrot.Render.NickedRender());
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.EventHUD.instance);
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.RegHUD.instance);
         MinecraftForge.EVENT_BUS.register(PotionHUD.instance);
         MinecraftForge.EVENT_BUS.register(ArmorHUD.instance);
         MinecraftForge.EVENT_BUS.register(CoordsHUD.instance);
-        MinecraftForge.EVENT_BUS.register(ToggleSprintModule.instance); // <--- Added Toggle Sprint here
+        MinecraftForge.EVENT_BUS.register(ToggleSprintModule.instance);
         MinecraftForge.EVENT_BUS.register(AutoClicker.instance); 
         MinecraftForge.EVENT_BUS.register(NameTags.instance);
         MinecraftForge.EVENT_BUS.register(new WhoGotBanned());
@@ -73,6 +81,10 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(SessionStatsHUD.instance);
         MinecraftForge.EVENT_BUS.register(new EnemyAlert());
         MinecraftForge.EVENT_BUS.register(new KeybindHandler());
+        MinecraftForge.EVENT_BUS.register(AutoPantSwap.instance);
+        MinecraftForge.EVENT_BUS.register(AutoGhead.instance);
+        MinecraftForge.EVENT_BUS.register(AutoQuickMath.instance);
+
 
         ClientCommandHandler.instance.registerCommand(new CommandFoxtrot());
 

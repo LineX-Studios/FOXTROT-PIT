@@ -70,7 +70,7 @@ public class AutoDenick {
                 if (p == null) continue; // Waiting for them to render physically
                 
                 String currentStatus = NickedManager.getResolvedIGN(nick);
-                boolean needsDenick = currentStatus == null || currentStatus.equals("Failed") || currentStatus.equals("No Nonce") || currentStatus.equals("Scraping...");
+                boolean needsDenick = currentStatus == null || currentStatus.equals("Failed") || currentStatus.equals("No Nonce") || currentStatus.equals("Scraping");
                 
                 if (needsDenick) {
                     

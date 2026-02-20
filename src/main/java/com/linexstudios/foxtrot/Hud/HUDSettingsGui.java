@@ -12,7 +12,8 @@ import java.io.IOException;
 
 public class HUDSettingsGui extends GuiScreen {
     private final GuiScreen previousScreen;
-    private String[] tabs = {"Potion Status", "Armor Status", "Coordinates", "Enemy List", "Nicked List", "Friend List", "Session Stats", "Event Tracker", "Regularity List", "Toggle Sprint"};
+    // Added "CPS" to the tabs list
+    private String[] tabs = {"Potion Status", "Armor Status", "Coordinates", "Enemy List", "Nicked List", "Friend List", "Session Stats", "Event Tracker", "Regularity List", "Toggle Sprint", "CPS"};
     private int selectedTab = 0;
     
     // UI Interaction States
@@ -65,13 +66,13 @@ public class HUDSettingsGui extends GuiScreen {
         if (EventHUD.enabled) EventHUD.instance.render(true, mouseX, mouseY);
         if (RegHUD.enabled) RegHUD.instance.render(true, mouseX, mouseY);
         if (ToggleSprintModule.instance.enabled) ToggleSprintModule.instance.render(true, mouseX, mouseY);
+        if (CPSModule.enabled) CPSModule.instance.render(true, mouseX, mouseY);
 
         GlStateManager.popMatrix();
 
         GlStateManager.disableLighting();
         GlStateManager.enableBlend();
 
-        // Increased height from 280 to 320 for spacious layout
         int panelW = 460; int panelH = 320;
         int panelX = (this.width - panelW) / 2;
         int panelY = (this.height - panelH) / 2;
@@ -150,6 +151,12 @@ public class HUDSettingsGui extends GuiScreen {
             
             this.fontRendererObj.drawStringWithShadow("Text Color", rX + 10, rY + 135, 0xDDDDDD);
             drawPalette(rX + 10, rY + 145, ToggleSprintModule.instance.textColor, mouseX, mouseY, 7);
+        } else if (selectedTab == 10) { // CPS
+            drawSettingsCard(rX, rY, 300, 85);
+            this.fontRendererObj.drawStringWithShadow("Text Color", rX + 10, rY + 10, 0xDDDDDD);
+            drawPalette(rX + 10, rY + 23, CPSModule.textColor, mouseX, mouseY, 8);
+            this.fontRendererObj.drawStringWithShadow("Background Color", rX + 10, rY + 50, 0xDDDDDD);
+            drawPalette(rX + 10, rY + 63, CPSModule.backgroundColor, mouseX, mouseY, 9);
         }
 
         // --- RENDER VISUAL COLOR PICKER POPUP ---
@@ -157,7 +164,6 @@ public class HUDSettingsGui extends GuiScreen {
             drawColorPickerPopup(pickerX, pickerY, mouseX, mouseY);
         }
 
-        // Return button stays safely at the bottom right corner
         drawIOSButton(panelX + panelW - 75, panelY + panelH - 25, 60, 16, "Return", mouseX, mouseY);
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
@@ -205,15 +211,22 @@ public class HUDSettingsGui extends GuiScreen {
     }
 
     private void updateTargetColor() {
-        int finalColor = Color.HSBtoRGB(currentHue, currentSat, currentBri) & 0x00FFFFFF;
+        // Only strip the alpha for specific variables if you don't want transparency,
+        // but CPS background color usually uses an alpha, so we handle it uniquely!
+        int finalColor = Color.HSBtoRGB(currentHue, currentSat, currentBri);
         
-        if (activeCustomColorTarget == 1) PotionHUD.nameColor = finalColor;
-        else if (activeCustomColorTarget == 2) PotionHUD.durationColor = finalColor;
-        else if (activeCustomColorTarget == 3) ArmorHUD.durabilityColor = finalColor;
-        else if (activeCustomColorTarget == 4) CoordsHUD.axisColor = finalColor;
-        else if (activeCustomColorTarget == 5) CoordsHUD.numberColor = finalColor;
-        else if (activeCustomColorTarget == 6) CoordsHUD.directionColor = finalColor;
-        else if (activeCustomColorTarget == 7) ToggleSprintModule.instance.textColor = finalColor;
+        if (activeCustomColorTarget == 1) PotionHUD.nameColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 2) PotionHUD.durationColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 3) ArmorHUD.durabilityColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 4) CoordsHUD.axisColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 5) CoordsHUD.numberColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 6) CoordsHUD.directionColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 7) ToggleSprintModule.instance.textColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 8) CPSModule.textColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 9) {
+            // Keep it 43% transparent for the CPS background, exactly like CheatBreaker
+            CPSModule.backgroundColor = (finalColor & 0x00FFFFFF) | 0x6F000000;
+        }
     }
 
     private void openCustomColorPicker(int targetId, int x, int y, int currentColor) {
@@ -327,7 +340,8 @@ public class HUDSettingsGui extends GuiScreen {
                 if (hovered && palette[i] != current) {
                     drawCircle(cx, cy, 7.5f, 0x55FFFFFF); 
                 }
-                if (palette[i] == current) {
+                // Need to correctly ignore alpha when checking if color is active for CPS Background
+                if ((palette[i] & 0x00FFFFFF) == (current & 0x00FFFFFF)) {
                     drawCircle(cx, cy, 7.5f, 0xFFFFFFFF); 
                 }
                 drawCircle(cx, cy, 5.5f, palette[i] | 0xFF000000);
@@ -481,6 +495,20 @@ public class HUDSettingsGui extends GuiScreen {
                 }
             }
         }
+        else if (selectedTab == 10) { // CPS CLICKS
+            for (int i = 0; i < palette.length; i++) {
+                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 23, 12, 12)) {
+                    if (i == palette.length - 1) { openCustomColorPicker(8, rX + 10 + (i * 22), rY + 23, CPSModule.textColor); } 
+                    else { CPSModule.textColor = palette[i]; } return; 
+                }
+            }
+            for (int i = 0; i < palette.length; i++) {
+                if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 63, 12, 12)) {
+                    if (i == palette.length - 1) { openCustomColorPicker(9, rX + 10 + (i * 22), rY + 63, CPSModule.backgroundColor); }
+                    else { CPSModule.backgroundColor = palette[i] | 0x6F000000; } return; 
+                }
+            }
+        }
     }
 
     @Override
@@ -525,6 +553,7 @@ public class HUDSettingsGui extends GuiScreen {
         else if (selectedTab == 7) EventHUD.instance.scale = val;
         else if (selectedTab == 8) RegHUD.instance.scale = val;
         else if (selectedTab == 9) ToggleSprintModule.instance.scale = val;
+        else if (selectedTab == 10) CPSModule.instance.scale = val;
     }
 
     private float getScaleForTab() {
@@ -538,6 +567,7 @@ public class HUDSettingsGui extends GuiScreen {
         if (selectedTab == 7) return EventHUD.instance.scale;
         if (selectedTab == 8) return RegHUD.instance.scale;
         if (selectedTab == 9) return ToggleSprintModule.instance.scale;
+        if (selectedTab == 10) return CPSModule.instance.scale;
         return 1.0f;
     }
 

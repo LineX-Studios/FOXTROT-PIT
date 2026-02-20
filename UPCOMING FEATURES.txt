@@ -5,9 +5,9 @@
                     ========================================================
 
 
-- Pit ESP - ESP for sewer chests, dragon eggs, raffle tickets, and dropped mystic items (all togglable through edithud gui in their own category just like nametags its gonna be a drop down in render then ITEM ESP to toggle off whatever pit item thats dropped but we already got chest esp so make sure you add it to PIT ESP category dropdown)
+- Pit ESP - ESP for sewer chests, dragon eggs, raffle tickets, and dropped mystic items (all togglable through edithud gui in their own category just like nametags its gonna be a drop down in render then ITEM ESP to toggle off whatever pit item thats dropped but we already got chest esp so make sure you add it to PIT ESP category dropdown) ADDED
 
-- Lobby player count - ADDED
+- Lobby player count 
 
 - Focus mode - only renders enemies, friends, etc.
 
@@ -16,25 +16,23 @@
 - Pant Swap (safe) Right-click held armor to swap it on - https://github.com/RaimbowSix/BetterPit/blob/master/src/main/java/com/github/raimbowsix/betterpit/modules/AutoPantSwap.java
 - VENOM SWAP - SWAP OUT TO DIAMOND PANTS IF YOUR VENOMED - https://github.com/RaimbowSix/BetterPit/blob/master/src/main/java/com/github/raimbowsix/betterpit/commands/SwapToDiamondPants.java
 - AUTOGHEAD https://github.com/RaimbowSix/BetterPit/blob/master/src/main/java/com/github/raimbowsix/betterpit/modules/AutoUse/AutoGhead.java
-- AUTO FIRST AID EGG WORKS EXACTLY LIKE AUTO GHEAD BUT FOR FIRST AID EGG TO HEAL WHEN YOUR AT 4 HEARTS
+- AUTO FIRST AID EGG WORKS EXACTLY LIKE AUTO GHEAD BUT FOR FIRST AID EGG TO HEAL WHEN YOUR AT 4 HEARTS - added
 
 - Gamble Check - Prevents you from swinging with a gamble sword against someone with mirror pants
 
-- FOR SESSIONSTATS ADD THIS FEATURE The Reset Trigger: To ensure the streak info is accurate, the trackers automatically reset back to zero the moment your player dies, changes lobbies, or executes the /spawn command.
-
-- Auto Quick Maths
+- Auto Quick Maths ADDED
 
 - W-Tap - Automatically W-Taps for you when fighting, has checks to prevent slowing you down when chasing people
 
-- New Module: Potion HUD Displays your potion effects as an overlay. that is as customizable as cheatbreaker you can change the Headers colors and the footers colers aswell and size make the size resizable in the edithudgui also add Armor HUD (ARMRORSTATUS) just like the one in cheatbreaker aswell all colors customizable and resizable and have a switch to reset the size just in case and you can add custom colors or preset colors from red to all colors available in normal minecraft and also ability to add hex colors aswell full rgb no rgb mode tho - ADDED
-
 - Dead Lobby Finder
 
-- Low-life item highlighting in inventory
+- Low-life item highlighting in inventory ADDED
 
-- Keep streak stats during major events
+- Keep streak stats during major events - WORKING ON IT
 
 - ADD CHEATBREAKER TOGGLESPRINT github.com/Decencies/CheatBreaker/ - ADDED
 https://github.com/KaboomB52/CheatBreaker/blob/master/CheatBreaker/src/main/java/com/cheatbreaker/client/module/type/togglesprint/ToggleSprintModule.java
 
-- GET RID OF "SCRAPING" "FAILED" "NO NONCE" FROM NICKEDHUD/NickedRender.java on their nametag IT SHOULDNT SHOW UP IT SHOULD ONLY SHOW THEIR NAME AFTER THE NAME WAS FOUND - FIXED
+- GET RID OF "SCRAPING" "FAILED" "NO NONCE" FROM NICKEDHUD/NickedRender.java on their nametag IT SHOULDNT SHOW UP IT SHOULD ONLY SHOW THEIR NAME AFTER THE NAME WAS FOUND - WORKING ON IT
+
+- CPS MODULE - ADDED

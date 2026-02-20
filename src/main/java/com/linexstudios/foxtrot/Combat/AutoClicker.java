@@ -2,6 +2,7 @@ package com.linexstudios.foxtrot.Combat;
 
 import com.linexstudios.foxtrot.Foxtrot;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.item.*;
 import net.minecraft.util.ChatComponentText;
@@ -9,10 +10,8 @@ import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
-import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
-import java.awt.Robot;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +22,6 @@ public class AutoClicker {
     public static final AutoClicker instance = new AutoClicker();
     private final Minecraft mc = Minecraft.getMinecraft();
     private final Random rand = new Random();
-    private Robot robot;
     private Field leftClickCounterField;
 
     // --- Toggles ---
@@ -54,7 +52,6 @@ public class AutoClicker {
     private long nextRightDelay = 0L;
 
     public AutoClicker() {
-        try { this.robot = new Robot(); } catch (Exception ignored) {}
         try {
             leftClickCounterField = Minecraft.class.getDeclaredField("leftClickCounter");
         } catch (NoSuchFieldException e) {
@@ -69,14 +66,14 @@ public class AutoClicker {
             enabled = !enabled;
             if (mc.thePlayer != null) {
                 String state = enabled ? "\u00a7aON" : "\u00a7cOFF";
-                mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[PIT] \u00a77AutoClicker: " + state));
+                mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[Foxtrot] \u00a77AutoClicker: " + state));
             }
         }
         if (Foxtrot.toggleInvFillKey != null && Foxtrot.toggleInvFillKey.isPressed()) {
             inventoryFill = !inventoryFill;
             if (mc.thePlayer != null) {
                 String state = inventoryFill ? "\u00a7aON" : "\u00a7cOFF";
-                mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[PIT] \u00a77Inventory Fill: " + state));
+                mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[Foxtrot] \u00a77Inventory Fill: " + state));
             }
         }
     }
@@ -85,14 +82,16 @@ public class AutoClicker {
     public void onTick(TickEvent.ClientTickEvent event) {
         if (mc.thePlayer == null || mc.theWorld == null) return;
 
-        if (mc.currentScreen instanceof net.minecraft.client.gui.inventory.GuiContainer) {
+        // --- INVENTORY FILL LOGIC ---
+        if (mc.currentScreen instanceof GuiContainer) {
             if (inventoryFill && Mouse.isButtonDown(0)) {
-                long invDelay = inventoryFillCps >= 20.0F ? 0 : (long)(1000.0F / inventoryFillCps);
+                long invDelay = inventoryFillCps >= 20.0F ? 20 : (long)(1000.0F / inventoryFillCps);
                 if (System.currentTimeMillis() - lastInvClick >= invDelay) {
-                    if (robot != null) {
-                        robot.mousePress(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
-                        robot.mouseRelease(java.awt.event.InputEvent.BUTTON1_DOWN_MASK);
-                    }
+                    try {
+                        int mouseX = Mouse.getX() * mc.currentScreen.width / mc.displayWidth;
+                        int mouseY = mc.currentScreen.height - Mouse.getY() * mc.currentScreen.height / mc.displayHeight - 1;
+                        mc.currentScreen.handleMouseInput();
+                    } catch (Exception e) {}
                     lastInvClick = System.currentTimeMillis();
                 }
             }
@@ -106,12 +105,16 @@ public class AutoClicker {
         
         ItemStack held = mc.thePlayer.getHeldItem();
         boolean holdingBlock = (held != null && held.getItem() instanceof ItemBlock);
+        
+        // This is the true check: Are we actually mining a block right now?
+        boolean isActivelyMining = mc.playerController != null && mc.playerController.getIsHittingBlock();
 
         if (event.phase == TickEvent.Phase.START) {
-            boolean lookingAtBlock = (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK);
             if (leftClick && holdToClick && Mouse.isButtonDown(0)) {
-                if (!(breakBlocks && lookingAtBlock)) {
-                    KeyBinding.setKeyBindState(attackKey, false);
+                if (breakBlocks && isActivelyMining) {
+                    KeyBinding.setKeyBindState(attackKey, true); // Allow vanilla to hold the click and mine
+                } else {
+                    KeyBinding.setKeyBindState(attackKey, false); // Block vanilla from holding so AC can rapid-fire
                 }
             }
             if (fastPlaceEnabled && holdToClick && Mouse.isButtonDown(1)) {
@@ -122,11 +125,15 @@ public class AutoClicker {
 
         if (mc.currentScreen != null) return;
 
+        // --- LEFT CLICK LOGIC ---
         if (leftClick) {
             boolean shouldLeftClick = !holdToClick || Mouse.isButtonDown(0);
-            if (breakBlocks && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+            
+            // Only stop the AC if we are ACTIVELY mining a block. Glancing at one won't stop it.
+            if (breakBlocks && isActivelyMining) {
                 shouldLeftClick = false; 
             }
+            
             if (limitItems && !isHoldingWhitelistedItem()) {
                 shouldLeftClick = false;
             }
@@ -134,8 +141,10 @@ public class AutoClicker {
             if (shouldLeftClick && System.currentTimeMillis() - lastLeftClickTime >= nextLeftDelay) {
                 try {
                     if (leftClickCounterField != null) leftClickCounterField.set(mc, 0); 
+                    
                     KeyBinding.setKeyBindState(attackKey, true);
                     KeyBinding.onTick(attackKey);
+                    
                     net.minecraftforge.client.event.MouseEvent fakeEvent = new net.minecraftforge.client.event.MouseEvent();
                     Field btnField = net.minecraftforge.client.event.MouseEvent.class.getDeclaredField("button");
                     btnField.setAccessible(true);
@@ -146,11 +155,13 @@ public class AutoClicker {
                     net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(fakeEvent);
                     net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new net.minecraftforge.fml.common.gameevent.InputEvent.MouseInputEvent());
                 } catch (Exception e) {}
+                
                 lastLeftClickTime = System.currentTimeMillis();
                 nextLeftDelay = generateNextDelay();
             }
         }
 
+        // --- RIGHT CLICK LOGIC (FAST PLACE) ---
         if (fastPlaceEnabled) {
             boolean shouldRightClick = (!holdToClick || Mouse.isButtonDown(1)) && holdingBlock;
             if (shouldRightClick && System.currentTimeMillis() - lastRightClickTime >= nextRightDelay) {
@@ -174,7 +185,6 @@ public class AutoClicker {
         return Math.max(20, baseDelay + randomOffset);
     }
 
-    // --- ADVANCED ALLOWLIST LOGIC ---
     private boolean isHoldingWhitelistedItem() {
         ItemStack held = mc.thePlayer.getHeldItem();
         if (held == null) return false;
@@ -184,7 +194,6 @@ public class AutoClicker {
             String check = w.toLowerCase().trim();
             if (check.isEmpty()) continue;
             
-            // Allow universal category parsing
             if (check.equals("swords") || check.equals("sword")) {
                 if (item instanceof ItemSword) return true;
             } else if (check.equals("axes") || check.equals("axe")) {
@@ -196,7 +205,6 @@ public class AutoClicker {
             } else if (check.equals("blocks") || check.equals("block")) {
                 if (item instanceof ItemBlock) return true;
             } else if (item.getUnlocalizedName().toLowerCase().contains(check)) {
-                // Failsafe for specific items
                 return true;
             }
         }

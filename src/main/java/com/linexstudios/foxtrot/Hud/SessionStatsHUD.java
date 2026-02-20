@@ -8,6 +8,7 @@ import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -23,11 +24,29 @@ public class SessionStatsHUD extends DraggableHUD {
     private long sessionStartTime = 0;
     private boolean isInPit = false;
 
+    // --- XP Tracking Variables ---
     private long sessionXpGained = 0;
+    
     private static final Pattern XP_PATTERN = Pattern.compile("\\+(\\d+)XP");
 
     public SessionStatsHUD() {
-        super("Session Stats", 10, 150); // FIXED CONSTRUCTOR
+        super("Session Stats", 10, 150);
+    }
+
+    /**
+     * Resets all tracking variables to start a brand new session.
+     */
+    public void resetSession() {
+        sessionStartTime = 0;
+        sessionXpGained = 0;
+        if (mc.thePlayer != null) {
+            APIHandler.updateStats(mc.thePlayer);
+        }
+    }
+
+    @SubscribeEvent
+    public void onWorldLoad(WorldEvent.Load event) {
+        resetSession();
     }
 
     @SubscribeEvent
@@ -50,11 +69,18 @@ public class SessionStatsHUD extends DraggableHUD {
 
         String message = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
         
+        // --- DEATH OR /SPAWN RESET TRIGGER ---
+        if (message.contains("You died!") || message.contains("RESPAWNED!") || message.contains("Teleporting to spawn...")) {
+            resetSession();
+            return; 
+        }
+        
         Matcher matcher = XP_PATTERN.matcher(message.replace(",", ""));
         if (matcher.find()) {
             long xpEarned = Long.parseLong(matcher.group(1));
             
             sessionXpGained += xpEarned;
+            
             APIHandler.pitPandaXpCurrent += xpEarned;
             
             if (APIHandler.pitPandaXpGoal > 0) {
@@ -104,6 +130,7 @@ public class SessionStatsHUD extends DraggableHUD {
             String xpStr = EnumChatFormatting.WHITE + "XP Progress: " + EnumChatFormatting.AQUA + "25.93k/98.94k " + EnumChatFormatting.GRAY + "(26.2%)";
             String goldStr = EnumChatFormatting.WHITE + "Gold Needed: " + EnumChatFormatting.GOLD + "10,000g";
             String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + "15,000";
+            String sessionXpStr = EnumChatFormatting.WHITE + "Session XP: " + EnumChatFormatting.AQUA + "3,500";
 
             fr.drawStringWithShadow(timeStr, 0, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(timeStr));
@@ -121,8 +148,14 @@ public class SessionStatsHUD extends DraggableHUD {
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpPerHourStr));
             currentY += fr.FONT_HEIGHT;
 
+            fr.drawStringWithShadow(sessionXpStr, 0, currentY, 0xFFFFFF);
+            maxWidth = Math.max(maxWidth, fr.getStringWidth(sessionXpStr));
+            currentY += fr.FONT_HEIGHT;
+
         } else if (APIHandler.isLoaded) {
             long elapsed = System.currentTimeMillis() - sessionStartTime;
+            if (elapsed < 0) elapsed = 0;
+            
             long hours = elapsed / 3600000;
             long minutes = (elapsed % 3600000) / 60000;
             long seconds = ((elapsed % 3600000) % 60000) / 1000;
@@ -151,13 +184,23 @@ public class SessionStatsHUD extends DraggableHUD {
             maxWidth = Math.max(maxWidth, fr.getStringWidth(goldStr));
             currentY += fr.FONT_HEIGHT;
 
-            long instantXpPerHour = 0;
-            if (elapsed > 5000 && sessionXpGained > 0) {
-                instantXpPerHour = (long) ((sessionXpGained / (double) elapsed) * 3600000);
+            // --- XP/HOUR CALCULATION ---
+            long displayXpPerHour = 0;
+            if (elapsed < 180000) { // Wait 3 minutes before taking over Pit Panda's stats
+                displayXpPerHour = (long) APIHandler.pitPandaXpHourly;
+            } else {
+                displayXpPerHour = (long) ((sessionXpGained / (double) elapsed) * 3600000);
             }
-            String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + String.format("%,d", instantXpPerHour);
+            
+            String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + String.format("%,d", displayXpPerHour);
             fr.drawStringWithShadow(xpPerHourStr, 0, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpPerHourStr));
+            currentY += fr.FONT_HEIGHT;
+
+            // --- SESSION XP ---
+            String sessionXpStr = EnumChatFormatting.WHITE + "Session XP: " + EnumChatFormatting.AQUA + String.format("%,d", sessionXpGained);
+            fr.drawStringWithShadow(sessionXpStr, 0, currentY, 0xFFFFFF);
+            maxWidth = Math.max(maxWidth, fr.getStringWidth(sessionXpStr));
             currentY += fr.FONT_HEIGHT;
 
         } else {

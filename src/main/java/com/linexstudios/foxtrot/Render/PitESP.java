@@ -124,7 +124,7 @@ public class PitESP {
                         if (nbt.hasKey("ExtraAttributes")) {
                             NBTTagCompound extra = nbt.getCompoundTag("ExtraAttributes");
                             if (extra.hasKey("Nonce") || extra.hasKey("CustomEnchants")) {
-                                renderItemESP(entity, event.partialTicks, 0xFFFFFF55, "Mystic");
+                                renderItemESP(entity, event.partialTicks, 0xFFFFFF55, "Mystic Drop");
                             }
                         }
                     }

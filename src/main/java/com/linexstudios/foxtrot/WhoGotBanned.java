@@ -93,7 +93,7 @@ public class WhoGotBanned {
                         EnumChatFormatting.GRAY + "[" + 
                         EnumChatFormatting.RED + "Foxtrot" + 
                         EnumChatFormatting.GRAY + "] " + 
-                        EnumChatFormatting.YELLOW + "\u26A0 " + 
+                        EnumChatFormatting.YELLOW + "\u26A0 " + // warning symbol
                         EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + bannedPlayer + " " + 
                         EnumChatFormatting.GOLD + "Has been banned!"
                 ));
