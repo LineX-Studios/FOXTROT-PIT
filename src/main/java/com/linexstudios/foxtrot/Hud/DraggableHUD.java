@@ -73,13 +73,18 @@ public abstract class DraggableHUD {
 
         if (isEditing && hovered) {
             int corner = getHoveredCorner(mouseX, mouseY);
-            int boxSize = 2; 
-            int actualW = (int)(width * scale);
-            int actualH = (int)(height * scale);
+            
+            // This represents half the width of the red box. 
+            // Setting it to 2 means it creates a 4x4 square perfectly centered on the vertex.
+            float boxSize = 2.0f; 
+            
+            float actualW = width * scale;
+            float actualH = height * scale;
 
-            if (corner == 1) drawCornerBox(x - boxSize, y - boxSize, boxSize); 
-            else if (corner == 2) drawCornerBox(x + actualW, y - boxSize, boxSize); 
-            else if (corner == 3) drawCornerBox(x - boxSize, y + actualH, boxSize); 
+            // Draw perfectly centered corner nodes
+            if (corner == 1) drawCornerBox(x, y, boxSize); 
+            else if (corner == 2) drawCornerBox(x + actualW, y, boxSize); 
+            else if (corner == 3) drawCornerBox(x, y + actualH, boxSize); 
             else if (corner == 4) drawCornerBox(x + actualW, y + actualH, boxSize); 
         }
     }
@@ -112,8 +117,9 @@ public abstract class DraggableHUD {
         GL11.glPopMatrix();
     }
 
-    private void drawCornerBox(int boxX, int boxY, int size) {
-        Gui.drawRect(boxX, boxY, boxX + size, boxY + size, 0xFFFF0000); 
+    // Now uses center X and center Y so the red square is exactly halfway inside/outside the corner
+    private void drawCornerBox(float cx, float cy, float halfSize) {
+        Gui.drawRect((int)(cx - halfSize), (int)(cy - halfSize), (int)(cx + halfSize), (int)(cy + halfSize), 0xFFFF0000); 
     }
 
     public boolean isHovered(int mouseX, int mouseY) {

@@ -24,7 +24,7 @@ compileJava {
 }
 
 // Change your version here, and it will update everywhere automatically!
-version = "0.7.0"
+version = "0.7.1"
 group = "com.linexstudios.foxtrot"
 archivesBaseName = "Foxtrot"
 

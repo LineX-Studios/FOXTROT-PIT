@@ -36,3 +36,83 @@ https://github.com/KaboomB52/CheatBreaker/blob/master/CheatBreaker/src/main/java
 - GET RID OF "SCRAPING" "FAILED" "NO NONCE" FROM NICKEDHUD/NickedRender.java on their nametag IT SHOULDNT SHOW UP IT SHOULD ONLY SHOW THEIR NAME AFTER THE NAME WAS FOUND - WORKING ON IT
 
 - CPS MODULE - ADDED
+
+- FPS MODULE - ADDED
+
+- ADD GUIDE LINES FOR EDITHUDGUI THAT ONLY SHOW UP WHEN YOUR DRAGGING A HUD ELEMENT IF YOU WANT TO CENTER IT WITH A BLUE LINE CROSS IN THE MIDDLE WHEN YOUR NO LONGER MOVING THE HUD ELEMENT THE AQUA GUIDE LINES DISAPPEAR AND THEY SHOULD NOT BE VERY VISIBLE AND MAKE SURE THEYRE IN OPENGL TO LOOK CLEAN AND SHARP THE GUIDE LINES WHICH IS JUST ONE LINE VERTICAL AND ONE LINE HORIZONTAL THEY SHOULD ONLY SHOW FADE INTO THE HUD EDITOR WHEN YOU START MOVING THE HUD ELEMENTS AND MAKE SURE THE HUD ELEMENTS LOCK TO THE CENTER AUTOMATICALLY WHEN THEYRE NEXT TO THE CENTER BY SLIHJT MILIMETERS IT SHOULD CENTER IT IN WHATEVER POSITION YOU PUT IT BUT MAKE SURE IT DOES NOT LOCK IT FOREVER I DONT WANT IT TO LOCK UP I WANT IT TO JUST SNAP TO THE CENTER OR IN THE MIDDLE THATS IT - added
+
+
+                                                PRIORITY TO DO NEXT WHEN HES BACK
+
+
+
+
+IS THERE ANY WAY TO MAKE ALL POSITIONS SAVED IN CONFIG IN CONFIGHANDLER SO WE NEVER HAVE TO MANUALLY ADD IN ANY PARTS OF THE CODE WHENEVER WE ADD A NEW MODULE THAT NEEDS TO SAVE CONFIG TO REMEMBER ITS LAST POSITIONING AND STUFF LIKE THAT?
+
+ALSO GOTTA FIX MOUSE POSITIONING WHEN YOUR HOLDING THE HUD ELEMENT AND ITS SNAPPED TO THE GUIDE LINE YOUR MOUSE KEEPS MOVING AND YOU NEED TO MOVE HARDER TO GET IT TO UNSNAP ITS GOTTA BE VERY SEEMLESS AND NICE WITH SNAPPING AND YOUR CURSOR TO STAY WITH THE HUD ELEMENT INSTEAD OF YOUR CURSOR NO LONGER BEING ON THE HUD ELEMENT. PRIORITY
+
+ALSO GOTTA FIX THE TABS IN HUDSETTINGS GUI BECAUSE SINCE WE ADDED BOSS BAR TAB TO IT SO WE WILL REDESIGN THE GUI TO LOOK EXACTLY LIKE THIS IMAGE IVE ATTACHED SORT OF IT SHOULDNT BE FULLY LIKE THAT IT SHOULD STAY THE SAME JUST MORE STREAM LINED INSTEAD OF TABS SHOWING ALL THE OPTIONS ON THE LEFT SIDE NOW THEY ARE ALL GONNA BE IN ONE PLACE TOGETHER THEN IF YOU CLICK ON THEM ITLL GO TO THE OPTIONS YOU WANT AND CHANGE THINGS ABOUT THEM MAKE SURE IT STILL WORKS WHEN YOU DOUBLE CLICK IT WILL SEND YOU STRAIGHT TO THE SETTINGS AND HAVE THE SAME SLIDERS COLOR PICKER AND EVERYTHING JUST A COMPLETE REDESIGN OF HOW HUDSETTINGSGUI FUNCTIONS BECAUSE HAVING THE TABS ON THE LEFT SIDE AND WE KEEP ADDING MORE TABS ITS GONNA BE ANNOYING AND WONT LOOK AS GOOD [MAKE SURE IT HAS THE ENABLED BUTTON LIKE THAT AND ON TOP OF IT THE OPTIONS BUTTON WITH A SETTINGS ICON HERE IS CODE FOR SETTINGS ICON IN OPENGL -/**
+ * Draws a settings gear icon using pure OpenGL geometry.
+ * @param x Center X position
+ * @param y Center Y position
+ * @param radius The size of the gear
+ * @param color The hex color (e.g., 0xFFFFFFFF)
+ * @param rotation The rotation in degrees (pass System.currentTimeMillis() / 20.0 for spinning!)
+ */
+public void drawMathGear(float x, float y, float radius, int color, float rotation) {
+    float innerRadius = radius * 0.6f; // The "hole" in the middle
+    float toothLength = radius * 0.25f; // How far the teeth stick out
+    int teethCount = 8;
+    
+    GlStateManager.pushMatrix();
+    GlStateManager.translate(x, y, 0);
+    GlStateManager.rotate(rotation, 0, 0, 1);
+    GlStateManager.disableTexture2D();
+    GlStateManager.enableBlend();
+    
+    // Set the color
+    float f3 = (float)(color >> 24 & 255) / 255.0F;
+    float f = (float)(color >> 16 & 255) / 255.0F;
+    float f1 = (float)(color >> 8 & 255) / 255.0F;
+    float f2 = (float)(color & 255) / 255.0F;
+    GlStateManager.color(f, f1, f2, f3);
+
+    // 1. Draw the Main "Ring" (Outer Body)
+    GL11.glBegin(GL11.GL_QUAD_STRIP);
+    for (int i = 0; i <= 360; i += 10) {
+        float angle = (float) Math.toRadians(i);
+        GL11.glVertex2f((float) Math.cos(angle) * innerRadius, (float) Math.sin(angle) * innerRadius);
+        GL11.glVertex2f((float) Math.cos(angle) * radius, (float) Math.sin(angle) * radius);
+    }
+    GL11.glEnd();
+
+    // 2. Draw the Teeth
+    float toothWidth = 360f / (teethCount * 2);
+    for (int i = 0; i < teethCount; i++) {
+        float angle = i * (360f / teethCount);
+        
+        GL11.glBegin(GL11.GL_QUADS);
+        // We define the 4 corners of each tooth based on the angle
+        for (float step = -toothWidth/2; step <= toothWidth/2; step += toothWidth) {
+            float a1 = (float) Math.toRadians(angle - toothWidth/2);
+            float a2 = (float) Math.toRadians(angle + toothWidth/2);
+            
+            GL11.glVertex2f((float) Math.cos(a1) * radius, (float) Math.sin(a1) * radius);
+            GL11.glVertex2f((float) Math.cos(a1) * (radius + toothLength), (float) Math.sin(a1) * (radius + toothLength));
+            GL11.glVertex2f((float) Math.cos(a2) * (radius + toothLength), (float) Math.sin(a2) * (radius + toothLength));
+            GL11.glVertex2f((float) Math.cos(a2) * radius, (float) Math.sin(a2) * radius);
+        }
+        GL11.glEnd();
+    }
+
+    GlStateManager.enableTexture2D();
+    GlStateManager.popMatrix();
+}-
+
+MAKE THIS REDESIGNED GUI SCROLLABLE OFC BECAUSE WERE GONNA HAVE 6 MODULES SHOWING TOP ON TOP UNTILL YOU SCROLL DOWN YOU SHOW ALL THE OTHER MODULES THAT WE HAVE AND MAKE SURE ALL OF THEM DO CLICK AND WHEN YOU CLICK ON THEM YOU GO TO THEIR SETTINGS MAKE SURE THE SLIDERS THE BUTTONS ALL WORK JUST NEED IT ALL STREAMLINED JUST LIKE LUNAR CLIENT
+
+
+
+Okay Autodenick for rage pants that all have nonce9 but if you just searchup nonce9 through pitpal api your gonna get a list of other random people but rage pants have a nonce and an id along with the item so we gotta investigate to see how we get that item ingame and manage to track it and see if any other api can show us the item information of those exact ragepants we extracted their id from because all items are trackable just rage pants all have nonce9
+
+gotta figure out how pitpal api works https://pitpal.rocks/api/listings/ find all other api links apart from api/listings/items/ we also want rage pants

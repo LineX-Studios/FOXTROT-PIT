@@ -3,6 +3,7 @@ package com.linexstudios.foxtrot.Combat;
 import com.linexstudios.foxtrot.Foxtrot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.item.*;
 import net.minecraft.util.ChatComponentText;
@@ -23,6 +24,7 @@ public class AutoClicker {
     private final Minecraft mc = Minecraft.getMinecraft();
     private final Random rand = new Random();
     private Field leftClickCounterField;
+    private Field isHittingBlockField; // Reflection to check if actively mining
 
     // --- Toggles ---
     public static boolean enabled = false;
@@ -58,6 +60,13 @@ public class AutoClicker {
             try { leftClickCounterField = Minecraft.class.getDeclaredField("field_71429_W"); } catch (Exception ex) {}
         }
         if (leftClickCounterField != null) leftClickCounterField.setAccessible(true);
+
+        try {
+            isHittingBlockField = PlayerControllerMP.class.getDeclaredField("isHittingBlock");
+        } catch (NoSuchFieldException e) {
+            try { isHittingBlockField = PlayerControllerMP.class.getDeclaredField("field_78778_j"); } catch (Exception ex) {}
+        }
+        if (isHittingBlockField != null) isHittingBlockField.setAccessible(true);
     }
 
     @SubscribeEvent
@@ -75,6 +84,15 @@ public class AutoClicker {
                 String state = inventoryFill ? "\u00a7aON" : "\u00a7cOFF";
                 mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[Foxtrot] \u00a77Inventory Fill: " + state));
             }
+        }
+    }
+
+    private boolean getIsActivelyMining() {
+        if (mc.playerController == null || isHittingBlockField == null) return false;
+        try {
+            return isHittingBlockField.getBoolean(mc.playerController);
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -107,7 +125,7 @@ public class AutoClicker {
         boolean holdingBlock = (held != null && held.getItem() instanceof ItemBlock);
         
         // This is the true check: Are we actually mining a block right now?
-        boolean isActivelyMining = mc.playerController != null && mc.playerController.getIsHittingBlock();
+        boolean isActivelyMining = getIsActivelyMining();
 
         if (event.phase == TickEvent.Phase.START) {
             if (leftClick && holdToClick && Mouse.isButtonDown(0)) {

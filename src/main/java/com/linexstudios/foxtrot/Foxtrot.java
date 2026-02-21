@@ -66,6 +66,7 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(FriendsHUD.instance);
         MinecraftForge.EVENT_BUS.register(new FriendsESP());
         MinecraftForge.EVENT_BUS.register(CPSModule.instance);
+        MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.FPSModule.instance);
         MinecraftForge.EVENT_BUS.register(new com.linexstudios.foxtrot.Render.NickedRender());
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.EventHUD.instance);
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.RegHUD.instance);

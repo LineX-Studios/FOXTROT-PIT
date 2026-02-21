@@ -44,22 +44,25 @@ public class PitESP {
     public void onTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || mc.theWorld == null || mc.thePlayer == null) return;
         
-        // Dragon Egg Block Scanner
+        // Dragon Egg Block Scanner - INSTANT (Zero Delay)
         if (espDragonEggs) {
             scanTimer++;
-            // Scan every 40 ticks (~2 seconds) to prevent lag with the massively increased radius
-            if (scanTimer >= 40) {
+            // Scan every 2 ticks (0.1 seconds) for instant updates without lagging out the game
+            if (scanTimer >= 2) {
                 scanTimer = 0;
                 dragonEggs.clear();
                 
-                // Increased radius from 30 to 70 for wider detection
-                int radius = 70;
+                int radiusX = 70; // Massive horizontal radius
+                int radiusY = 10; // Tight vertical radius to prevent FPS drops
+                
                 BlockPos playerPos = mc.thePlayer.getPosition();
                 
-                for (int x = -radius; x <= radius; x++) {
-                    for (int y = -20; y <= 20; y++) {
-                        for (int z = -radius; z <= radius; z++) {
+                // Optimized 3D loop
+                for (int x = -radiusX; x <= radiusX; x++) {
+                    for (int y = -radiusY; y <= radiusY; y++) {
+                        for (int z = -radiusX; z <= radiusX; z++) {
                             BlockPos pos = playerPos.add(x, y, z);
+                            // Fast check to see if block is the Dragon Egg
                             if (mc.theWorld.getBlockState(pos).getBlock() == Blocks.dragon_egg) {
                                 dragonEggs.add(pos);
                             }

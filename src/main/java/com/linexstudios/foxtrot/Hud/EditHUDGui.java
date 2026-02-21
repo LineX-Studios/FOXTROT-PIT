@@ -33,6 +33,9 @@ public class EditHUDGui extends GuiScreen {
     
     private boolean draggingPanel = false;
     private int lastX, lastY;
+    private int dragOffsetX = 0;
+    private int dragOffsetY = 0;
+    
     private int activeSlider = 0; 
     public static boolean randomDropdownExpanded = false;
 
@@ -42,9 +45,15 @@ public class EditHUDGui extends GuiScreen {
     private long lastClickTime = 0;
     private DraggableHUD lastClickedHUD = null;
 
-    // Added "Misc" to the Tabs array
     private String[] tabs = {"Combat", "Render", "Denick", "HUD", "Misc"};
     private GuiTextField whitelistField;
+    private String currentTooltip = null;
+
+    // --- GUIDELINE STATE ---
+    private float guideAlphaX = 0.0f;
+    private float guideAlphaY = 0.0f;
+    private boolean isSnappedX = false;
+    private boolean isSnappedY = false;
 
     @Override
     public void initGui() {
@@ -71,6 +80,40 @@ public class EditHUDGui extends GuiScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
+        currentTooltip = null; 
+
+        // ============================================
+        //      DYNAMIC PROXIMITY GUIDELINES
+        // ============================================
+        float targetAlphaX = 0.0f;
+        float targetAlphaY = 0.0f;
+        int revealRadius = 15; // Only show lines if within 15 pixels of center
+
+        if (draggingModule != null) {
+            int scaledW = (int) (draggingModule.width * draggingModule.scale);
+            int scaledH = (int) (draggingModule.height * draggingModule.scale);
+            int modCenterX = draggingModule.x + scaledW / 2;
+            int modCenterY = draggingModule.y + scaledH / 2;
+            int screenCenterX = this.width / 2;
+            int screenCenterY = this.height / 2;
+
+            if (Math.abs(modCenterX - screenCenterX) <= revealRadius) targetAlphaX = 0.4f;
+            if (Math.abs(modCenterY - screenCenterY) <= revealRadius) targetAlphaY = 0.4f;
+        }
+
+        guideAlphaX += (targetAlphaX - guideAlphaX) * 0.2f;
+        guideAlphaY += (targetAlphaY - guideAlphaY) * 0.2f;
+
+        if (guideAlphaX > 0.01f) {
+            float vR = isSnappedX ? 1.0f : 0.33f;
+            float vG = isSnappedX ? 0.33f : 1.0f;
+            drawGuideLine(this.width / 2.0f - 0.5f, 0, 1.0f, this.height, vR, vG, 1.0f, guideAlphaX);
+        }
+        if (guideAlphaY > 0.01f) {
+            float hR = isSnappedY ? 1.0f : 0.33f;
+            float hG = isSnappedY ? 0.33f : 1.0f;
+            drawGuideLine(0, this.height / 2.0f - 0.5f, this.width, 1.0f, hR, hG, 1.0f, guideAlphaY);
+        }
         
         GlStateManager.pushMatrix();
         GlStateManager.enableTexture2D();
@@ -92,12 +135,10 @@ public class EditHUDGui extends GuiScreen {
 
         if (panelCollapsed) {
             drawGradientRoundedRect(collapsedX, collapsedY, 115, 18, 3.0f, 0xFA1E1E1E, 0xFA141414);
-            
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Foxtrot Settings", collapsedX + 8, collapsedY + 5, -1);
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.WHITE + "+", collapsedX + 102, collapsedY + 5, -1);
         } else {
             drawGradientRoundedRect(mainPanelX, mainPanelY, panelW, panelH, 3.0f, 0xFA1E1E1E, 0xFA141414);
-            
             drawSolidRect(mainPanelX + 80, mainPanelY + 15, 1, panelH - 30, 0x1AFFFFFF); 
 
             this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "Foxtrot", mainPanelX + 8, mainPanelY + 8, -1);
@@ -108,7 +149,7 @@ public class EditHUDGui extends GuiScreen {
                 boolean hovered = isInside(mouseX, mouseY, mainPanelX + 6, tY, 70, 16);
                 if (selectedTab == i) {
                     drawNeonGlow(mainPanelX + 6, tY, 70, 16, 3, 10.0f, 0x1AFF1111); 
-                    drawGradientRoundedRect(mainPanelX + 6, tY, 70, 16, 3, 0xFFE53935, 0xFFC62828); 
+                    drawGradientRoundedRect(mainPanelX + 6, tY, 70, 16, 3, 0xFFFF4444, 0xFFE53935); 
                     this.fontRendererObj.drawStringWithShadow(tabs[i], mainPanelX + 10, tY + 4, -1);
                 } else {
                     if (hovered) drawGradientRoundedRect(mainPanelX + 6, tY, 70, 16, 3, 0xFF2A2A2A, 0xFF202020);
@@ -126,7 +167,6 @@ public class EditHUDGui extends GuiScreen {
 
             if (selectedTab == 0) { 
                 int y1 = rY; int y2 = rY;
-                
                 drawSettingsCard(c1, y1, 105, AutoClicker.limitItems ? 165 : 145);
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Autoclicker", c1 + 5, y1 + 5, -1); y1 += 16;
                 drawIOSToggle(c1 + 5, y1, 105, "Enabled", AutoClicker.enabled, mouseX, mouseY); y1 += 18;
@@ -138,10 +178,8 @@ public class EditHUDGui extends GuiScreen {
                 drawIOSToggle(c1 + 5, y1, 105, "Limit Items", AutoClicker.limitItems, mouseX, mouseY); y1 += 18;
                 
                 if (AutoClicker.limitItems) {
-                    whitelistField.xPosition = c1 + 5; 
-                    whitelistField.yPosition = y1 + 2;
-                    whitelistField.setVisible(true); 
-                    GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+                    whitelistField.xPosition = c1 + 5; whitelistField.yPosition = y1 + 2;
+                    whitelistField.setVisible(true); GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
                     whitelistField.drawTextBox();
                 } else whitelistField.setVisible(false);
 
@@ -153,7 +191,6 @@ public class EditHUDGui extends GuiScreen {
                 String activeModeStr = AutoClicker.randomMode == 0 ? "Normal" : (AutoClicker.randomMode == 1 ? "Extra" : "Extra+");
                 drawIOSButton(c2 + 5, y2, 90, 14, "Mode: " + activeModeStr, mouseX, mouseY);
                 y2 += 16;
-                
                 if (randomDropdownExpanded) {
                     drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 0 ? EnumChatFormatting.RED : EnumChatFormatting.GRAY) + "Normal", mouseX, mouseY); y2 += 14;
                     drawIOSButton(c2 + 5, y2, 90, 12, (AutoClicker.randomMode == 1 ? EnumChatFormatting.RED : EnumChatFormatting.GRAY) + "Extra", mouseX, mouseY); y2 += 14;
@@ -163,7 +200,6 @@ public class EditHUDGui extends GuiScreen {
             else if (selectedTab == 1) { 
                 if (whitelistField != null) whitelistField.setVisible(false);
                 int y1 = rY; int y2 = rY;
-                
                 drawSettingsCard(c1, y1, 105, 70);
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "NameTags", c1 + 5, y1 + 5, -1); y1 += 18;
                 drawIOSToggle(c1 + 5, y1, 105, "Enabled", NameTags.enabled, mouseX, mouseY); y1 += 18;
@@ -181,156 +217,114 @@ public class EditHUDGui extends GuiScreen {
                 drawIOSToggle(c2 + 5, y2, 100, "Dragon Eggs", PitESP.espDragonEggs, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Raffle Tickets", PitESP.espRaffleTickets, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Mystic Drops", PitESP.espMystics, mouseX, mouseY); y2 += 18;
-                drawIOSToggle(c2 + 5, y2, 100, "Low Life Mystic", LowLifeMystic.enabled, mouseX, mouseY); 
+                drawIOSToggle(c2 + 5, y2, 100, "Low Life Mystics", LowLifeMystic.enabled, mouseX, mouseY); 
             }
             else if (selectedTab == 2) { 
                 if (whitelistField != null) whitelistField.setVisible(false);
-                drawSettingsCard(c1, rY, 105, 50);
-                drawIOSToggle(c1 + 5, rY + 6, 105, "Auto Denick", AutoDenick.enabled, mouseX, mouseY); 
-                drawIOSToggle(c1 + 5, rY + 24, 105, "Nicked Tags", NickedRender.enabled, mouseX, mouseY);
+                int y1 = rY;
+                drawSettingsCard(c1, y1, 105, 50);
+                drawIOSToggle(c1 + 5, y1 + 6, 105, "Auto Denick", AutoDenick.enabled, mouseX, mouseY); 
+                drawIOSToggle(c1 + 5, y1 + 24, 105, "Nicked Tags", NickedRender.enabled, mouseX, mouseY);
             }
             else if (selectedTab == 3) { 
                 if (whitelistField != null) whitelistField.setVisible(false);
                 int y1 = rY; int y2 = rY;
-                
-                drawSettingsCard(c1, y1, 105, 108);
+                drawSettingsCard(c1, y1, 105, 162);
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "Enemy HUD", EnemyHUD.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "Nicked HUD", NickedHUD.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "Friends HUD", FriendsHUD.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "Session Stats", SessionStatsHUD.enabled, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1 + 6, 105, "Event Tracker", EventHUD.enabled, mouseX, mouseY); 
+                drawIOSToggle(c1 + 5, y1 + 6, 105, "Event Tracker", EventHUD.enabled, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1 + 6, 105, "Boss Bar", BossBarModule.enabled, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1 + 6, 105, "CPS HUD", CPSModule.enabled, mouseX, mouseY); y1 += 18;
+                drawIOSToggle(c1 + 5, y1 + 6, 105, "FPS HUD", FPSModule.enabled, mouseX, mouseY);
 
                 drawSettingsCard(c2, y2, 100, 90);
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Reg HUD", RegHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Potion HUD", PotionHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Armor HUD", ArmorHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Coords HUD", CoordsHUD.enabled, mouseX, mouseY); y2 += 28;
-
                 drawIOSButton(c2, y2 + 4, 100, 14, "HUD Customization", mouseX, mouseY);
             }
-            else if (selectedTab == 4) { // MISC TAB
+            else if (selectedTab == 4) {
                 if (whitelistField != null) whitelistField.setVisible(false);
-                int y1 = rY; int y2 = rY;
-                
-                drawSettingsCard(c1, y1, 105, 108);
-                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Inventory", c1 + 5, y1 + 5, -1); y1 += 18;
-                drawIOSToggle(c1 + 5, y1, 105, "Pant Swap", AutoPantSwap.pantSwapEnabled, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1, 105, "Venom Swap", AutoPantSwap.venomSwapEnabled, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1, 105, "Auto GHead, First Aid", AutoGhead.enabled, mouseX, mouseY); y1 += 18;
-                drawIOSToggle(c1 + 5, y1, 105, "Auto Escape Pod", AutoPantSwap.autoPodEnabled, mouseX, mouseY); y1 += 18;
+                int y1 = rY + 18; int y2 = rY + 18;
+                drawSettingsCard(c1, y1 - 18, 105, 108);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Inventory", c1 + 5, y1 - 13, -1); 
+                drawIOSToggle(c1 + 5, y1, 105, "Pant Swap", AutoPantSwap.pantSwapEnabled, mouseX, mouseY); 
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.RED + "\u26A0 " + EnumChatFormatting.YELLOW + "USE AT YOUR OWN RISK." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Auto Swap / Hold right-click while holding over pants in your inventory to instantly equip it.";
+                y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Venom Swap", AutoPantSwap.venomSwapEnabled, mouseX, mouseY); 
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.RED + "\u26A0 " + EnumChatFormatting.YELLOW + "USE AT YOUR OWN RISK." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Automatically swaps to diamond pants if you get venomed.";
+                y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Auto Heal", AutoGhead.enabled, mouseX, mouseY); 
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.RED + "\u26A0 " + EnumChatFormatting.YELLOW + "USE AT YOUR OWN RISK." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Automatically use Ghead or First Aid Egg.";
+                y1 += 18;
+                drawIOSToggle(c1 + 5, y1, 105, "Auto Pod", AutoPantSwap.autoPodEnabled, mouseX, mouseY); 
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.RED + "\u26A0 " + EnumChatFormatting.YELLOW + "USE AT YOUR OWN RISK." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Automatically use Escape Pods when you are at low health";
+                y1 += 18;
 
-                drawSettingsCard(c2, y2, 100, 36);
-                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Chat", c2 + 5, y2 + 5, -1); y2 += 18;
-                drawIOSToggle(c2 + 5, y2, 100, "Quick Math", AutoQuickMath.enabled, mouseX, mouseY); 
+                drawSettingsCard(c2, y2 - 18, 100, 36);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Chat", c2 + 5, y2 - 13, -1);
+                drawIOSToggle(c2 + 5, y2, 100, "Auto Quick Math", AutoQuickMath.enabled, mouseX, mouseY); 
             }
         }
-    }
-
-    private void drawSettingsCard(int x, int y, int w, int h) {
-        drawRoundedRect(x, y, w, h, 3.0f, 0x11FFFFFF); 
-    }
-
-    private void setupSmoothRender(boolean isGradient) {
-        GlStateManager.pushMatrix(); 
-        GlStateManager.enableBlend(); 
-        GlStateManager.disableTexture2D();
-        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0); 
-        GL11.glDisable(GL11.GL_LINE_SMOOTH); 
-        GL11.glDisable(GL11.GL_POLYGON_SMOOTH); 
-        GL11.glDisable(GL11.GL_CULL_FACE); 
-        if (isGradient) GlStateManager.shadeModel(GL11.GL_SMOOTH);
-    }
-
-    private void endSmoothRender() {
-        GlStateManager.shadeModel(GL11.GL_FLAT);
-        GL11.glEnable(GL11.GL_CULL_FACE);
-        GlStateManager.enableTexture2D(); 
-        GlStateManager.disableBlend(); 
-        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F); 
-        GlStateManager.popMatrix();
-    }
-
-    private void setColor(int color) {
-        float a = (color >> 24 & 0xFF) / 255.0F; float r = (color >> 16 & 0xFF) / 255.0F;
-        float g = (color >> 8 & 0xFF) / 255.0F; float b = (color & 0xFF) / 255.0F;
-        GlStateManager.color(r, g, b, a);
-    }
-
-    private void drawNeonGlow(float x, float y, float width, float height, float radius, float spread, int color) {
-        float a = (color >> 24 & 0xFF) / 255.0F;
-        for (float s = spread; s > 0; s -= 1.0f) {
-            float currentAlpha = a * (1.0f - (s / spread)); 
-            int c = ((int)(currentAlpha * 255) << 24) | (color & 0x00FFFFFF);
-            drawRoundedOutline(x - s, y - s, width + (s*2), height + (s*2), radius + s, 1.0f, c);
+        
+        if (currentTooltip != null) {
+            drawTooltip(currentTooltip, mouseX, mouseY);
         }
     }
 
-    private void drawGradientRoundedRect(float x, float y, float width, float height, float radius, int topColor, int bottomColor) {
-        setupSmoothRender(true);
-        float x1 = x + width; float y1 = y + height;
-        GL11.glBegin(GL11.GL_POLYGON);
-        setColor(topColor);
-        for (int i = 180; i <= 270; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius));
-        for (int i = 270; i <= 360; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius));
-        setColor(bottomColor);
-        for (int i = 0; i <= 90; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius));
-        for (int i = 90; i <= 180; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius));
-        GL11.glEnd();
-        endSmoothRender();
-    }
-
-    private void drawRoundedRect(float x, float y, float width, float height, float radius, int color) {
+    private void drawGuideLine(float x, float y, float w, float h, float r, float g, float b, float alpha) {
         setupSmoothRender(false);
-        setColor(color);
-        float x1 = x + width; float y1 = y + height;
-        GL11.glBegin(GL11.GL_POLYGON);
-        for (int i = 180; i <= 270; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius));
-        for (int i = 270; i <= 360; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius));
-        for (int i = 0; i <= 90; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius));
-        for (int i = 90; i <= 180; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius));
+        GlStateManager.color(r, g, b, alpha); 
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glVertex2f(x, y);
+        GL11.glVertex2f(x, y + h);
+        GL11.glVertex2f(x + w, y + h);
+        GL11.glVertex2f(x + w, y);
         GL11.glEnd();
         endSmoothRender();
     }
-
-    private void drawRoundedOutline(float x, float y, float width, float height, float radius, float lineWidth, int color) {
-        setupSmoothRender(false);
-        setColor(color);
-        GL11.glLineWidth(lineWidth);
-        float x1 = x + width; float y1 = y + height;
-        GL11.glBegin(GL11.GL_LINE_LOOP);
-        for (int i = 180; i <= 270; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius));
-        for (int i = 270; i <= 360; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius));
-        for (int i = 0; i <= 90; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius));
-        for (int i = 90; i <= 180; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius));
-        GL11.glEnd();
-        endSmoothRender();
+    
+    private void drawTooltip(String text, int x, int y) {
+        int stringWidth = this.fontRendererObj.getStringWidth(text);
+        int pad = 4;
+        int drawX = x + 10;
+        int drawY = y - 10;
+        if (drawX + stringWidth + (pad*2) > this.width) {
+            drawX = this.width - stringWidth - (pad*2);
+        }
+        drawRoundedRect(drawX, drawY, stringWidth + (pad*2), this.fontRendererObj.FONT_HEIGHT + (pad*2), 3, 0xF9111111);
+        drawRoundedOutline(drawX, drawY, stringWidth + (pad*2), this.fontRendererObj.FONT_HEIGHT + (pad*2), 3, 1.0f, 0x55FFFFFF);
+        this.fontRendererObj.drawStringWithShadow(text, drawX + pad, drawY + pad, -1);
     }
 
-    private void drawSolidRect(float x, float y, float w, float h, int color) {
-        drawRoundedRect(x, y, w, h, 0, color);
+    private void updateEditSlider(int slider, int mouseX, int startX) {
+        float pct = (mouseX - startX) / 90f; 
+        pct = Math.max(0, Math.min(1, pct));
+        if (slider == 1) AutoClicker.minCps = 1.0f + (pct * 19.0f);
+        if (slider == 2) AutoClicker.maxCps = 1.0f + (pct * 19.0f);
+        if (slider == 3) AutoClicker.inventoryFillCps = 5.0f + (pct * 15.0f);
     }
 
-    private void drawCircle(float cx, float cy, float radius, int color) {
-        setupSmoothRender(false); setColor(color);
-        GL11.glBegin(GL11.GL_POLYGON);
-        for (int i = 0; i <= 360; i += 5) GL11.glVertex2f((float)(cx + Math.cos(Math.toRadians(i)) * radius), (float)(cy + Math.sin(Math.toRadians(i)) * radius));
-        GL11.glEnd(); endSmoothRender();
-    }
-
-    private void drawCircleOutline(float cx, float cy, float radius, float lineWidth, int color) {
-        setupSmoothRender(false); setColor(color);
-        GL11.glLineWidth(lineWidth);
-        GL11.glBegin(GL11.GL_LINE_LOOP);
-        for (int i = 0; i <= 360; i += 5) GL11.glVertex2f((float)(cx + Math.cos(Math.toRadians(i)) * radius), (float)(cy + Math.sin(Math.toRadians(i)) * radius));
-        GL11.glEnd(); endSmoothRender();
-    }
+    private void drawSettingsCard(int x, int y, int w, int h) { drawRoundedRect(x, y, w, h, 3.0f, 0x11FFFFFF); }
+    private void setupSmoothRender(boolean isGradient) { GlStateManager.pushMatrix(); GlStateManager.enableBlend(); GlStateManager.disableTexture2D(); GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0); GL11.glDisable(GL11.GL_LINE_SMOOTH); GL11.glDisable(GL11.GL_POLYGON_SMOOTH); GL11.glDisable(GL11.GL_CULL_FACE); if (isGradient) GlStateManager.shadeModel(GL11.GL_SMOOTH); }
+    private void endSmoothRender() { GlStateManager.shadeModel(GL11.GL_FLAT); GL11.glEnable(GL11.GL_CULL_FACE); GlStateManager.enableTexture2D(); GlStateManager.disableBlend(); GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F); GlStateManager.popMatrix(); }
+    private void setColor(int color) { float a = (color >> 24 & 0xFF) / 255.0F; float r = (color >> 16 & 0xFF) / 255.0F; float g = (color >> 8 & 0xFF) / 255.0F; float b = (color & 0xFF) / 255.0F; GlStateManager.color(r, g, b, a); }
+    private void drawNeonGlow(float x, float y, float width, float height, float radius, float spread, int color) { float a = (color >> 24 & 0xFF) / 255.0F; for (float s = spread; s > 0; s -= 1.0f) { float currentAlpha = a * (1.0f - (s / spread)); int c = ((int)(currentAlpha * 255) << 24) | (color & 0x00FFFFFF); drawRoundedOutline(x - s, y - s, width + (s*2), height + (s*2), radius + s, 1.0f, c); } }
+    private void drawGradientRoundedRect(float x, float y, float width, float height, float radius, int topColor, int bottomColor) { setupSmoothRender(true); float x1 = x + width; float y1 = y + height; GL11.glBegin(GL11.GL_POLYGON); setColor(topColor); for (int i = 180; i <= 270; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius)); for (int i = 270; i <= 360; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius)); setColor(bottomColor); for (int i = 0; i <= 90; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius)); for (int i = 90; i <= 180; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius)); GL11.glEnd(); endSmoothRender(); }
+    private void drawRoundedRect(float x, float y, float width, float height, float radius, int color) { setupSmoothRender(false); setColor(color); float x1 = x + width; float y1 = y + height; GL11.glBegin(GL11.GL_POLYGON); for (int i = 180; i <= 270; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius)); for (int i = 270; i <= 360; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius)); for (int i = 0; i <= 90; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius)); for (int i = 90; i <= 180; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius)); GL11.glEnd(); endSmoothRender(); }
+    private void drawRoundedOutline(float x, float y, float width, float height, float radius, float lineWidth, int color) { setupSmoothRender(false); setColor(color); GL11.glLineWidth(lineWidth); float x1 = x + width; float y1 = y + height; GL11.glBegin(GL11.GL_LINE_LOOP); for (int i = 180; i <= 270; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius)); for (int i = 270; i <= 360; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y + radius + Math.sin(Math.toRadians(i)) * radius)); for (int i = 0; i <= 90; i += 5) GL11.glVertex2f((float)(x1 - radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius)); for (int i = 90; i <= 180; i += 5) GL11.glVertex2f((float)(x + radius + Math.cos(Math.toRadians(i)) * radius), (float)(y1 - radius + Math.sin(Math.toRadians(i)) * radius)); GL11.glEnd(); endSmoothRender(); }
+    private void drawSolidRect(float x, float y, float w, float h, int color) { drawRoundedRect(x, y, w, h, 0, color); }
+    private void drawCircle(float cx, float cy, float radius, int color) { setupSmoothRender(false); setColor(color); GL11.glBegin(GL11.GL_POLYGON); for (int i = 0; i <= 360; i += 5) GL11.glVertex2f((float)(cx + Math.cos(Math.toRadians(i)) * radius), (float)(cy + Math.sin(Math.toRadians(i)) * radius)); GL11.glEnd(); endSmoothRender(); }
+    private void drawCircleOutline(float cx, float cy, float radius, float lineWidth, int color) { setupSmoothRender(false); setColor(color); GL11.glLineWidth(lineWidth); GL11.glBegin(GL11.GL_LINE_LOOP); for (int i = 0; i <= 360; i += 5) GL11.glVertex2f((float)(cx + Math.cos(Math.toRadians(i)) * radius), (float)(cy + Math.sin(Math.toRadians(i)) * radius)); GL11.glEnd(); endSmoothRender(); }
 
     private void drawIOSSlider(float x, float y, String label, float val, float min, float max, float trackW) {
         this.fontRendererObj.drawStringWithShadow(label, x, y, 0xDDDDDD);
         String valText = String.format("%.1f", val);
         int textW = this.fontRendererObj.getStringWidth(valText);
         this.fontRendererObj.drawStringWithShadow(valText, x + trackW - textW, y, 0xAAAAAA);
-        
         float trackH = 2; float trackY = y + 10;
         drawRoundedRect(x, trackY, trackW, trackH, 1, 0xFF444444); 
         float pct = (val - min) / (max - min);
@@ -346,16 +340,14 @@ public class EditHUDGui extends GuiScreen {
         float swW = 16; float swH = 8; 
         float swX = x + cardW - swW - 4; 
         float swY = y + 1;
-        boolean hovered = isInside(mx, my, x, y, cardW, 12);
-        
+        boolean hovered = isInside(mx, my, swX, swY, swW, swH);
         if (isOn) {
             drawNeonGlow(swX, swY, swW, swH, swH / 2, 6.0f, 0x1AFF3333); 
             drawRoundedRect(swX, swY, swW, swH, swH / 2, 0xFFE53935); 
         } else {
             drawRoundedRect(swX, swY, swW, swH, swH / 2, hovered ? 0xFF555555 : 0xFF444444); 
         }
-        float rad = swH / 2 - 1.0f;
-        float cx = isOn ? swX + swW - rad - 1.0f : swX + rad + 1.0f;
+        float rad = swH / 2 - 1.0f; float cx = isOn ? swX + swW - rad - 1.0f : swX + rad + 1.0f;
         drawCircle(cx, swY + swH / 2, rad, 0xFFFFFFFF); 
     }
 
@@ -363,26 +355,11 @@ public class EditHUDGui extends GuiScreen {
         boolean hovered = isInside(mx, my, x, y, w, h);
         int topColor = hovered ? 0xFF3D3D3D : 0xFF2F2F2F;
         int botColor = hovered ? 0xFF2A2A2A : 0xFF1C1C1C;
-        
         drawGradientRoundedRect(x, y, w, h, 3, topColor, botColor); 
-        
         this.fontRendererObj.drawStringWithShadow(text, x + (w - this.fontRendererObj.getStringWidth(text)) / 2, y + (h - 8) / 2, -1);
     }
 
-    private boolean isInside(float mx, float my, float x, float y, float w, float h) {
-        return mx >= x && mx <= x + w && my >= y && my <= y + h;
-    }
-
-    @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        if (!panelCollapsed && selectedTab == 0 && AutoClicker.limitItems && whitelistField != null && whitelistField.isFocused()) {
-            whitelistField.textboxKeyTyped(typedChar, keyCode);
-            AutoClicker.itemWhitelist.clear();
-            for (String item : whitelistField.getText().split(",")) if (!item.trim().isEmpty()) AutoClicker.itemWhitelist.add(item.trim().toLowerCase());
-            ConfigHandler.saveConfig(); return;
-        }
-        super.keyTyped(typedChar, keyCode);
-    }
+    private boolean isInside(float mx, float my, float x, float y, float w, float h) { return mx >= x && mx <= x + w && my >= y && my <= y + h; }
 
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
@@ -390,17 +367,14 @@ public class EditHUDGui extends GuiScreen {
 
         if (panelCollapsed) {
             if (isInside(mouseX, mouseY, collapsedX + 115 - 20, collapsedY, 20, 18)) {
-                panelCollapsed = false;
-                return;
+                panelCollapsed = false; return;
             }
             if (isInside(mouseX, mouseY, collapsedX, collapsedY, 115 - 20, 18)) {
-                draggingPanel = true; lastX = mouseX; lastY = mouseY;
-                return;
+                draggingPanel = true; lastX = mouseX; lastY = mouseY; return;
             }
         } else {
             if (isInside(mouseX, mouseY, mainPanelX + panelW - 25, mainPanelY, 25, 20)) {
-                panelCollapsed = true;
-                return;
+                panelCollapsed = true; return;
             }
 
             int tY = mainPanelY + 25;
@@ -415,11 +389,8 @@ public class EditHUDGui extends GuiScreen {
 
             if (selectedTab == 0) { 
                 int y1 = rY; int y2 = rY;
-                
                 if (AutoClicker.limitItems && whitelistField != null) whitelistField.mouseClicked(mouseX, mouseY, mouseButton);
-
                 y1 += 16;
-
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.enabled = !AutoClicker.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.leftClick = !AutoClicker.leftClick; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.holdToClick = !AutoClicker.holdToClick; y1 += 18;
@@ -429,7 +400,6 @@ public class EditHUDGui extends GuiScreen {
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoClicker.limitItems = !AutoClicker.limitItems;
                 
                 boolean clickedDropdownContent = false;
-                
                 if (randomDropdownExpanded) {
                     if (isInside(mouseX, mouseY, c2 + 5, y2 + 82, 90, 12)) { AutoClicker.randomMode = 0; randomDropdownExpanded = false; clickedDropdownContent = true; }
                     else if (isInside(mouseX, mouseY, c2 + 5, y2 + 96, 90, 12)) { AutoClicker.randomMode = 1; randomDropdownExpanded = false; clickedDropdownContent = true; }
@@ -437,23 +407,19 @@ public class EditHUDGui extends GuiScreen {
                 }
 
                 if (!clickedDropdownContent) {
-                    if (isInside(mouseX, mouseY, c2 + 5, y2 + 66, 90, 14)) {
-                        randomDropdownExpanded = !randomDropdownExpanded;
-                    } 
+                    if (isInside(mouseX, mouseY, c2 + 5, y2 + 66, 90, 14)) { randomDropdownExpanded = !randomDropdownExpanded; } 
                     else if (!randomDropdownExpanded) {
-                        if (isInside(mouseX, mouseY, c2 + 5, y2 + 13, 90, 8)) { activeSlider = 1; }
-                        else if (isInside(mouseX, mouseY, c2 + 5, y2 + 33, 90, 8)) { activeSlider = 2; }
-                        else if (isInside(mouseX, mouseY, c2 + 5, y2 + 53, 90, 8)) { activeSlider = 3; }
+                        if (isInside(mouseX, mouseY, c2 + 5, y2 + 5, 90, 15)) { activeSlider = 1; updateEditSlider(1, mouseX, c2 + 5); }
+                        else if (isInside(mouseX, mouseY, c2 + 5, y2 + 25, 90, 15)) { activeSlider = 2; updateEditSlider(2, mouseX, c2 + 5); }
+                        else if (isInside(mouseX, mouseY, c2 + 5, y2 + 45, 90, 15)) { activeSlider = 3; updateEditSlider(3, mouseX, c2 + 5); }
                     }
                 }
             }
             else if (selectedTab == 1) { 
                 int y1 = rY + 18; int y2 = rY + 18; 
-
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.enabled = !NameTags.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.showHealth = !NameTags.showHealth; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) NameTags.showItems = !NameTags.showItems;
-                
                 y1 += 36; 
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) EnemyESP.enabled = !EnemyESP.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) FriendsESP.enabled = !FriendsESP.enabled;
@@ -471,31 +437,29 @@ public class EditHUDGui extends GuiScreen {
             }
             else if (selectedTab == 3) { 
                 int y1 = rY; int y2 = rY;
-                
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) EnemyHUD.enabled = !EnemyHUD.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) NickedHUD.enabled = !NickedHUD.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) FriendsHUD.enabled = !FriendsHUD.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) SessionStatsHUD.enabled = !SessionStatsHUD.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) EventHUD.enabled = !EventHUD.enabled;
-
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) EventHUD.enabled = !EventHUD.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) BossBarModule.enabled = !BossBarModule.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) CPSModule.enabled = !CPSModule.enabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) FPSModule.enabled = !FPSModule.enabled;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) RegHUD.enabled = !RegHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) PotionHUD.enabled = !PotionHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) ArmorHUD.enabled = !ArmorHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) CoordsHUD.enabled = !CoordsHUD.enabled; y2 += 28;
 
                 if (isInside(mouseX, mouseY, c2, y2 + 4, 100, 14)) { 
-                    this.mc.displayGuiScreen(new HUDSettingsGui(this)); 
-                    return; 
+                    this.mc.displayGuiScreen(new HUDSettingsGui(this)); return; 
                 }
             }
-            else if (selectedTab == 4) { // MISC CLICKS
+            else if (selectedTab == 4) {
                 int y1 = rY + 18; int y2 = rY + 18;
-                
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.pantSwapEnabled = !AutoPantSwap.pantSwapEnabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.venomSwapEnabled = !AutoPantSwap.venomSwapEnabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoGhead.enabled = !AutoGhead.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.autoPodEnabled = !AutoPantSwap.autoPodEnabled; 
-                
                 if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) AutoQuickMath.enabled = !AutoQuickMath.enabled;
             }
             ConfigHandler.saveConfig();
@@ -512,19 +476,18 @@ public class EditHUDGui extends GuiScreen {
             
             if (mouseButton == 0 && hud.isHovered(mouseX, mouseY)) {
                 long currentTime = System.currentTimeMillis();
-                
                 if (hud == lastClickedHUD && (currentTime - lastClickTime < 300)) { 
-                    this.mc.displayGuiScreen(new HUDSettingsGui(this, getTabIndexFromName(hud.name))); 
-                    return; 
+                    this.mc.displayGuiScreen(new HUDSettingsGui(this, getTabIndexFromName(hud.name))); return; 
                 }
-                
                 lastClickTime = currentTime; 
                 lastClickedHUD = hud;
-                
                 int corner = hud.getHoveredCorner(mouseX, mouseY);
                 if (corner != 0) { resizingModule = hud; resizingCorner = corner; lastX = mouseX; lastY = mouseY; return; }
                 
-                draggingModule = hud; lastX = mouseX; lastY = mouseY; return;
+                draggingModule = hud; 
+                dragOffsetX = mouseX - hud.x;
+                dragOffsetY = mouseY - hud.y;
+                return;
             }
         }
     }
@@ -541,7 +504,9 @@ public class EditHUDGui extends GuiScreen {
         if (lower.contains("event")) return 7;
         if (lower.contains("reg")) return 8;
         if (lower.contains("sprint")) return 9;
-        if (lower.contains("cps")) return 10;
+        if (lower.contains("cps")) return 10; 
+        if (lower.contains("fps")) return 11; 
+        if (lower.contains("boss")) return 12;
         return 0; 
     }
 
@@ -558,11 +523,38 @@ public class EditHUDGui extends GuiScreen {
             if (activeSlider == 1) AutoClicker.minCps = 1.0f + (pct * 19.0f);
             if (activeSlider == 2) AutoClicker.maxCps = 1.0f + (pct * 19.0f);
             if (activeSlider == 3) AutoClicker.inventoryFillCps = 5.0f + (pct * 15.0f);
-        } else if (resizingModule != null) resizingModule.handleResize(deltaX, deltaY, resizingCorner);
-        else if (draggingModule != null) {
-            draggingModule.x += deltaX; draggingModule.y += deltaY;
+        } else if (resizingModule != null) {
+            resizingModule.handleResize(deltaX, deltaY, resizingCorner);
+        } else if (draggingModule != null) {
+            
+            int targetX = mouseX - dragOffsetX;
+            int targetY = mouseY - dragOffsetY;
             int scaledW = (int) (draggingModule.width * draggingModule.scale);
             int scaledH = (int) (draggingModule.height * draggingModule.scale);
+            
+            int modCenterX = targetX + scaledW / 2;
+            int modCenterY = targetY + scaledH / 2;
+            int screenCenterX = this.width / 2;
+            int screenCenterY = this.height / 2;
+            
+            int snapRadius = 6; 
+            isSnappedX = false;
+            isSnappedY = false;
+            
+            if (Math.abs(modCenterX - screenCenterX) <= snapRadius) {
+                draggingModule.x = screenCenterX - scaledW / 2;
+                isSnappedX = true;
+            } else {
+                draggingModule.x = targetX;
+            }
+
+            if (Math.abs(modCenterY - screenCenterY) <= snapRadius) {
+                draggingModule.y = screenCenterY - scaledH / 2;
+                isSnappedY = true;
+            } else {
+                draggingModule.y = targetY;
+            }
+
             if (draggingModule.x < 0) draggingModule.x = 0;
             if (draggingModule.x > this.width - scaledW) draggingModule.x = this.width - scaledW;
             if (draggingModule.y < 0) draggingModule.y = 0;
@@ -575,6 +567,7 @@ public class EditHUDGui extends GuiScreen {
     protected void mouseReleased(int mouseX, int mouseY, int state) {
         draggingPanel = false; activeSlider = 0;
         draggingModule = null; resizingModule = null; resizingCorner = 0;
+        isSnappedX = false; isSnappedY = false;
         ConfigHandler.saveConfig();
     }
 
