@@ -44,7 +44,6 @@ public class Foxtrot {
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        // --- 1. DISABLE FORGE SPLASH SCREEN ---
         ConfigHandler.disableForgeSplashScreen();
     }
 
