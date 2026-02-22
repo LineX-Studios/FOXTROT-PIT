@@ -105,9 +105,12 @@ public class NameTags {
                 int startX = -(items.size() * 16) / 2;
                 int itemY = -18; 
 
-                // FIX: Temporarily enable depth to prevent item rendering from bugging the GUI/Overlay
-                GlStateManager.enableDepth();
+                // FIX: Force standard lighting ON so items aren't black silhouettes...
                 RenderHelper.enableGUIStandardItemLighting();
+                
+                // ... BUT force Depth Testing OFF immediately so they render through walls
+                GlStateManager.disableDepth();
+                GL11.glDisable(GL11.GL_DEPTH_TEST);
 
                 for (ItemStack item : items) {
                     GlStateManager.pushMatrix();
@@ -122,6 +125,12 @@ public class NameTags {
                     
                     mc.getRenderItem().zLevel = prevZ;
                     GlStateManager.popMatrix();
+                    
+                    // Because Minecraft's renderItemIntoGUI automatically re-enables depth mid-loop, 
+                    // we must force it back off after EVERY single item is drawn.
+                    GlStateManager.disableDepth();
+                    GL11.glDisable(GL11.GL_DEPTH_TEST);
+                    
                     startX += 16;
                 }
 
