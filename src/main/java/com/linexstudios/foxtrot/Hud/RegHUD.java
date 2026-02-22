@@ -156,23 +156,23 @@ public class RegHUD extends DraggableHUD {
             case "not_gladiator": 
                 return EnumChatFormatting.BLUE + "Glad";
                 
-            case "hunt_the_hunter": return EnumChatFormatting.AQUA + "Hunter";
+            case "hunt_the_hunter": return EnumChatFormatting.GOLD + "Hunter";
             
             // Added mapped version of Peroxide
             case "regen_when_hit":
             case "peroxide": 
                 return EnumChatFormatting.RED + "Pero";
                 
-            case "assassin": return EnumChatFormatting.DARK_PURPLE + "Assasin";
-            case "escape_pod": return EnumChatFormatting.DARK_RED + "Pods";
+            case "assassin": return EnumChatFormatting.LIGHT_PURPLE + "Assasin";
+            case "escape_pod": return EnumChatFormatting.RED + "Pods";
             case "phoenix": return EnumChatFormatting.GOLD + "Phoenix";
             
             // Added mapped version of RGM
             case "rgm":
             case "retro_gravity_microcosm": 
-                return EnumChatFormatting.GOLD + "RGM";
+                return EnumChatFormatting.RED + "RGM";
                 
-            case "singularity": return EnumChatFormatting.GRAY + "Sing";
+            case "singularity": return EnumChatFormatting.RED + "Sing";
             
             // Added mapped version of Gomraws Heart
             case "regen_when_ooc":
