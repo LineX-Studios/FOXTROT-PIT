@@ -8,6 +8,7 @@ import com.linexstudios.foxtrot.Hud.EditHUDGui;
 import com.linexstudios.foxtrot.Hud.SessionStatsHUD;
 import com.linexstudios.foxtrot.Hud.EventHUD; 
 import com.linexstudios.foxtrot.Hud.RegHUD;
+import com.linexstudios.foxtrot.Hud.DarksHUD;
 import com.linexstudios.foxtrot.Hud.PotionHUD;
 import com.linexstudios.foxtrot.Hud.ArmorHUD;
 import com.linexstudios.foxtrot.Hud.CoordsHUD;
@@ -18,9 +19,14 @@ import com.linexstudios.foxtrot.Hud.FPSModule;
 import com.linexstudios.foxtrot.Hud.DraggableHUD;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
+import com.linexstudios.foxtrot.Misc.AutoBulletTime;
+import com.linexstudios.foxtrot.Misc.AutoPantSwap; 
+import com.linexstudios.foxtrot.Misc.AutoGhead; 
+import com.linexstudios.foxtrot.Misc.AutoQuickMath; 
 import com.linexstudios.foxtrot.Render.PitESP; 
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.NickedRender;
+import com.linexstudios.foxtrot.Render.LowLifeMystic;
 
 import net.minecraft.client.Minecraft;
 import java.io.*;
@@ -48,7 +54,7 @@ public class ConfigHandler {
         Object[] forceLoad = {
             PotionHUD.instance, ArmorHUD.instance, CoordsHUD.instance, EnemyHUD.instance,
             NickedHUD.instance, FriendsHUD.instance, SessionStatsHUD.instance, EventHUD.instance,
-            RegHUD.instance, ToggleSprintModule.instance, CPSModule.instance, FPSModule.instance,
+            RegHUD.instance, DarksHUD.instance, ToggleSprintModule.instance, CPSModule.instance, FPSModule.instance, // Added DarksHUD.instance
             BossBarModule.instance
         };
     }
@@ -95,7 +101,7 @@ public class ConfigHandler {
                 props.load(in); in.close();
 
                 // ==========================================
-                //      AUTOMATIC HUD POSITION LOADING
+                //     AUTOMATIC HUD POSITION LOADING
                 // ==========================================
                 for (DraggableHUD hud : DraggableHUD.getRegistry()) {
                     String cleanName = hud.name.replaceAll("\\s+", "");
@@ -155,7 +161,17 @@ public class ConfigHandler {
                 PitESP.espDragonEggs = getBool(props, "pitEspDragonEggs", true);
                 PitESP.espRaffleTickets = getBool(props, "pitEspRaffleTickets", true);
                 PitESP.espMystics = getBool(props, "pitEspMystics", true);
+                LowLifeMystic.enabled = getBool(props, "lowLifeMysticEnabled", true);
 
+                // Misc Auto Use
+                AutoPantSwap.pantSwapEnabled = getBool(props, "autoPantSwap", true);
+                AutoPantSwap.venomSwapEnabled = getBool(props, "autoVenomSwap", true);
+                AutoPantSwap.autoPodEnabled = getBool(props, "autoPod", true);
+                AutoGhead.enabled = getBool(props, "autoGhead", true);
+                AutoQuickMath.enabled = getBool(props, "autoQuickMath", true);
+                AutoBulletTime.enabled = getBool(props, "autoBulletTime", false);
+
+                // HUD Enables
                 EnemyHUD.enabled = getBool(props, "enemyHudEnabled", true);
                 EnemyHUD.notificationsEnabled = getBool(props, "enemyHudAlerts", true);
                 EnemyHUD.debugMode = getBool(props, "enemyHudDebug", false);
@@ -163,6 +179,7 @@ public class ConfigHandler {
                 SessionStatsHUD.enabled = getBool(props, "sessionStatsEnabled", true);
                 EventHUD.enabled = getBool(props, "eventHudEnabled", true);
                 RegHUD.enabled = getBool(props, "regHudEnabled", true);
+                DarksHUD.enabled = getBool(props, "darksHudEnabled", true); // Added DarksHUD loading
                 PotionHUD.enabled = getBool(props, "potionHudEnabled", true);
                 ArmorHUD.enabled = getBool(props, "armorHudEnabled", true);
                 CoordsHUD.enabled = getBool(props, "coordsHudEnabled", true);
@@ -197,7 +214,7 @@ public class ConfigHandler {
             Properties props = new Properties();
 
             // ==========================================
-            //      AUTOMATIC HUD POSITION SAVING
+            //     AUTOMATIC HUD POSITION SAVING
             // ==========================================
             for (DraggableHUD hud : DraggableHUD.getRegistry()) {
                 String cleanName = hud.name.replaceAll("\\s+", "");
@@ -257,6 +274,15 @@ public class ConfigHandler {
             props.setProperty("pitEspDragonEggs", String.valueOf(PitESP.espDragonEggs));
             props.setProperty("pitEspRaffleTickets", String.valueOf(PitESP.espRaffleTickets));
             props.setProperty("pitEspMystics", String.valueOf(PitESP.espMystics));
+            props.setProperty("lowLifeMysticEnabled", String.valueOf(LowLifeMystic.enabled));
+
+            // Misc Auto Use
+            props.setProperty("autoPantSwap", String.valueOf(AutoPantSwap.pantSwapEnabled));
+            props.setProperty("autoVenomSwap", String.valueOf(AutoPantSwap.venomSwapEnabled));
+            props.setProperty("autoPod", String.valueOf(AutoPantSwap.autoPodEnabled));
+            props.setProperty("autoGhead", String.valueOf(AutoGhead.enabled));
+            props.setProperty("autoQuickMath", String.valueOf(AutoQuickMath.enabled));
+            props.setProperty("autoBulletTime", String.valueOf(AutoBulletTime.enabled));
 
             // HUD Enables
             props.setProperty("enemyHudEnabled", String.valueOf(EnemyHUD.enabled));
@@ -266,6 +292,7 @@ public class ConfigHandler {
             props.setProperty("sessionStatsEnabled", String.valueOf(SessionStatsHUD.enabled));
             props.setProperty("eventHudEnabled", String.valueOf(EventHUD.enabled));
             props.setProperty("regHudEnabled", String.valueOf(RegHUD.enabled));
+            props.setProperty("darksHudEnabled", String.valueOf(DarksHUD.enabled)); // Added DarksHUD saving
             props.setProperty("potionHudEnabled", String.valueOf(PotionHUD.enabled));
             props.setProperty("armorHudEnabled", String.valueOf(ArmorHUD.enabled));
             props.setProperty("coordsHudEnabled", String.valueOf(CoordsHUD.enabled));
