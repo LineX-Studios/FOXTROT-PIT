@@ -97,18 +97,26 @@ public class NickedHUD extends DraggableHUD {
                     nickDisplay = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.AQUA + nickedName;
                 }
 
-                String cleanedRealIGN = "Scraping";
+                // Default to empty string. We only want to show actual resolved names.
+                String cleanedRealIGN = ""; 
                 if (realIGN != null && !realIGN.isEmpty()) {
-                    // Strip the formatting codes from the status message
                     String unformattedIGN = EnumChatFormatting.getTextWithoutFormattingCodes(realIGN).trim();
                     
-                    if (unformattedIGN.equalsIgnoreCase("Failed")) cleanedRealIGN = "Failed";
-                    else if (unformattedIGN.equalsIgnoreCase("No Nonce")) cleanedRealIGN = "No Nonce";
-                    else if (unformattedIGN.equalsIgnoreCase("Scraping") || unformattedIGN.equalsIgnoreCase("Scraping...")) cleanedRealIGN = "Scraping";
-                    else cleanedRealIGN = stripAllPrefixes(realIGN); // It's an actual name, process it
+                    // Only process it if it's an actual player name, not a status string
+                    if (!unformattedIGN.equalsIgnoreCase("Failed") && 
+                        !unformattedIGN.equalsIgnoreCase("No Nonce") && 
+                        !unformattedIGN.equalsIgnoreCase("Scraping") && 
+                        !unformattedIGN.equalsIgnoreCase("Scraping...")) {
+                        
+                        cleanedRealIGN = stripAllPrefixes(realIGN); 
+                    }
                 }
 
-                String finalDisplayName = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.RESET + nickDisplay + " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
+                // If we found a real name, append it in yellow parenthesis. Otherwise, just show the nick.
+                String finalDisplayName = EnumChatFormatting.DARK_AQUA + "[" + EnumChatFormatting.AQUA + "N" + EnumChatFormatting.DARK_AQUA + "] " + EnumChatFormatting.RESET + nickDisplay;
+                if (!cleanedRealIGN.isEmpty()) {
+                    finalDisplayName += " " + EnumChatFormatting.YELLOW + "(" + cleanedRealIGN + ")";
+                }
 
                 String gear = other != null ? getShortEnchants(other) : EnumChatFormatting.GRAY + "Shop";
                 String dist = other != null ? SpawnRegions.getLocationFormat(mc.thePlayer, other) : EnumChatFormatting.GRAY + "Far";
@@ -178,15 +186,76 @@ public class NickedHUD extends DraggableHUD {
         if (key == null) return null;
         switch (key.toLowerCase()) {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
-            case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
-            case "mirror": return EnumChatFormatting.WHITE + "Mirror";
+            
+            // Re-mapped to properly detect Mirror NBT
+            case "immune_true_damage": 
+            case "mirror":
+            case "reflection":
+                return EnumChatFormatting.WHITE + "Mirror";
+                
+            case "respawn_absorption": 
+            case "respawn_with_absorption":
+                return EnumChatFormatting.GOLD + "Abs";
+                
             case "critically_funky": return EnumChatFormatting.DARK_AQUA + "Crit Funky";
-            case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
-            case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
+            
+            // Originals Kept
+            case "venom": 
+            case "combo_venom": 
+                return EnumChatFormatting.DARK_PURPLE + "Venom";
+            case "mind_assault": 
+                return EnumChatFormatting.DARK_PURPLE + "Mind Assaults";
+
             case "solitude": return EnumChatFormatting.RED + "Soli";
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
-            case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
+            
+            // Added mapped version of Not Gladiator
+            case "less_damage_nearby_players":
+            case "not_gladiator": 
+                return EnumChatFormatting.BLUE + "Glad";
+                
+            case "hunt_the_hunter": return EnumChatFormatting.GOLD + "Hunter";
+            
+            // Added mapped version of Peroxide
+            case "regen_when_hit":
+            case "peroxide": 
+                return EnumChatFormatting.RED + "Pero";
+                
+            case "assassin": return EnumChatFormatting.LIGHT_PURPLE + "Assasin";
+            case "escape_pod": return EnumChatFormatting.RED + "Pods";
+            case "phoenix": return EnumChatFormatting.GOLD + "Phoenix";
+            
+            // Added mapped version of RGM
+            case "rgm":
+            case "retro_gravity_microcosm": 
+                return EnumChatFormatting.RED + "RGM";
+                
+            case "singularity": return EnumChatFormatting.RED + "Sing";
+            
+            // Added mapped version of Gomraws Heart
+            case "regen_when_ooc":
+            case "gomraws_heart": 
+                return EnumChatFormatting.RED + "Gomraw";
+                
+            // Added mapped version of Last Stand
+            case "resistance_when_low":
+            case "last_stand": 
+                return EnumChatFormatting.AQUA + "Stand";
+                
+            // Added mapped version of Gotta Go Fast
+            case "perma_speed":
+            case "gotta_go_fast": 
+                return EnumChatFormatting.DARK_PURPLE + "GTGF";
+                
+            case "diamond_allergy": return EnumChatFormatting.AQUA + "Diamond Allergy";
+            
+            // Added mapped version of David & Goliath
+            case "less_damage_vs_bounties":
+            case "david_and_goliath": 
+                return EnumChatFormatting.YELLOW + "D&G";
+                
+            case "heigh_ho": return EnumChatFormatting.RED + "HeighHo";
             default: return null;
         }
     }
