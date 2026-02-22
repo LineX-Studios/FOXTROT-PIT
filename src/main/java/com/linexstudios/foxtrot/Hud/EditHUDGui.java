@@ -11,6 +11,7 @@ import com.linexstudios.foxtrot.Render.LowLifeMystic;
 import com.linexstudios.foxtrot.Misc.AutoPantSwap;
 import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
+import com.linexstudios.foxtrot.Misc.AutoBulletTime;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.renderer.GlStateManager;
@@ -83,7 +84,7 @@ public class EditHUDGui extends GuiScreen {
         currentTooltip = null; 
 
         // ============================================
-        //      DYNAMIC PROXIMITY GUIDELINES
+        //     DYNAMIC PROXIMITY GUIDELINES
         // ============================================
         float targetAlphaX = 0.0f;
         float targetAlphaY = 0.0f;
@@ -217,7 +218,7 @@ public class EditHUDGui extends GuiScreen {
                 drawIOSToggle(c2 + 5, y2, 100, "Dragon Eggs", PitESP.espDragonEggs, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Raffle Tickets", PitESP.espRaffleTickets, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2, 100, "Mystic Drops", PitESP.espMystics, mouseX, mouseY); y2 += 18;
-                drawIOSToggle(c2 + 5, y2, 100, "Low Life Mystics", LowLifeMystic.enabled, mouseX, mouseY); 
+                drawIOSToggle(c2 + 5, y2, 100, "Low Life Mystic", LowLifeMystic.enabled, mouseX, mouseY); 
             }
             else if (selectedTab == 2) { 
                 if (whitelistField != null) whitelistField.setVisible(false);
@@ -239,8 +240,9 @@ public class EditHUDGui extends GuiScreen {
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "CPS HUD", CPSModule.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "FPS HUD", FPSModule.enabled, mouseX, mouseY);
 
-                drawSettingsCard(c2, y2, 100, 90);
+                drawSettingsCard(c2, y2, 100, 108); 
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Reg HUD", RegHUD.enabled, mouseX, mouseY); y2 += 18;
+                drawIOSToggle(c2 + 5, y2 + 6, 100, "Darks HUD", DarksHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Potion HUD", PotionHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Armor HUD", ArmorHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Coords HUD", CoordsHUD.enabled, mouseX, mouseY); y2 += 28;
@@ -249,19 +251,27 @@ public class EditHUDGui extends GuiScreen {
             else if (selectedTab == 4) {
                 if (whitelistField != null) whitelistField.setVisible(false);
                 int y1 = rY + 18; int y2 = rY + 18;
-                drawSettingsCard(c1, y1 - 18, 105, 108);
-                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Inventory", c1 + 5, y1 - 13, -1); 
+                drawSettingsCard(c1, y1 - 18, 105, 126); 
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Auto Use", c1 + 5, y1 - 13, -1); 
+                
                 drawIOSToggle(c1 + 5, y1, 105, "Pant Swap", AutoPantSwap.pantSwapEnabled, mouseX, mouseY); 
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.RED + "\u26A0 " + EnumChatFormatting.YELLOW + "USE AT YOUR OWN RISK." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Auto Swap / Hold right-click while holding over pants in your inventory to instantly equip it.";
                 y1 += 18;
+                
                 drawIOSToggle(c1 + 5, y1, 105, "Venom Swap", AutoPantSwap.venomSwapEnabled, mouseX, mouseY); 
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.RED + "\u26A0 " + EnumChatFormatting.YELLOW + "USE AT YOUR OWN RISK." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Automatically swaps to diamond pants if you get venomed.";
                 y1 += 18;
+                
                 drawIOSToggle(c1 + 5, y1, 105, "Auto Heal", AutoGhead.enabled, mouseX, mouseY); 
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.RED + "\u26A0 " + EnumChatFormatting.YELLOW + "USE AT YOUR OWN RISK." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Automatically use Ghead or First Aid Egg.";
                 y1 += 18;
+                
                 drawIOSToggle(c1 + 5, y1, 105, "Auto Pod", AutoPantSwap.autoPodEnabled, mouseX, mouseY); 
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.RED + "\u26A0 " + EnumChatFormatting.YELLOW + "USE AT YOUR OWN RISK." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Automatically use Escape Pods when you are at low health";
+                y1 += 18;
+                
+                drawIOSToggle(c1 + 5, y1, 105, "Auto Bullet Time", AutoBulletTime.enabled, mouseX, mouseY); 
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 75, 12)) currentTooltip = EnumChatFormatting.YELLOW + "\u26A0 " + EnumChatFormatting.RED + "USE AT YOUR OWN RISK, POSSIBLE BAN." + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GRAY + "Automatically switch to Bullet Time when you right click on any sword.";
                 y1 += 18;
 
                 drawSettingsCard(c2, y2 - 18, 100, 36);
@@ -445,7 +455,9 @@ public class EditHUDGui extends GuiScreen {
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) BossBarModule.enabled = !BossBarModule.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) CPSModule.enabled = !CPSModule.enabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 100, 12)) FPSModule.enabled = !FPSModule.enabled;
+                
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) RegHUD.enabled = !RegHUD.enabled; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) DarksHUD.enabled = !DarksHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) PotionHUD.enabled = !PotionHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) ArmorHUD.enabled = !ArmorHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) CoordsHUD.enabled = !CoordsHUD.enabled; y2 += 28;
@@ -459,7 +471,9 @@ public class EditHUDGui extends GuiScreen {
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.pantSwapEnabled = !AutoPantSwap.pantSwapEnabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.venomSwapEnabled = !AutoPantSwap.venomSwapEnabled; y1 += 18;
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoGhead.enabled = !AutoGhead.enabled; y1 += 18;
-                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.autoPodEnabled = !AutoPantSwap.autoPodEnabled; 
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoPantSwap.autoPodEnabled = !AutoPantSwap.autoPodEnabled; y1 += 18;
+                if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoBulletTime.enabled = !AutoBulletTime.enabled; 
+                
                 if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) AutoQuickMath.enabled = !AutoQuickMath.enabled;
             }
             ConfigHandler.saveConfig();
@@ -503,10 +517,11 @@ public class EditHUDGui extends GuiScreen {
         if (lower.contains("session")) return 6;
         if (lower.contains("event")) return 7;
         if (lower.contains("reg")) return 8;
-        if (lower.contains("sprint")) return 9;
-        if (lower.contains("cps")) return 10; 
-        if (lower.contains("fps")) return 11; 
-        if (lower.contains("boss")) return 12;
+        if (lower.contains("dark")) return 9; 
+        if (lower.contains("sprint")) return 10;
+        if (lower.contains("cps")) return 11; 
+        if (lower.contains("fps")) return 12; 
+        if (lower.contains("boss")) return 13;
         return 0; 
     }
 

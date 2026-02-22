@@ -16,7 +16,8 @@ import java.io.IOException;
 public class HUDSettingsGui extends GuiScreen {
     private final GuiScreen previousScreen;
     
-    private String[] modules = {"Potion Status", "Armor Status", "Coordinates", "Enemy List", "Nicked List", "Friend List", "Session Stats", "Event Tracker", "Regularity List", "Toggle Sprint", "CPS", "FPS", "Boss Bar"};
+    // Added "Darks List" right after Regularity List
+    private String[] modules = {"Potion Status", "Armor Status", "Coordinates", "Enemy List", "Nicked List", "Friend List", "Session Stats", "Event Tracker", "Regularity List", "Darks List", "Toggle Sprint", "CPS", "FPS", "Boss Bar"};
     
     private boolean inSettingsMenu = false;
     private int selectedModule = -1;
@@ -37,7 +38,7 @@ public class HUDSettingsGui extends GuiScreen {
     private float currentBri = 1f;
     private int pickerX = 0, pickerY = 0;
 
-    // --- EXACT LUNAR COLORS & STYLING ---
+    // --- COLORS & STYLING ---
     private final int COLOR_ENABLED = 0xFF28A061;  
     private final int COLOR_DISABLED = 0xFFB82C35; 
     private final int COLOR_TEXT_SECONDARY = 0xFFAAAAAA;
@@ -91,6 +92,7 @@ public class HUDSettingsGui extends GuiScreen {
         if (SessionStatsHUD.enabled) SessionStatsHUD.instance.render(true, mouseX, mouseY);
         if (EventHUD.enabled) EventHUD.instance.render(true, mouseX, mouseY);
         if (RegHUD.enabled) RegHUD.instance.render(true, mouseX, mouseY);
+        if (DarksHUD.enabled) DarksHUD.instance.render(true, mouseX, mouseY); // Added Darks HUD render
         if (ToggleSprintModule.instance.enabled) ToggleSprintModule.instance.render(true, mouseX, mouseY);
         if (CPSModule.enabled) CPSModule.instance.render(true, mouseX, mouseY);
         if (FPSModule.enabled) FPSModule.instance.render(true, mouseX, mouseY); 
@@ -163,7 +165,7 @@ public class HUDSettingsGui extends GuiScreen {
                 this.fontRendererObj.drawStringWithShadow(name, (int)(cx + (cardW - tw) / 2.0f), (int)(cy + 27), isEnabled ? -1 : COLOR_TEXT_SECONDARY);
                 
                 // =====================================
-                //     SLEEK LUNAR OPTIONS BUTTON
+                //     SLEEK OPTIONS BUTTON
                 // =====================================
                 drawInnerRoundedRect(btnX, optY, btnW, btnH, 3, hoverOptions ? 0x55FFFFFF : 0x33FFFFFF, hoverOptions);
                 
@@ -177,7 +179,7 @@ public class HUDSettingsGui extends GuiScreen {
                 float sepX = cx + cardW - 28; 
                 drawSolidRect(sepX, optY + 4, 1, btnH - 8, COLOR_SEPARATOR);
 
-                // Hamburger Icon centered in right section (no rotation)
+                // Hamburger Menu Icon
                 drawMathGear(sepX + 11, optY + (btnH / 2.0f), 4.5f, 0xFFFFFFFF, 0f);
 
                 // =====================================
@@ -219,6 +221,7 @@ public class HUDSettingsGui extends GuiScreen {
             drawSettingsButton(rX + 300, rY + 12, 50, 16, "Reset", mouseX, mouseY); 
             rY += 50; 
 
+            // Index shifted: 0=Potion, 1=Armor, 2=Coords ... 8=Reg, 9=Darks, 10=ToggleSprint, 11=CPS, 12=FPS, 13=BossBar
             if (selectedModule == 0) { 
                 drawSettingsCard(rX, rY, 360, 85);
                 this.fontRendererObj.drawStringWithShadow("Name Color", rX + 10, rY + 10, 0xDDDDDD);
@@ -241,7 +244,14 @@ public class HUDSettingsGui extends GuiScreen {
                 drawPalette(rX + 10, rY + 84, CoordsHUD.numberColor, mouseX, mouseY, 5);
                 this.fontRendererObj.drawStringWithShadow("Direction Color", rX + 10, rY + 104, 0xDDDDDD);
                 drawPalette(rX + 10, rY + 116, CoordsHUD.directionColor, mouseX, mouseY, 6);
-            } else if (selectedModule == 9) { 
+            } else if (selectedModule == 8) {
+                drawSettingsCard(rX, rY, 360, 30);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.GRAY + "Use scale to resize Reg List.", rX + 10, rY + 11, -1);
+            } else if (selectedModule == 9) {
+                // Settings for Darks HUD
+                drawSettingsCard(rX, rY, 360, 30);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.GRAY + "Use scale to resize Darks List.", rX + 10, rY + 11, -1);
+            } else if (selectedModule == 10) { // Shifted to 10 (Toggle Sprint)
                 drawSettingsCard(rX, rY, 360, 160);
                 drawIOSToggle(rX + 10, rY + 10, 340, "Enable Module", ToggleSprintModule.instance.enabled, mouseX, mouseY);
                 drawIOSToggle(rX + 10, rY + 30, 340, "Toggle Sprint", ToggleSprintModule.instance.toggleSprint, mouseX, mouseY);
@@ -253,19 +263,19 @@ public class HUDSettingsGui extends GuiScreen {
                 drawIOSSlider(rX + 80, rY + 116, ToggleSprintModule.instance.flyBoostAmount, 1.0f, 10.0f, 250);
                 this.fontRendererObj.drawStringWithShadow("Text Color", rX + 10, rY + 140, 0xDDDDDD);
                 drawPalette(rX + 80, rY + 135, ToggleSprintModule.instance.textColor, mouseX, mouseY, 7);
-            } else if (selectedModule == 10) { 
+            } else if (selectedModule == 11) { // Shifted to 11 (CPS)
                 drawSettingsCard(rX, rY, 360, 70);
                 drawIOSToggle(rX + 10, rY + 8, 340, "Show Background", CPSModule.showBackground, mouseX, mouseY);
                 drawSolidRect(rX + 10, rY + 28, 340, 1, 0x11FFFFFF);
                 this.fontRendererObj.drawStringWithShadow("Text Color", rX + 10, rY + 36, 0xDDDDDD);
                 drawPalette(rX + 10, rY + 49, CPSModule.textColor, mouseX, mouseY, 8);
-            } else if (selectedModule == 11) { 
+            } else if (selectedModule == 12) { // Shifted to 12 (FPS)
                 drawSettingsCard(rX, rY, 360, 70);
                 drawIOSToggle(rX + 10, rY + 8, 340, "Show Background", FPSModule.showBackground, mouseX, mouseY);
                 drawSolidRect(rX + 10, rY + 28, 340, 1, 0x11FFFFFF);
                 this.fontRendererObj.drawStringWithShadow("Text Color", rX + 10, rY + 36, 0xDDDDDD);
                 drawPalette(rX + 10, rY + 49, FPSModule.textColor, mouseX, mouseY, 10);
-            } else if (selectedModule == 12) {
+            } else if (selectedModule == 13) { // Shifted to 13 (Boss Bar)
                 drawSettingsCard(rX, rY, 360, 30);
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.GRAY + "Use scale to resize Boss Bar.", rX + 10, rY + 11, -1);
             }
@@ -286,10 +296,11 @@ public class HUDSettingsGui extends GuiScreen {
         if (i == 6) return SessionStatsHUD.enabled;
         if (i == 7) return EventHUD.enabled;
         if (i == 8) return RegHUD.enabled;
-        if (i == 9) return ToggleSprintModule.instance.enabled;
-        if (i == 10) return CPSModule.enabled;
-        if (i == 11) return FPSModule.enabled;
-        if (i == 12) return BossBarModule.enabled;
+        if (i == 9) return DarksHUD.enabled; // New implementation
+        if (i == 10) return ToggleSprintModule.instance.enabled;
+        if (i == 11) return CPSModule.enabled;
+        if (i == 12) return FPSModule.enabled;
+        if (i == 13) return BossBarModule.enabled;
         return false;
     }
 
@@ -303,10 +314,11 @@ public class HUDSettingsGui extends GuiScreen {
         if (i == 6) SessionStatsHUD.enabled = !SessionStatsHUD.enabled;
         if (i == 7) EventHUD.enabled = !EventHUD.enabled;
         if (i == 8) RegHUD.enabled = !RegHUD.enabled;
-        if (i == 9) ToggleSprintModule.instance.enabled = !ToggleSprintModule.instance.enabled;
-        if (i == 10) CPSModule.enabled = !CPSModule.enabled;
-        if (i == 11) FPSModule.enabled = !FPSModule.enabled;
-        if (i == 12) BossBarModule.enabled = !BossBarModule.enabled;
+        if (i == 9) DarksHUD.enabled = !DarksHUD.enabled; // New implementation
+        if (i == 10) ToggleSprintModule.instance.enabled = !ToggleSprintModule.instance.enabled;
+        if (i == 11) CPSModule.enabled = !CPSModule.enabled;
+        if (i == 12) FPSModule.enabled = !FPSModule.enabled;
+        if (i == 13) BossBarModule.enabled = !BossBarModule.enabled;
     }
 
     @Override
@@ -377,6 +389,7 @@ public class HUDSettingsGui extends GuiScreen {
             } 
             rY += 50; 
 
+            // Index shifted here as well
             if (selectedModule == 0) { 
                 for (int i = 0; i < palette.length; i++) {
                     if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 23, 12, 12)) {
@@ -418,7 +431,7 @@ public class HUDSettingsGui extends GuiScreen {
                         else CoordsHUD.directionColor = palette[i]; return; 
                     }
                 }
-            } else if (selectedModule == 9) { 
+            } else if (selectedModule == 10) { // Shifted
                 if (isInside(mouseX, mouseY, rX + 326, rY + 10, 24, 12)) { ToggleSprintModule.instance.enabled = !ToggleSprintModule.instance.enabled; return; }
                 if (isInside(mouseX, mouseY, rX + 326, rY + 30, 24, 12)) { ToggleSprintModule.instance.toggleSprint = !ToggleSprintModule.instance.toggleSprint; return; }
                 if (isInside(mouseX, mouseY, rX + 326, rY + 50, 24, 12)) { ToggleSprintModule.instance.toggleSneak = !ToggleSprintModule.instance.toggleSneak; return; }
@@ -436,7 +449,7 @@ public class HUDSettingsGui extends GuiScreen {
                         else ToggleSprintModule.instance.textColor = palette[i]; return; 
                     }
                 }
-            } else if (selectedModule == 10) { 
+            } else if (selectedModule == 11) { // Shifted
                 if (isInside(mouseX, mouseY, rX + 326, rY + 8, 24, 12)) { CPSModule.showBackground = !CPSModule.showBackground; return; }
                 for (int i = 0; i < palette.length; i++) {
                     if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 49, 12, 12)) {
@@ -444,7 +457,7 @@ public class HUDSettingsGui extends GuiScreen {
                         else CPSModule.textColor = palette[i]; return; 
                     }
                 }
-            } else if (selectedModule == 11) { 
+            } else if (selectedModule == 12) { // Shifted
                 if (isInside(mouseX, mouseY, rX + 326, rY + 8, 24, 12)) { FPSModule.showBackground = !FPSModule.showBackground; return; }
                 for (int i = 0; i < palette.length; i++) {
                     if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 49, 12, 12)) {
@@ -537,10 +550,11 @@ public class HUDSettingsGui extends GuiScreen {
         else if (selectedModule == 6) SessionStatsHUD.instance.scale = val;
         else if (selectedModule == 7) EventHUD.instance.scale = val;
         else if (selectedModule == 8) RegHUD.instance.scale = val;
-        else if (selectedModule == 9) ToggleSprintModule.instance.scale = val;
-        else if (selectedModule == 10) CPSModule.instance.scale = val;
-        else if (selectedModule == 11) FPSModule.instance.scale = val;
-        else if (selectedModule == 12) BossBarModule.instance.scale = val;
+        else if (selectedModule == 9) DarksHUD.instance.scale = val; // Added Scale Mapping
+        else if (selectedModule == 10) ToggleSprintModule.instance.scale = val;
+        else if (selectedModule == 11) CPSModule.instance.scale = val;
+        else if (selectedModule == 12) FPSModule.instance.scale = val;
+        else if (selectedModule == 13) BossBarModule.instance.scale = val;
     }
 
     private float getScaleForTab(int tab) {
@@ -553,16 +567,16 @@ public class HUDSettingsGui extends GuiScreen {
         if (tab == 6) return SessionStatsHUD.instance.scale;
         if (tab == 7) return EventHUD.instance.scale;
         if (tab == 8) return RegHUD.instance.scale;
-        if (tab == 9) return ToggleSprintModule.instance.scale;
-        if (tab == 10) return CPSModule.instance.scale;
-        if (tab == 11) return FPSModule.instance.scale;
-        if (tab == 12) return BossBarModule.instance.scale;
+        if (tab == 9) return DarksHUD.instance.scale; // Added Scale Mapping
+        if (tab == 10) return ToggleSprintModule.instance.scale;
+        if (tab == 11) return CPSModule.instance.scale;
+        if (tab == 12) return FPSModule.instance.scale;
+        if (tab == 13) return BossBarModule.instance.scale;
         return 1.0f;
     }
 
     // --- ICONS & GEOMETRY ---
     
-    // Renders the clean Hamburger Menu icon (☰)
     public void drawMathGear(float x, float y, float radius, int color, float rotation) {
         GL11.glPushMatrix();
         GL11.glTranslatef(x, y, 0);

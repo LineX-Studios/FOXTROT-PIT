@@ -5,39 +5,64 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+
+import java.util.Random;
 
 public class AutoGhead {
     public static final AutoGhead instance = new AutoGhead();
     public static Minecraft mc = Minecraft.getMinecraft();
+    private final Random rand = new Random();
     
     // GUI Toggles
     public static boolean enabled = true;
-    public static double healthThreshold = 12.0; // 6 Hearts
+    public static double healthThreshold = 8.0; // 4 Hearts for autoheal to work with ghead and first aid egg.
 
     public static int oldSlot = -1;
     public static int gHeadSlot = -1;
+    
+    // Timers and Delays
     private static int tickDelay = 0;
-    private static int timeoutTimer = 0; // Prevents getting stuck
+    private static int targetDelay = 0;
+    private static int timeoutTimer = 0; 
+    
+    public static int eggCooldown = 0; // 30s timer for First-Aid Egg
+    public static int healCooldown = 0; // Small buffer between heals to prevent spam
+    private static boolean usingEgg = false;
     
     private enum State {IDLE, SWAP, EAT, SWAPBACK}
     private static State state = State.IDLE;
 
     /**
-     * Checks if the item is a Golden Head OR a First-Aid Egg.
+     * Generates a random tick delay between min and max
      */
-    public static boolean isHealingItem(ItemStack item) {
+    private int getRandomDelay(int min, int max) {
+        return rand.nextInt(max - min + 1) + min;
+    }
+
+    public static boolean isGhead(ItemStack item) {
         if (item == null || !item.hasTagCompound()) return false;
         NBTTagCompound tag = item.getTagCompound();
         if (tag.hasKey("display")) {
             NBTTagCompound display = tag.getCompoundTag("display");
             if (display.hasKey("Name")) {
-                String displayName = display.getString("Name");
-                // Strip formatting entirely to safely check the string
-                String cleanName = EnumChatFormatting.getTextWithoutFormattingCodes(displayName);
-                
-                return "Golden Head".equals(cleanName) || "First-Aid Egg".equals(cleanName);
+                String cleanName = EnumChatFormatting.getTextWithoutFormattingCodes(display.getString("Name"));
+                return cleanName.contains("Golden Head");
+            }
+        }
+        return false;
+    }
+
+    public static boolean isEgg(ItemStack item) {
+        if (item == null || !item.hasTagCompound()) return false;
+        NBTTagCompound tag = item.getTagCompound();
+        if (tag.hasKey("display")) {
+            NBTTagCompound display = tag.getCompoundTag("display");
+            if (display.hasKey("Name")) {
+                String cleanName = EnumChatFormatting.getTextWithoutFormattingCodes(display.getString("Name"));
+                return cleanName.contains("First-Aid Egg");
             }
         }
         return false;
@@ -47,71 +72,123 @@ public class AutoGhead {
         state = State.IDLE;
         tickDelay = 0;
         timeoutTimer = 0;
+        targetDelay = 0;
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
+    }
+
+    /**
+     * Listens for Pit Kill messages to lower the First-Aid Egg cooldown to 5 seconds
+     */
+    @SubscribeEvent
+    public void onChat(ClientChatReceivedEvent event) {
+        if (mc.thePlayer == null || !enabled) return;
+        
+        String msg = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
+        
+        // Only drops cooldown on an actual KILL
+        if (msg.contains("KILL!")) {
+            // Drop cooldown to 5 seconds (100 ticks) if it was higher
+            if (eggCooldown > 100) {
+                eggCooldown = 100;
+            }
+        }
     }
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.START || mc.thePlayer == null || mc.theWorld == null) return;
+
+        // Process cooldowns
+        if (eggCooldown > 0) eggCooldown--;
+        if (healCooldown > 0) healCooldown--;
         
         if (state == State.IDLE) {
-            // Only trigger if enabled, health is low, and we have no GUI open
-            if (enabled && mc.thePlayer.getHealth() <= healthThreshold && mc.currentScreen == null) {
-                state = State.SWAP;
-                timeoutTimer = 0;
+            // Trigger if health <= 4 hearts and we aren't in a menu
+            if (enabled && healCooldown <= 0 && mc.thePlayer.getHealth() <= healthThreshold && mc.currentScreen == null) {
+                
+                gHeadSlot = -1;
+                usingEgg = false;
+                
+                int foundEggSlot = -1;
+                int foundHeadSlot = -1;
+                
+                // Scan hotbar
+                for (int i = 0; i <= 8; i++) {
+                    ItemStack item = mc.thePlayer.inventory.getStackInSlot(i);
+                    if (isGhead(item) && foundHeadSlot == -1) {
+                        foundHeadSlot = i;
+                    } else if (isEgg(item) && foundEggSlot == -1) {
+                        foundEggSlot = i;
+                    }
+                }
+                
+                // Prioritize Golden Head over Egg if both exist
+                if (foundHeadSlot != -1) {
+                    gHeadSlot = foundHeadSlot;
+                    usingEgg = false;
+                } else if (foundEggSlot != -1 && eggCooldown <= 0) {
+                    gHeadSlot = foundEggSlot;
+                    usingEgg = true;
+                }
+                
+                // If a valid healing item was found, start the sequence
+                if (gHeadSlot != -1) {
+                    state = State.SWAP;
+                    timeoutTimer = 0;
+                    tickDelay = 0;
+                    targetDelay = getRandomDelay(2, 4); // Wait 2-4 ticks before swapping
+                }
             }
         }
 
         if (state != State.IDLE) {
             timeoutTimer++;
-            // FAILSAFE: If the whole process takes more than 1 second (20 ticks), force reset it.
-            if (timeoutTimer > 20) {
+            // Extended failsafe to 35 ticks to account for the new random humanized delays
+            if (timeoutTimer > 35) {
                 forceReset();
                 return;
             }
 
             switch (state) {
                 case SWAP:
-                    if (mc.currentScreen != null) {
-                        forceReset();
-                        break;
-                    }
-                    gHeadSlot = -1;
-                    // Scan hotbar for Ghead or First-Aid Egg
-                    for (int i = 0; i <= 8; i++) {
-                        ItemStack item = mc.thePlayer.inventory.getStackInSlot(i);
-                        if (isHealingItem(item)) {
-                            oldSlot = mc.thePlayer.inventory.currentItem;
-                            gHeadSlot = i;
+                    tickDelay++;
+                    if (tickDelay >= targetDelay) {
+                        if (mc.currentScreen != null) {
+                            forceReset();
                             break;
                         }
-                    }
-
-                    if (gHeadSlot != -1) {
+                        oldSlot = mc.thePlayer.inventory.currentItem;
                         mc.thePlayer.inventory.currentItem = gHeadSlot;
+                        
                         state = State.EAT;
                         tickDelay = 0;
-                    } else {
-                        forceReset(); // No healing item found, go back to idle
+                        targetDelay = getRandomDelay(2, 5); // Wait 2-5 ticks before clicking to look human
                     }
                     break;
+
                 case EAT:
                     tickDelay++;
-                    // Wait a few ticks for the server to register the slot change before clicking
-                    if (tickDelay >= 3){
+                    if (tickDelay == targetDelay) {
+                        // Press right click down
                         KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), true);
-                        // Hold right click slightly longer to guarantee it eats/uses the egg
-                        if (tickDelay >= 6){ 
-                            KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
-                            state = State.SWAPBACK;
-                            tickDelay = 0;
+                    } else if (tickDelay >= targetDelay + 3) {
+                        // Release right click 3 ticks later
+                        KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
+                        
+                        if (usingEgg) {
+                            eggCooldown = 600; // 30 seconds (30 * 20 ticks)
                         }
+                        healCooldown = 20; // 1 second buffer before we can heal anything again
+                        
+                        state = State.SWAPBACK;
+                        tickDelay = 0;
+                        targetDelay = getRandomDelay(2, 5); // Wait 2-5 ticks before swapping back to weapon
                     }
                     break;
+
                 case SWAPBACK:
                     tickDelay++;
-                    // Wait 2 ticks before swapping back to prevent ghost-items
-                    if (tickDelay >= 2){
+                    if (tickDelay >= targetDelay) {
                         if (oldSlot != -1) {
                             mc.thePlayer.inventory.currentItem = oldSlot;
                         }

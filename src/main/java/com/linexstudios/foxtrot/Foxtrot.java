@@ -10,6 +10,7 @@ import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Hud.FriendsHUD;
+import com.linexstudios.foxtrot.Hud.DarksHUD;
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Render.LowLifeMystic;
@@ -29,6 +30,7 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import org.lwjgl.input.Keyboard;
 import com.linexstudios.foxtrot.Misc.AutoPantSwap;
+import com.linexstudios.foxtrot.Misc.AutoBulletTime;
 import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
 import com.linexstudios.foxtrot.Hud.CPSModule;
@@ -70,6 +72,7 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(new com.linexstudios.foxtrot.Render.NickedRender());
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.EventHUD.instance);
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.RegHUD.instance);
+        MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.DarksHUD.instance);
         MinecraftForge.EVENT_BUS.register(PotionHUD.instance);
         MinecraftForge.EVENT_BUS.register(ArmorHUD.instance);
         MinecraftForge.EVENT_BUS.register(CoordsHUD.instance);
@@ -84,6 +87,7 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(new KeybindHandler());
         MinecraftForge.EVENT_BUS.register(AutoPantSwap.instance);
         MinecraftForge.EVENT_BUS.register(AutoGhead.instance);
+        MinecraftForge.EVENT_BUS.register(AutoBulletTime.instance);
         MinecraftForge.EVENT_BUS.register(AutoQuickMath.instance);
 
 

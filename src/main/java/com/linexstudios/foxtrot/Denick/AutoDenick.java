@@ -89,27 +89,42 @@ public class AutoDenick {
                     if (System.currentTimeMillis() - lastAttempt >= 20000) {
                         
                         try {
-                            // Step 1: Extract Nonce (Exact logic from DenickRunnable)
+                            // --- SMART INVENTORY SCANNER ---
                             int foundNonce = -1;
-                            List<ItemStack> items = new ArrayList<>();
+                            List<ItemStack> itemsToCheck = new ArrayList<>();
                             
-                            // Prevent Null Pointers if inventory hasn't initialized yet
-                            if (p.inventory.armorInventory != null) Collections.addAll(items, p.inventory.armorInventory);
-                            if (p.inventory.mainInventory != null) Collections.addAll(items, p.inventory.mainInventory);
+                            // 1. Prioritize checking the sword they are holding first
+                            if (p.getHeldItem() != null) {
+                                itemsToCheck.add(p.getHeldItem());
+                            }
+                            
+                            // 2. Fallback to armor if the sword is fresh/invalid
+                            if (p.inventory.armorInventory != null) {
+                                for (ItemStack armorItem : p.inventory.armorInventory) {
+                                    if (armorItem != null) {
+                                        itemsToCheck.add(armorItem);
+                                    }
+                                }
+                            }
 
-                            for (ItemStack item : items) {
+                            for (ItemStack item : itemsToCheck) {
                                 if (item != null && item.hasTagCompound()) {
                                     NBTTagCompound extra = item.getTagCompound().getCompoundTag("ExtraAttributes");
-                                    if (extra != null && extra.hasKey("Nonce")) {
+                                    
+                                    // Item must have both a Nonce AND Custom Enchants (meaning it's not a fresh)
+                                    if (extra != null && extra.hasKey("Nonce") && extra.hasKey("CustomEnchants")) {
                                         int nonce = extra.getInteger("Nonce");
-                                        if (nonce > 0) {
+                                        
+                                        // Skip fresh nonces (0), dark pants (5, 6), and rage pants (9)
+                                        if (nonce != 0 && nonce != 5 && nonce != 6 && nonce != 9) {
                                             foundNonce = nonce;
-                                            break;
+                                            break; // Stop looking, we found a valid item to scrape!
                                         }
                                     }
                                 }
                             }
                             
+                            // If they are only wearing fresh/rage/dark items and holding nothing good, skip
                             if (foundNonce == -1) {
                                 NickedManager.updateNicked(nick, "No Nonce");
                                 retryCooldowns.put(nick, System.currentTimeMillis());
@@ -129,12 +144,11 @@ public class AutoDenick {
                                 notifiedScraping.add(nick);
                             }
                             
-                            // Step 3: Run API Request (Exact thread launch from DenickRunnable)
+                            // Step 3: Run API Request 
                             final int finalNonce = foundNonce;
                             final long millisStarted = System.currentTimeMillis();
-                            sendDebug("Found Nonce: " + finalNonce + ". Resolving...");
+                            sendDebug("Found Valid Nonce (" + finalNonce + "). Resolving...");
                             
-                            // Using a direct Thread so we never hit ExecutorService pool limits
                             new Thread(() -> {
                                 try {
                                     String realName = resolveOwnerFromNonce(finalNonce);
@@ -181,8 +195,6 @@ public class AutoDenick {
         lastNickedSet.addAll(currentNickedSet);
     }
 
-    // --- EXACT API LOGIC PORTED DIRECTLY FROM DENICKRUNNABLE ---
-    
     private static String resolveOwnerFromNonce(int nonce) {
         HttpURLConnection conn = null;
         try {
@@ -248,7 +260,6 @@ public class AutoDenick {
                             return ownerName;
                         } else {
                             sendDebug("Invalid/Non-existent name found: " + ownerName);
-                            // Set to null so the code falls back to checking the UUID instead
                             ownerName = null;
                         }
                     }
@@ -350,7 +361,6 @@ public class AutoDenick {
         }
     }
 
-    // THE FIX: This safely forces the chat packet onto the Main Minecraft Thread so Forge doesn't delete it
     private static void sendRawChatMessage(IChatComponent component) {
         mc.addScheduledTask(() -> {
             if (mc.thePlayer != null) {

@@ -3,7 +3,6 @@ package com.linexstudios.foxtrot.Hud;
 import com.linexstudios.foxtrot.Util.SpawnRegions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -136,27 +135,67 @@ public class RegHUD extends DraggableHUD {
 
         switch (key) {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
-            case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
+            
+            // Re-mapped to properly detect Mirror NBT
+            case "immune_true_damage": 
             case "mirror":
             case "reflection":
                 return EnumChatFormatting.WHITE + "Mirror";
+                
+            case "respawn_absorption": 
+            case "respawn_with_absorption":
+                return EnumChatFormatting.GOLD + "Abs";
+                
             case "critically_funky": return EnumChatFormatting.DARK_AQUA + "Crit Funky";
             case "solitude": return EnumChatFormatting.RED + "Soli";
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
-            case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
+            
+            // Added mapped version of Not Gladiator
+            case "less_damage_nearby_players":
+            case "not_gladiator": 
+                return EnumChatFormatting.BLUE + "Glad";
+                
             case "hunt_the_hunter": return EnumChatFormatting.AQUA + "Hunter";
-            case "peroxide": return EnumChatFormatting.RED + "Pero";
+            
+            // Added mapped version of Peroxide
+            case "regen_when_hit":
+            case "peroxide": 
+                return EnumChatFormatting.RED + "Pero";
+                
             case "assassin": return EnumChatFormatting.DARK_PURPLE + "Assasin";
             case "escape_pod": return EnumChatFormatting.DARK_RED + "Pods";
             case "phoenix": return EnumChatFormatting.GOLD + "Phoenix";
-            case "retro_gravity_microcosm": return EnumChatFormatting.GOLD + "RGM";
+            
+            // Added mapped version of RGM
+            case "rgm":
+            case "retro_gravity_microcosm": 
+                return EnumChatFormatting.GOLD + "RGM";
+                
             case "singularity": return EnumChatFormatting.GRAY + "Sing";
-            case "gomraws_heart": return EnumChatFormatting.RED + "Gomraw";
-            case "last_stand": return EnumChatFormatting.AQUA + "Stand";
-            case "gotta_go_fast": return EnumChatFormatting.DARK_PURPLE + "GTGF";
+            
+            // Added mapped version of Gomraws Heart
+            case "regen_when_ooc":
+            case "gomraws_heart": 
+                return EnumChatFormatting.RED + "Gomraw";
+                
+            // Added mapped version of Last Stand
+            case "resistance_when_low":
+            case "last_stand": 
+                return EnumChatFormatting.AQUA + "Stand";
+                
+            // Added mapped version of Gotta Go Fast
+            case "perma_speed":
+            case "gotta_go_fast": 
+                return EnumChatFormatting.DARK_PURPLE + "GTGF";
+                
             case "diamond_allergy": return EnumChatFormatting.AQUA + "Diamond Allergy";
-            case "david_and_goliath": return EnumChatFormatting.YELLOW + "D&G";
+            
+            // Added mapped version of David & Goliath
+            case "less_damage_vs_bounties":
+            case "david_and_goliath": 
+                return EnumChatFormatting.YELLOW + "D&G";
+                
             case "heigh_ho": return EnumChatFormatting.RED + "HeighHo";
             default: return null;
         }
