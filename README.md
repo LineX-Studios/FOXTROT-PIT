@@ -9,6 +9,7 @@ FOXTROT PIT is a highly optimized 1.8.9 Forge utility mod designed specifically 
     Press Right-Shift (you can change it to any keybind you'd like) to open the editor. You can drag, scale, and snap modules to the center of your screen. All settings and colors save automatically.
 
   <img width="1360" height="768" alt="2026-02-22_19 24 47" src="https://github.com/user-attachments/assets/ab087242-2691-4037-9f64-472244d4ba78" />
+  
   <img width="1360" height="768" alt="2026-02-22_19 25 26" src="https://github.com/user-attachments/assets/221f03c1-c22f-42b0-83c4-a365599d518d" />
 
     HUD CUSTOMIZATION MEBU
@@ -19,9 +20,13 @@ FOXTROT PIT is a highly optimized 1.8.9 Forge utility mod designed specifically 
     Pit Player lists: Darks List (displays enchants like Venoms/Mind Assaults and distance), Regularity List, Nicked List, and live Enemy/Friend lists.
     
   <img width="338" height="65" alt="image" src="https://github.com/user-attachments/assets/ed19981a-eb46-499f-924b-41c01a9a5705" />
+  
   <img width="387" height="68" alt="image" src="https://github.com/user-attachments/assets/2a7679f6-77b3-4873-82d3-ac02a523fb6d" />
+  
   <img width="259" height="68" alt="image" src="https://github.com/user-attachments/assets/f2f91155-a012-4332-af42-c4dba1716e1b" />
+  
   <img width="254" height="61" alt="image" src="https://github.com/user-attachments/assets/84e1fad6-fa91-4209-a801-6cfc44c20b3f" />
+  
   <img width="252" height="69" alt="image" src="https://github.com/user-attachments/assets/92f9ab88-92a8-4aa4-a201-abfc3b4ffdc4" />
 
     General HUD Modules: Potion Status, Armor Status, Coords, Session Stats, Event Tracker, Boss Bar, Toggle Sprint, CPS, and FPS.
