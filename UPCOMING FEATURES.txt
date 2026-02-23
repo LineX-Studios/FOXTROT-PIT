@@ -53,3 +53,6 @@ https://github.com/KaboomB52/CheatBreaker/blob/master/CheatBreaker/src/main/java
 Okay Autodenick for rage pants that all have nonce9 but if you just searchup nonce9 through pitpal api your gonna get a list of other random people but rage pants have a nonce and an id along with the item so we gotta investigate to see how we get that item ingame and manage to track it and see if any other api can show us the item information of those exact ragepants we extracted their id from because all items are trackable just rage pants all have nonce9
 
 gotta figure out how pitpal api works https://pitpal.rocks/api/listings/ find all other api links apart from api/listings/items/ we also want rage pants
+
+
+make the website show things live for the api no need for refreashing the website each time and to get the correct version of the mod as it shows version 1.0.0 when im on version 0.7.4 it needs to dynamically the specific version the user is on and show which version is used the most add option to opt out of telemetry in the mod aswell

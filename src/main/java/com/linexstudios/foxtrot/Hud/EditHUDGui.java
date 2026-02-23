@@ -1,6 +1,7 @@
 package com.linexstudios.foxtrot.Hud;
 
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
+import com.linexstudios.foxtrot.Handler.TelemetryManager;
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Render.PitESP;
@@ -46,7 +47,8 @@ public class EditHUDGui extends GuiScreen {
     private long lastClickTime = 0;
     private DraggableHUD lastClickedHUD = null;
 
-    private String[] tabs = {"Combat", "Render", "Denick", "HUD", "Misc"};
+    // ADDED "Telemetry" TO THE TABS ARRAY
+    private String[] tabs = {"Combat", "Render", "Denick", "HUD", "Misc", "Telemetry"};
     private GuiTextField whitelistField;
     private String currentTooltip = null;
 
@@ -88,7 +90,7 @@ public class EditHUDGui extends GuiScreen {
         // ============================================
         float targetAlphaX = 0.0f;
         float targetAlphaY = 0.0f;
-        int revealRadius = 15; // Only show lines if within 15 pixels of center
+        int revealRadius = 15;
 
         if (draggingModule != null) {
             int scaledW = (int) (draggingModule.width * draggingModule.scale);
@@ -130,7 +132,6 @@ public class EditHUDGui extends GuiScreen {
         }
 
         GlStateManager.popMatrix();
-
         GlStateManager.disableLighting();
         GlStateManager.enableBlend();
 
@@ -277,6 +278,35 @@ public class EditHUDGui extends GuiScreen {
                 drawSettingsCard(c2, y2 - 18, 100, 36);
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Chat", c2 + 5, y2 - 13, -1);
                 drawIOSToggle(c2 + 5, y2, 100, "Auto Quick Math", AutoQuickMath.enabled, mouseX, mouseY); 
+            }
+            // ============================================
+            //     NEW: TELEMETRY TAB
+            // ============================================
+            else if (selectedTab == 5) {
+                if (whitelistField != null) whitelistField.setVisible(false);
+                int y1 = rY;
+                
+                drawSettingsCard(c1, y1, 215, 40);
+                drawIOSToggle(c1 + 5, y1 + 6, 205, "Enable Telemetry Stats", ConfigHandler.telemetryEnabled, mouseX, mouseY);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.GRAY + "Help us improve Foxtrot PIT!", c1 + 5, y1 + 22, -1);
+                
+                y1 += 45;
+                
+                // Privacy Policy Description (Height increased to 125 to fit the new line)
+                drawSettingsCard(c1, y1, 215, 125);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Privacy & Anonymity", c1 + 5, y1 + 5, -1);
+                
+                int textY = y1 + 20;
+                this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "All telemetry data is " + EnumChatFormatting.WHITE + "100% Anonymous" + EnumChatFormatting.GRAY + ".", c1 + 5, textY, -1); textY += 10;
+                this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "We CANNOT track or collect:", c1 + 5, textY, -1); textY += 12;
+                
+                this.fontRendererObj.drawString(EnumChatFormatting.RED + "\u2718 " + EnumChatFormatting.GRAY + "Your Minecraft Name or UUID", c1 + 10, textY, -1); textY += 10;
+                this.fontRendererObj.drawString(EnumChatFormatting.RED + "\u2718 " + EnumChatFormatting.GRAY + "Your Session Token or Passwords", c1 + 10, textY, -1); textY += 10;
+                this.fontRendererObj.drawString(EnumChatFormatting.RED + "\u2718 " + EnumChatFormatting.GRAY + "Your IP Address or Location", c1 + 10, textY, -1); textY += 10;
+                this.fontRendererObj.drawString(EnumChatFormatting.RED + "\u2718 " + EnumChatFormatting.GRAY + "Your Chat Logs or Inventories", c1 + 10, textY, -1); textY += 15;
+                
+                this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "We only track active player counts to", c1 + 5, textY, -1); textY += 10;
+                this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "display live stats on https://linex-studios.github.io", c1 + 5, textY, -1);
             }
         }
         
@@ -475,6 +505,18 @@ public class EditHUDGui extends GuiScreen {
                 if (isInside(mouseX, mouseY, c1 + 5, y1, 100, 12)) AutoBulletTime.enabled = !AutoBulletTime.enabled; 
                 
                 if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) AutoQuickMath.enabled = !AutoQuickMath.enabled;
+            }
+            // ============================================
+            //     NEW: TELEMETRY CLICK LOGIC
+            // ============================================
+            else if (selectedTab == 5) {
+                int y1 = rY;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 205, 12)) {
+                    ConfigHandler.telemetryEnabled = !ConfigHandler.telemetryEnabled;
+                    if (ConfigHandler.telemetryEnabled) {
+                        TelemetryManager.initialize(); // Boot it up instantly!
+                    }
+                }
             }
             ConfigHandler.saveConfig();
         }

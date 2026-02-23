@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.Timer;
 import java.util.TimerTask;
+import net.minecraftforge.fml.common.Loader;
 
 public class TelemetryManager {
 
@@ -14,7 +15,13 @@ public class TelemetryManager {
     private static Timer heartbeatTimer;
 
     public static void initialize() {
-        // Strip out any invisible newlines or spaces that might corrupt the JSON
+        // --- OPT-OUT CHECK ---
+        // If the player disabled telemetry in their config, stop right here!
+        if (!ConfigHandler.telemetryEnabled) {
+            System.out.println("[Foxtrot] Telemetry is disabled by user. No data will be sent.");
+            return;
+        }
+
         if (anonymousClientId != null) {
             anonymousClientId = anonymousClientId.replace("\n", "").replace("\r", "").trim();
         }
@@ -32,7 +39,7 @@ public class TelemetryManager {
             public void run() {
                 sendPing();
             }
-        }, 180000, 180000); // 3 minutes
+        }, 180000, 180000); 
     }
 
     private static void sendPing() {
@@ -49,8 +56,15 @@ public class TelemetryManager {
                 conn.setReadTimeout(4000);
                 conn.setDoOutput(true);
 
-                // Add your current mod version here!
-                String modVersion = "1.0.0"; 
+                // --- DYNAMIC VERSION FETCHING ---
+                String modVersion = "Unknown";
+                try {
+                    // This asks Forge for the exact version in your @Mod annotation
+                    modVersion = Loader.instance().getIndexedModList().get("foxtrot").getVersion();
+                } catch (Exception e) {
+                    modVersion = "0.7.4"; // Fallback just in case
+                }
+
                 String jsonPayload = "{\"anonId\": \"" + anonymousClientId + "\", \"version\": \"" + modVersion + "\"}";
 
                 try (OutputStream os = conn.getOutputStream()) {
@@ -58,13 +72,9 @@ public class TelemetryManager {
                     os.write(input, 0, input.length);
                 }
 
-                int responseCode = conn.getResponseCode();
-                System.out.println("[Foxtrot Telemetry] Sent Ping. Vercel responded with code: " + responseCode);
-                ConfigHandler.logDebug("Telemetry Ping Sent! Code: " + responseCode);
-                
+                conn.getResponseCode(); 
             } catch (Exception e) {
-                System.out.println("[Foxtrot Telemetry] CRITICAL ERROR: Could not send ping! " + e.getMessage());
-                e.printStackTrace();
+                // Fail silently so it doesn't spam the user's console
             }
         }).start();
     }

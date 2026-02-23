@@ -33,6 +33,8 @@ import java.io.*;
 import java.util.*;
 
 public class ConfigHandler {
+    public static boolean telemetryEnabled = true; // NEW: Telemetry Opt-Out toggle
+
     private static final File configDir = new File("config/Foxtrot");
     private static final File enemyFile = new File(configDir, "enemies.txt");
     private static final File friendsFile = new File(configDir, "friends.txt");
@@ -54,7 +56,7 @@ public class ConfigHandler {
         Object[] forceLoad = {
             PotionHUD.instance, ArmorHUD.instance, CoordsHUD.instance, EnemyHUD.instance,
             NickedHUD.instance, FriendsHUD.instance, SessionStatsHUD.instance, EventHUD.instance,
-            RegHUD.instance, DarksHUD.instance, ToggleSprintModule.instance, CPSModule.instance, FPSModule.instance, // Added DarksHUD.instance
+            RegHUD.instance, DarksHUD.instance, ToggleSprintModule.instance, CPSModule.instance, FPSModule.instance, 
             BossBarModule.instance
         };
     }
@@ -179,7 +181,7 @@ public class ConfigHandler {
                 SessionStatsHUD.enabled = getBool(props, "sessionStatsEnabled", true);
                 EventHUD.enabled = getBool(props, "eventHudEnabled", true);
                 RegHUD.enabled = getBool(props, "regHudEnabled", true);
-                DarksHUD.enabled = getBool(props, "darksHudEnabled", true); // Added DarksHUD loading
+                DarksHUD.enabled = getBool(props, "darksHudEnabled", true); 
                 PotionHUD.enabled = getBool(props, "potionHudEnabled", true);
                 ArmorHUD.enabled = getBool(props, "armorHudEnabled", true);
                 CoordsHUD.enabled = getBool(props, "coordsHudEnabled", true);
@@ -193,7 +195,8 @@ public class ConfigHandler {
                 FriendsHUD.enabled = getBool(props, "friendsHudEnabled", true);
                 FriendsESP.enabled = getBool(props, "friendsEspEnabled", true);
 
-                // API - TELEMTRYMANAGER (ANNONYMOUS DATA EVEN I CANNOT KNOW WHAT IT IS)
+                // API - TELEMTRYMANAGER
+                telemetryEnabled = getBool(props, "telemetryEnabled", true); // NEW: Load toggle state
                 TelemetryManager.anonymousClientId = props.getProperty("telemetryId", "");
             }
         } catch (Exception e) {
@@ -295,7 +298,7 @@ public class ConfigHandler {
             props.setProperty("sessionStatsEnabled", String.valueOf(SessionStatsHUD.enabled));
             props.setProperty("eventHudEnabled", String.valueOf(EventHUD.enabled));
             props.setProperty("regHudEnabled", String.valueOf(RegHUD.enabled));
-            props.setProperty("darksHudEnabled", String.valueOf(DarksHUD.enabled)); // Added DarksHUD saving
+            props.setProperty("darksHudEnabled", String.valueOf(DarksHUD.enabled)); 
             props.setProperty("potionHudEnabled", String.valueOf(PotionHUD.enabled));
             props.setProperty("armorHudEnabled", String.valueOf(ArmorHUD.enabled));
             props.setProperty("coordsHudEnabled", String.valueOf(CoordsHUD.enabled));
@@ -310,6 +313,7 @@ public class ConfigHandler {
             props.setProperty("friendsEspEnabled", String.valueOf(FriendsESP.enabled));
 
             // API - TELEMTRYMANAGER
+            props.setProperty("telemetryEnabled", String.valueOf(telemetryEnabled)); // NEW: Save toggle state
             if (TelemetryManager.anonymousClientId != null && !TelemetryManager.anonymousClientId.isEmpty()) {
                 props.setProperty("telemetryId", TelemetryManager.anonymousClientId);
             }
