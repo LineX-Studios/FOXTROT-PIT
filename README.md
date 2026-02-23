@@ -115,7 +115,7 @@ AND THEN TYPE THIS COMMAND
 If you are using an IDE (like InteliJ or Eclipse...) make sure project sdk is java 8 Also make sure gradle jvm is using java 17.
 
 ```
-I wanna give a big shoutout to OMI, Koojoker, Lena and Raimbowsix for helping me with this project 
+I wanna give a big shoutout to @omepvp , @Koojoker, Lena and Raimbowsix for helping me with this project 
 And thank you everyone who has supported me through out the making of this mod
 it wasnt very easy with my lack of experience with java
 And big thank you once again to omi with the help on pitpal and allowing me to use their api thank you.
