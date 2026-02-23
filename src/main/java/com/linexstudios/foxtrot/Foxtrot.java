@@ -6,6 +6,7 @@ import com.linexstudios.foxtrot.Denick.NickScanner;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import com.linexstudios.foxtrot.Handler.KeybindHandler;
+import com.linexstudios.foxtrot.Handler.TelemetryManager; // Added this import
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
@@ -35,7 +36,6 @@ import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
 import com.linexstudios.foxtrot.Hud.CPSModule;
 
-
 @Mod(modid = "foxtrot", name = "Foxtrot", version = "${version}", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
 
@@ -51,6 +51,9 @@ public class Foxtrot {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         ConfigHandler.loadConfig();
+        
+        // --- START TELEMETRY HEARTBEAT ---
+        TelemetryManager.initialize();
 
         KeybindHandler.init();
 

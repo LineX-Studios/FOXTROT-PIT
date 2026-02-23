@@ -16,7 +16,8 @@ public class TelemetryManager {
     public static void initialize() {
         if (anonymousClientId == null || anonymousClientId.isEmpty()) {
             anonymousClientId = UUID.randomUUID().toString();
-            // Note: Save this anonymousClientId in your ConfigHandler so it persists!
+            // Force the config to save this new ID to the text file immediately
+            ConfigHandler.saveConfig();
         }
 
         // Send a ping immediately on launch
@@ -35,11 +36,11 @@ public class TelemetryManager {
     private static void sendPing() {
         new Thread(() -> {
             try {
-                // REPLACE THIS WITH YOUR RENDER.COM URL
                 URL url = new URL("https://foxtrot-api.vercel.app/ping");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; utf-8");
+                conn.setRequestProperty("Accept", "application/json");
                 conn.setConnectTimeout(4000);
                 conn.setReadTimeout(4000);
                 conn.setDoOutput(true);
