@@ -116,8 +116,11 @@ If you are using an IDE (like InteliJ or Eclipse...) make sure project sdk is ja
 
 
 I wanna give a big shoutout to [Omi](https://github.com/omepvp/) ,[koojoker](https://github.com/koojoker/) , Lena and [Raimbowsix](https://github.com/Raimbowsix/) for helping me with this project 
+
 And thank you everyone who has supported me through out the making of this mod
+
 it wasnt very easy with my lack of experience with java
+
 And big thank you once again to [omi](https://github.com/omepvp/) with the help on pitpal and allowing me to use their api thank you.
 
 ALSO WITHOUT KOOJOKER I WOULDNT HAVE STARTED MAKING THIS MOD ❤️
