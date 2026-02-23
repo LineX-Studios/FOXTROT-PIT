@@ -14,6 +14,7 @@ public class TelemetryManager {
     private static Timer heartbeatTimer;
 
     public static void initialize() {
+        // Generate a new ID if one wasn't loaded from the config
         if (anonymousClientId == null || anonymousClientId.isEmpty()) {
             anonymousClientId = UUID.randomUUID().toString();
             // Force the config to save this new ID to the text file immediately
@@ -39,6 +40,10 @@ public class TelemetryManager {
                 URL url = new URL("https://foxtrot-api.vercel.app/ping");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
+                
+                // --- Disguise the request as a normal browser to bypass anti-bot firewalls ---
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                
                 conn.setRequestProperty("Content-Type", "application/json; utf-8");
                 conn.setRequestProperty("Accept", "application/json");
                 conn.setConnectTimeout(4000);
@@ -52,9 +57,15 @@ public class TelemetryManager {
                     os.write(input, 0, input.length);
                 }
 
-                conn.getResponseCode(); // Execute the request
+                // Execute the request and check Vercel's response
+                int responseCode = conn.getResponseCode();
+                System.out.println("[Foxtrot Telemetry] Sent Ping. Vercel responded with code: " + responseCode);
+                ConfigHandler.logDebug("Telemetry Ping Sent! Code: " + responseCode);
+                
             } catch (Exception e) {
-                // Fail silently so the player never sees an error if the API is offline
+                // Print the error to the console so we know exactly what is breaking
+                System.out.println("[Foxtrot Telemetry] CRITICAL ERROR: Could not send ping! " + e.getMessage());
+                e.printStackTrace();
             }
         }).start();
     }
