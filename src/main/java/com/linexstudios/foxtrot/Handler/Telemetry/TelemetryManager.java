@@ -15,8 +15,6 @@ public class TelemetryManager {
     private static Timer heartbeatTimer;
 
     public static void initialize() {
-        // --- OPT-OUT CHECK ---
-        // If the player disabled telemetry in their config, stop right here!
         if (!ConfigHandler.telemetryEnabled) {
             System.out.println("[Foxtrot] Telemetry is disabled by user. No data will be sent.");
             return;
@@ -33,16 +31,23 @@ public class TelemetryManager {
 
         sendPing();
 
-        heartbeatTimer = new Timer(true);
-        heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                sendPing();
-            }
-        }, 180000, 180000); 
+        // Only create the timer if it doesn't already exist to prevent duplicate timers if they toggle it on/off
+        if (heartbeatTimer == null) {
+            heartbeatTimer = new Timer(true);
+            heartbeatTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    sendPing();
+                }
+            }, 180000, 180000); 
+        }
     }
 
     private static void sendPing() {
+        // --- INSTANT ABORT ---
+        // If the player turns off telemetry in the GUI mid-game, stop sending the pings!
+        if (!ConfigHandler.telemetryEnabled) return;
+
         new Thread(() -> {
             try {
                 URL url = new URL("https://foxtrot-api.vercel.app/ping");
@@ -56,13 +61,11 @@ public class TelemetryManager {
                 conn.setReadTimeout(4000);
                 conn.setDoOutput(true);
 
-                // --- DYNAMIC VERSION FETCHING ---
                 String modVersion = "Unknown";
                 try {
-                    // This asks Forge for the exact version in your @Mod annotation
                     modVersion = Loader.instance().getIndexedModList().get("foxtrot").getVersion();
                 } catch (Exception e) {
-                    modVersion = "0.7.4"; // Fallback just in case
+                    modVersion = "0.7.4"; 
                 }
 
                 String jsonPayload = "{\"anonId\": \"" + anonymousClientId + "\", \"version\": \"" + modVersion + "\"}";
@@ -74,7 +77,7 @@ public class TelemetryManager {
 
                 conn.getResponseCode(); 
             } catch (Exception e) {
-                // Fail silently so it doesn't spam the user's console
+                // Fail silently
             }
         }).start();
     }

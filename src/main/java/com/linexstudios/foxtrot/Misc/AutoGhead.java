@@ -18,7 +18,10 @@ public class AutoGhead {
     
     // GUI Toggles
     public static boolean enabled = true;
-    public static double healthThreshold = 8.0; // 4 Hearts for autoheal to work with ghead and first aid egg.
+    
+    // --- ORGANIC RANDOMIZATION ---
+    // Instead of a static number, we generate a new random threshold every time we heal
+    private double currentHealthThreshold = generateNewThreshold();
 
     public static int oldSlot = -1;
     public static int gHeadSlot = -1;
@@ -34,6 +37,13 @@ public class AutoGhead {
     
     private enum State {IDLE, SWAP, EAT, SWAPBACK}
     private static State state = State.IDLE;
+
+    /**
+     * Generates a random health threshold between 3 and 6 hearts (6.0 to 12.0 HP)
+     */
+    private double generateNewThreshold() {
+        return 6.0 + rand.nextInt(7); 
+    }
 
     /**
      * Generates a random tick delay between min and max
@@ -103,8 +113,8 @@ public class AutoGhead {
         if (healCooldown > 0) healCooldown--;
         
         if (state == State.IDLE) {
-            // Trigger if health <= 4 hearts and we aren't in a menu
-            if (enabled && healCooldown <= 0 && mc.thePlayer.getHealth() <= healthThreshold && mc.currentScreen == null) {
+            // Check against our dynamic humanized threshold!
+            if (enabled && healCooldown <= 0 && mc.thePlayer.getHealth() <= currentHealthThreshold && mc.currentScreen == null) {
                 
                 gHeadSlot = -1;
                 usingEgg = false;
@@ -179,6 +189,10 @@ public class AutoGhead {
                             eggCooldown = 600; // 30 seconds (30 * 20 ticks)
                         }
                         healCooldown = 20; // 1 second buffer before we can heal anything again
+                        
+                        // --- ORGANIC RANDOMIZATION UPDATE ---
+                        // Roll the dice for the NEXT heal so we don't heal at the same HP twice in a row!
+                        currentHealthThreshold = generateNewThreshold();
                         
                         state = State.SWAPBACK;
                         tickDelay = 0;

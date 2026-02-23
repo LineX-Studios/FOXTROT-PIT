@@ -306,7 +306,7 @@ public class EditHUDGui extends GuiScreen {
                 this.fontRendererObj.drawString(EnumChatFormatting.RED + "\u2718 " + EnumChatFormatting.GRAY + "Your Chat Logs or Inventories", c1 + 10, textY, -1); textY += 15;
                 
                 this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "We only track active player counts to", c1 + 5, textY, -1); textY += 10;
-                this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "display live stats on https://linex-studios.github.io", c1 + 5, textY, -1);
+                this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "display live stats on linex-studios.github.io", c1 + 5, textY, -1);
             }
         }
         

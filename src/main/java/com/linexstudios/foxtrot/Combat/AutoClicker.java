@@ -5,12 +5,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.inventory.Slot;
 import net.minecraft.item.*;
 import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.MovingObjectPosition;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
 import java.lang.reflect.Field;
@@ -23,8 +24,11 @@ public class AutoClicker {
     public static final AutoClicker instance = new AutoClicker();
     private final Minecraft mc = Minecraft.getMinecraft();
     private final Random rand = new Random();
+    
+    // --- Reflection Fields ---
     private Field leftClickCounterField;
-    private Field isHittingBlockField; // Reflection to check if actively mining
+    private Field isHittingBlockField; 
+    private Field theSlotField; // Safely gets the slot your mouse is hovering over
 
     // --- Toggles ---
     public static boolean enabled = false;
@@ -67,6 +71,16 @@ public class AutoClicker {
             try { isHittingBlockField = PlayerControllerMP.class.getDeclaredField("field_78778_j"); } catch (Exception ex) {}
         }
         if (isHittingBlockField != null) isHittingBlockField.setAccessible(true);
+
+        // Reflection for GuiContainer.theSlot (Hovered Slot)
+        try {
+            theSlotField = GuiContainer.class.getDeclaredField("theSlot");
+        } catch (NoSuchFieldException e) {
+            try { theSlotField = GuiContainer.class.getDeclaredField("field_147006_u"); } catch (Exception ex) {}
+        }
+        if (theSlotField != null) {
+            theSlotField.setAccessible(true);
+        }
     }
 
     @SubscribeEvent
@@ -100,17 +114,35 @@ public class AutoClicker {
     public void onTick(TickEvent.ClientTickEvent event) {
         if (mc.thePlayer == null || mc.theWorld == null) return;
 
-        // --- INVENTORY FILL LOGIC ---
+        // --- NEW & IMPROVED INVENTORY SHIFT-CLICK LOGIC ---
         if (mc.currentScreen instanceof GuiContainer) {
-            if (inventoryFill && Mouse.isButtonDown(0)) {
+            boolean isShiftDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+            
+            // Only trigger if Inventory Fill is ON, Left Mouse is held, AND Shift is held
+            if (inventoryFill && Mouse.isButtonDown(0) && isShiftDown) {
                 long invDelay = inventoryFillCps >= 20.0F ? 20 : (long)(1000.0F / inventoryFillCps);
+                
                 if (System.currentTimeMillis() - lastInvClick >= invDelay) {
-                    try {
-                        int mouseX = Mouse.getX() * mc.currentScreen.width / mc.displayWidth;
-                        int mouseY = mc.currentScreen.height - Mouse.getY() * mc.currentScreen.height / mc.displayHeight - 1;
-                        mc.currentScreen.handleMouseInput();
-                    } catch (Exception e) {}
-                    lastInvClick = System.currentTimeMillis();
+                    GuiContainer gui = (GuiContainer) mc.currentScreen;
+                    Slot hoveredSlot = null;
+                    
+                    if (theSlotField != null) {
+                        try {
+                            hoveredSlot = (Slot) theSlotField.get(gui);
+                        } catch (Exception e) {}
+                    }
+                    
+                    // Only click if we are hovering over a slot AND that slot actually has an item in it
+                    if (hoveredSlot != null && hoveredSlot.getHasStack()) {
+                        mc.playerController.windowClick(
+                                gui.inventorySlots.windowId, 
+                                hoveredSlot.slotNumber, 
+                                0, // 0 = Left Click
+                                1, // 1 = Shift-Click Mode (Instantly moves item)
+                                mc.thePlayer
+                        );
+                        lastInvClick = System.currentTimeMillis();
+                    }
                 }
             }
             return; 
@@ -123,16 +155,14 @@ public class AutoClicker {
         
         ItemStack held = mc.thePlayer.getHeldItem();
         boolean holdingBlock = (held != null && held.getItem() instanceof ItemBlock);
-        
-        // This is the true check: Are we actually mining a block right now?
         boolean isActivelyMining = getIsActivelyMining();
 
         if (event.phase == TickEvent.Phase.START) {
             if (leftClick && holdToClick && Mouse.isButtonDown(0)) {
                 if (breakBlocks && isActivelyMining) {
-                    KeyBinding.setKeyBindState(attackKey, true); // Allow vanilla to hold the click and mine
+                    KeyBinding.setKeyBindState(attackKey, true); 
                 } else {
-                    KeyBinding.setKeyBindState(attackKey, false); // Block vanilla from holding so AC can rapid-fire
+                    KeyBinding.setKeyBindState(attackKey, false); 
                 }
             }
             if (fastPlaceEnabled && holdToClick && Mouse.isButtonDown(1)) {
@@ -147,7 +177,6 @@ public class AutoClicker {
         if (leftClick) {
             boolean shouldLeftClick = !holdToClick || Mouse.isButtonDown(0);
             
-            // Only stop the AC if we are ACTIVELY mining a block. Glancing at one won't stop it.
             if (breakBlocks && isActivelyMining) {
                 shouldLeftClick = false; 
             }
