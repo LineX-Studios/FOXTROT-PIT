@@ -2,7 +2,7 @@
 
 FOXTROT PIT is a highly optimized 1.8.9 Forge utility mod designed specifically for Hypixel Pit. My goal with this project was to create a MOD that everyone can use for free and provides really useful features such as autodenick and more.
 
-## Features - ALL TOGGLABLE AND RESIZABLE
+## FEATURES - ALL TOGGLABLE AND RESIZABLE
 
 - ### Custom GUI & HUD Customization :
   Press Right-Shift (you can change it to any keybind you'd like) to open the editor. You can drag, scale, and snap modules to the center of your screen. All settings and colors save automatically.
@@ -65,10 +65,16 @@ FOXTROT PIT is a highly optimized 1.8.9 Forge utility mod designed specifically 
 
 - ### Auto Use & QoL :
   USE AT YOUR OWN RISK, WE ARE NOT LIABLE IF THE AUTO USE MODULES HAVE RESULTED IN A BAN ESPECIALLY WITH AUTO PODS AND AUTO BULLET TIME IT CAN RESAULT IN A BAN NORMAL PANT SWAP MIGHT NOT BE FULLY SAFE EITHER BUT IT WORKS VERY WELL ON HYPIXEL, BUT USE AT YOUR OWN RISK.
+
+  
   Auto Clicker is highly randomized, hold-to-click, fast place, and has an item whitelist to prevent accidentally clicking WITH NON WHITELISTED ITEMS.
+  
   Auto Heal consumes a Ghead or First-Aid Egg at 3/6 hearts. Includes smart cooldown tracking that waits for the 30s egg cooldown and automatically resets to 5s upon detecting a kill in chat.
+  
   Auto Swaps lets you hover and hold right-click to fast-swap pants. Auto Venom Swap equips diamond pants instantly upon getting venomed.
+  
   Combo Escapes include Auto Escape Pod and Auto Bullet Time to quickly get out of bad situations.
+  
   Misc modules include an Auto Quick Math Solver and Toggle Sprint.
   
   <img width="554" height="399" alt="image" src="https://github.com/user-attachments/assets/abfc27f2-3202-4d58-97aa-c8da225e9313" />
@@ -81,16 +87,22 @@ FOXTROT PIT is a highly optimized 1.8.9 Forge utility mod designed specifically 
   <img width="1081" height="133" alt="image" src="https://github.com/user-attachments/assets/6b582577-f34f-40cc-8c9d-9b732a5de773" />
 
 ## Building the Mod (In case you never compiled a mod before.)
+
 Open a git bash and go in the Foxtrot directory, then you build by using:
 
 FIRST CLONE THE SOURCE CODE 
 
 <img width="390" height="314" alt="image" src="https://github.com/user-attachments/assets/de76dac2-c483-4796-b0a7-8d4071e1f68e" />
+
 TO DO THAT GO TO GIT BASH AND TYPE
 
 ```
-git clone [github link that you pasted] | example - git clone https://github.com/LineX-Studios/FOXTROT-PRIVATE.git 
+git clone [github link that you copied] | example - git clone https://github.com/LineX-Studios/FOXTROT-PRIVATE.git 
 ```
+
+<img width="480" height="150" alt="image" src="https://github.com/user-attachments/assets/f9ec5968-318d-473b-a23d-454e11ba7465" />
+
+
 THEN TO COMPILE THE MOD YOU NEED TO GO TO YOUR FILE DIRECTORY RIGHT CLICK AND OPEN GIT BASH
 
 <img width="619" height="407" alt="image" src="https://github.com/user-attachments/assets/767ee9fd-0d7c-4250-bd03-528ff6620957" />
@@ -101,3 +113,16 @@ AND THEN TYPE THIS COMMAND
 ./gradlew build
 ```
 If you are using an IDE (like InteliJ or Eclipse...) make sure project sdk is java 8 Also make sure gradle jvm is using java 17.
+
+```
+I wanna give a big shoutout to OMI, Koojoker, Lena and Raimbowsix for helping me with this project 
+And thank you everyone who has supported me through out the making of this mod
+it wasnt very easy with my lack of experience with java
+And big thank you once again to omi with the help on pitpal and allowing me to use their api thank you.
+
+ALSO WITHOUT KOOJOKER I WOULDNT HAVE STARTED MAKING THIS MOD ❤️
+
+Thank you to everyone who has contributed with with testing, whytf, k1flower, Cherrylemon7
+kokosu_rat, dynteller, dynmap, elfbars, ItsEmmanGaming, Vytalics, Nsne, Zakstar, llqn
+some of these people dont even know i was testing my mod on them but alot of them knew and helped out 
+```
