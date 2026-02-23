@@ -192,6 +192,9 @@ public class ConfigHandler {
                 NameTags.showItems = getBool(props, "nameTagsShowItems", true);
                 FriendsHUD.enabled = getBool(props, "friendsHudEnabled", true);
                 FriendsESP.enabled = getBool(props, "friendsEspEnabled", true);
+
+                // API - TELEMTRYMANAGER (ANNONYMOUS DATA EVEN I CANNOT KNOW WHAT IT IS)
+                TelemetryManager.anonymousClientId = props.getProperty("telemetryId", "");
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -305,6 +308,11 @@ public class ConfigHandler {
             props.setProperty("nameTagsShowItems", String.valueOf(NameTags.showItems));
             props.setProperty("friendsHudEnabled", String.valueOf(FriendsHUD.enabled));
             props.setProperty("friendsEspEnabled", String.valueOf(FriendsESP.enabled));
+
+            // API - TELEMTRYMANAGER
+            if (TelemetryManager.anonymousClientId != null && !TelemetryManager.anonymousClientId.isEmpty()) {
+                props.setProperty("telemetryId", TelemetryManager.anonymousClientId);
+            }
 
             FileOutputStream out = new FileOutputStream(settingsFile);
             props.store(out, "Foxtrot Settings");
