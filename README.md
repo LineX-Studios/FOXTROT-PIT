@@ -114,7 +114,7 @@ AND THEN TYPE THIS COMMAND
 ```
 If you are using an IDE (like InteliJ or Eclipse...) make sure project sdk is java 8 Also make sure gradle jvm is using java 17.
 
-```
+
 I wanna give a big shoutout to @omepvp , @Koojoker, Lena and @Raimbowsix for helping me with this project 
 And thank you everyone who has supported me through out the making of this mod
 it wasnt very easy with my lack of experience with java
@@ -125,7 +125,6 @@ ALSO WITHOUT KOOJOKER I WOULDNT HAVE STARTED MAKING THIS MOD ❤️
 Thank you to everyone who has contributed with with testing, whytf, k1flower, Cherrylemon7
 kokosu_rat, dynteller, dynmap, elfbars, ItsEmmanGaming, Vytalics, Nsne, Zakstar, llqn
 some of these people dont even know i was testing my mod on them but alot of them knew and helped out
-```
 
                           FOR MORE INFORMATION JOIN OUR DISCORD
                               https://discord.gg/kG96PFWCva
