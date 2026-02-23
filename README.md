@@ -125,7 +125,8 @@ ALSO WITHOUT KOOJOKER I WOULDNT HAVE STARTED MAKING THIS MOD ❤️
 Thank you to everyone who has contributed with with testing, whytf, k1flower, Cherrylemon7
 kokosu_rat, dynteller, dynmap, elfbars, ItsEmmanGaming, Vytalics, Nsne, Zakstar, llqn
 some of these people dont even know i was testing my mod on them but alot of them knew and helped out
-
-                      FOR MORE INFORMATION JOIN OUR DISCORD
-                          https://discord.gg/kG96PFWCva
 ```
+
+                          FOR MORE INFORMATION JOIN OUR DISCORD
+                              https://discord.gg/kG96PFWCva
+
