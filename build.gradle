@@ -3,20 +3,23 @@ buildscript {
         jcenter()
         maven {
             name = "forge"
-            url = "http://files.minecraftforge.net/maven"
+            url = "https://maven.minecraftforge.net/"
+        }
+        maven {
+            name = "sponge"
+            url = "https://repo.spongepowered.org/repository/maven-public/"
         }
     }
     dependencies {
         classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.4'
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
+        classpath 'org.spongepowered:mixingradle:0.6-SNAPSHOT'
     }
 }
 
-plugins {
-    id "com.github.johnrengelman.shadow" version "1.2.3"
-}
-
 apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'org.spongepowered.mixin'
+apply plugin: 'com.github.johnrengelman.shadow'
 
 compileJava {
     sourceCompatibility = '1.8'
@@ -24,7 +27,7 @@ compileJava {
 }
 
 // Change your version here, and it will update everywhere automatically!
-version = "0.7.6"
+version = "0.7.7"
 group = "com.linexstudios.foxtrot"
 archivesBaseName = "Foxtrot"
 
@@ -33,16 +36,35 @@ minecraft {
     runDir = "run"
     mappings = "stable_20"
 
-    // NEW: Tells ForgeGradle to replace this exact string in all Java files during build
+    // Tells ForgeGradle to replace this exact string in all Java files during build
     replace '${version}', project.version
+
+    // Tells terminal to launch with Mixins when using ./gradlew runClient
+    clientRunArgs += ["--tweakClass", "org.spongepowered.asm.launch.MixinTweaker", "--mixin", "mixins.foxtrot.json"]
+}
+
+// Mixin Configuration
+mixin {
+    add sourceSets.main, "mixins.foxtrot.refmap.json"
 }
 
 repositories {
     jcenter()
+    maven {
+        name = "sponge"
+        url = "https://repo.spongepowered.org/repository/maven-public/"
+    }
 }
 
 dependencies {
     compile group: 'org.json', name: 'json', version: '20190722'
+    
+    // Mixin Library Dependency
+    compile('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
+        exclude module: 'guava'
+        exclude module: 'commons-io'
+        exclude module: 'gson'
+    }
 }
 
 processResources {
@@ -61,10 +83,21 @@ processResources {
 
 shadowJar {
     classifier = ""
-
-    // Updated relocation to your own package path
+    // Relocate your JSON library
     relocate "org.json", "com.linexstudios.foxtrot.repack.org.json"
 }
 
 reobf { shadowJar { mappingType = "SEARGE" } }
 tasks.reobfShadowJar.mustRunAfter shadowJar
+
+// Injecting Mixin parameters into the final .jar manifest
+jar {
+    manifest.attributes(
+        "Manifest-Version": "1.0",
+        "MixinConfigs": "mixins.foxtrot.json",
+        "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
+        "TweakOrder": 0,
+        "FMLCorePluginContainsFMLMod": "true",
+        "ForceLoadAsMod": "true"
+    )
+}

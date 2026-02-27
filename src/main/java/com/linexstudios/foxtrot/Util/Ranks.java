@@ -51,7 +51,7 @@ public class Ranks {
     private String originalScoreboardTitle = null;
     private String originalTabTeam = null;
 
-    private boolean isInPit() {
+    public boolean isInPit() {
         if (mc.theWorld == null || mc.thePlayer == null) return false;
         Scoreboard scoreboard = mc.theWorld.getScoreboard();
         if (scoreboard == null) return false;
@@ -250,7 +250,7 @@ public class Ranks {
         return bracket.toString();
     }
 
-    private String getCustomTabPitBracket() {
+    public String getCustomTabPitBracket() {
         EnumChatFormatting prestigeColor = getPrestigeColor(targetPrestige);
         EnumChatFormatting levelColor = getLevelColor(targetLevel);
         

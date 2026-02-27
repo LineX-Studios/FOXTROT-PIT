@@ -24,10 +24,12 @@ public class SessionStatsHUD extends DraggableHUD {
     private long sessionStartTime = 0;
     private boolean isInPit = false;
 
-    // --- XP Tracking Variables ---
+    // --- Tracking Variables ---
     private long sessionXpGained = 0;
+    private double sessionGoldGained = 0; // Gold uses decimals in Pit!
     
     private static final Pattern XP_PATTERN = Pattern.compile("\\+(\\d+)XP");
+    private static final Pattern GOLD_PATTERN = Pattern.compile("\\+([0-9.]+)g");
 
     public SessionStatsHUD() {
         super("Session Stats", 10, 150);
@@ -37,8 +39,9 @@ public class SessionStatsHUD extends DraggableHUD {
      * Resets all tracking variables to start a brand new session.
      */
     public void resetSession() {
-        sessionStartTime = 0;
+        sessionStartTime = 0; 
         sessionXpGained = 0;
+        sessionGoldGained = 0;
         if (mc.thePlayer != null) {
             APIHandler.updateStats(mc.thePlayer);
         }
@@ -56,9 +59,6 @@ public class SessionStatsHUD extends DraggableHUD {
         checkIfInPit();
 
         if (isInPit) {
-            if (sessionStartTime == 0) {
-                sessionStartTime = System.currentTimeMillis();
-            }
             APIHandler.updateStats(mc.thePlayer);
         }
     }
@@ -75,18 +75,34 @@ public class SessionStatsHUD extends DraggableHUD {
             return; 
         }
         
-        Matcher matcher = XP_PATTERN.matcher(message.replace(",", ""));
-        if (matcher.find()) {
-            long xpEarned = Long.parseLong(matcher.group(1));
-            
+        boolean gainedStats = false;
+        String cleanMessage = message.replace(",", "");
+
+        // --- XP PARSING ---
+        Matcher xpMatcher = XP_PATTERN.matcher(cleanMessage);
+        if (xpMatcher.find()) {
+            long xpEarned = Long.parseLong(xpMatcher.group(1));
             sessionXpGained += xpEarned;
-            
             APIHandler.pitPandaXpCurrent += xpEarned;
+            gainedStats = true;
             
             if (APIHandler.pitPandaXpGoal > 0) {
                 APIHandler.pitPandaXpPercent = ((double) APIHandler.pitPandaXpCurrent / APIHandler.pitPandaXpGoal);
                 APIHandler.pitPandaXpDescription = String.format("%.2fk/%.2fk", APIHandler.pitPandaXpCurrent / 1000.0, APIHandler.pitPandaXpGoal / 1000.0);
             }
+        }
+
+        // --- GOLD PARSING ---
+        Matcher goldMatcher = GOLD_PATTERN.matcher(cleanMessage);
+        if (goldMatcher.find()) {
+            double goldEarned = Double.parseDouble(goldMatcher.group(1));
+            sessionGoldGained += goldEarned;
+            gainedStats = true;
+        }
+
+        // Start the timer EXACTLY when they get their first kill/xp/gold!
+        if (gainedStats && sessionStartTime == 0) {
+            sessionStartTime = System.currentTimeMillis();
         }
     }
 
@@ -128,9 +144,11 @@ public class SessionStatsHUD extends DraggableHUD {
         if (isEditing && !APIHandler.isLoaded) {
             String timeStr = EnumChatFormatting.WHITE + "Playtime: " + EnumChatFormatting.GRAY + "01h 15m";
             String xpStr = EnumChatFormatting.WHITE + "XP Progress: " + EnumChatFormatting.AQUA + "25.93k/98.94k " + EnumChatFormatting.GRAY + "(26.2%)";
-            String goldStr = EnumChatFormatting.WHITE + "Gold Needed: " + EnumChatFormatting.GOLD + "10,000g";
+            String reqStr = EnumChatFormatting.WHITE + "Gold Needed: " + EnumChatFormatting.GOLD + "10,000g";
             String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + "15,000";
+            String goldPerHourStr = EnumChatFormatting.WHITE + "Gold/Hour: " + EnumChatFormatting.GOLD + "12,500.0g";
             String sessionXpStr = EnumChatFormatting.WHITE + "Session XP: " + EnumChatFormatting.AQUA + "3,500";
+            String sessionGoldStr = EnumChatFormatting.WHITE + "Session Gold: " + EnumChatFormatting.GOLD + "1,250.5g";
 
             fr.drawStringWithShadow(timeStr, 0, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(timeStr));
@@ -140,20 +158,29 @@ public class SessionStatsHUD extends DraggableHUD {
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpStr));
             currentY += fr.FONT_HEIGHT;
 
-            fr.drawStringWithShadow(goldStr, 0, currentY, 0xFFFFFF);
-            maxWidth = Math.max(maxWidth, fr.getStringWidth(goldStr));
+            fr.drawStringWithShadow(reqStr, 0, currentY, 0xFFFFFF);
+            maxWidth = Math.max(maxWidth, fr.getStringWidth(reqStr));
             currentY += fr.FONT_HEIGHT;
 
             fr.drawStringWithShadow(xpPerHourStr, 0, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpPerHourStr));
             currentY += fr.FONT_HEIGHT;
 
+            fr.drawStringWithShadow(goldPerHourStr, 0, currentY, 0xFFFFFF);
+            maxWidth = Math.max(maxWidth, fr.getStringWidth(goldPerHourStr));
+            currentY += fr.FONT_HEIGHT;
+
             fr.drawStringWithShadow(sessionXpStr, 0, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(sessionXpStr));
             currentY += fr.FONT_HEIGHT;
 
+            fr.drawStringWithShadow(sessionGoldStr, 0, currentY, 0xFFFFFF);
+            maxWidth = Math.max(maxWidth, fr.getStringWidth(sessionGoldStr));
+            currentY += fr.FONT_HEIGHT;
+
         } else if (APIHandler.isLoaded) {
-            long elapsed = System.currentTimeMillis() - sessionStartTime;
+            
+            long elapsed = (sessionStartTime == 0) ? 0 : System.currentTimeMillis() - sessionStartTime;
             if (elapsed < 0) elapsed = 0;
             
             long hours = elapsed / 3600000;
@@ -179,28 +206,55 @@ public class SessionStatsHUD extends DraggableHUD {
             currentY += fr.FONT_HEIGHT;
 
             String goldDisplay = APIHandler.isGoldReqMet() ? EnumChatFormatting.GREEN + "Done" : EnumChatFormatting.GOLD + APIHandler.getFormattedGoldLeft() + "g";
-            String goldStr = EnumChatFormatting.WHITE + "Gold Needed: " + goldDisplay;
-            fr.drawStringWithShadow(goldStr, 0, currentY, 0xFFFFFF);
-            maxWidth = Math.max(maxWidth, fr.getStringWidth(goldStr));
+            String reqStr = EnumChatFormatting.WHITE + "Gold Needed: " + goldDisplay;
+            fr.drawStringWithShadow(reqStr, 0, currentY, 0xFFFFFF);
+            maxWidth = Math.max(maxWidth, fr.getStringWidth(reqStr));
             currentY += fr.FONT_HEIGHT;
 
-            // --- XP/HOUR CALCULATION ---
+            // ============================================
+            //      XP/HOUR CALCULATION
+            // ============================================
             long displayXpPerHour = 0;
-            if (elapsed < 180000) { // Wait 3 minutes before taking over Pit Panda's stats
-                displayXpPerHour = (long) APIHandler.pitPandaXpHourly;
-            } else {
-                displayXpPerHour = (long) ((sessionXpGained / (double) elapsed) * 3600000);
+            if (sessionXpGained > 0) {
+                long timeDivisor = Math.max(elapsed, 180000); 
+                long liveSessionXpPerHour = (long) ((sessionXpGained / (double) timeDivisor) * 3600000);
+
+                if (elapsed < 180000 && APIHandler.pitPandaXpHourly > 0) {
+                    double progress = elapsed / 180000.0; 
+                    displayXpPerHour = (long) ((APIHandler.pitPandaXpHourly * (1.0 - progress)) + (liveSessionXpPerHour * progress));
+                } else {
+                    displayXpPerHour = liveSessionXpPerHour;
+                }
             }
-            
+
             String xpPerHourStr = EnumChatFormatting.WHITE + "XP/Hour: " + EnumChatFormatting.AQUA + String.format("%,d", displayXpPerHour);
             fr.drawStringWithShadow(xpPerHourStr, 0, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(xpPerHourStr));
             currentY += fr.FONT_HEIGHT;
 
-            // --- SESSION XP ---
+            // ============================================
+            //      GOLD/HOUR CALCULATION
+            // ============================================
+            double displayGoldPerHour = 0;
+            if (sessionGoldGained > 0) {
+                long timeDivisor = Math.max(elapsed, 180000); 
+                displayGoldPerHour = (sessionGoldGained / (double) timeDivisor) * 3600000;
+            }
+
+            String goldPerHourStr = EnumChatFormatting.WHITE + "Gold/Hour: " + EnumChatFormatting.GOLD + String.format("%,.1f", displayGoldPerHour) + "g";
+            fr.drawStringWithShadow(goldPerHourStr, 0, currentY, 0xFFFFFF);
+            maxWidth = Math.max(maxWidth, fr.getStringWidth(goldPerHourStr));
+            currentY += fr.FONT_HEIGHT;
+
+            // --- SESSION TOTALS ---
             String sessionXpStr = EnumChatFormatting.WHITE + "Session XP: " + EnumChatFormatting.AQUA + String.format("%,d", sessionXpGained);
             fr.drawStringWithShadow(sessionXpStr, 0, currentY, 0xFFFFFF);
             maxWidth = Math.max(maxWidth, fr.getStringWidth(sessionXpStr));
+            currentY += fr.FONT_HEIGHT;
+
+            String sessionGoldStr = EnumChatFormatting.WHITE + "Session Gold: " + EnumChatFormatting.GOLD + String.format("%,.1f", sessionGoldGained) + "g";
+            fr.drawStringWithShadow(sessionGoldStr, 0, currentY, 0xFFFFFF);
+            maxWidth = Math.max(maxWidth, fr.getStringWidth(sessionGoldStr));
             currentY += fr.FONT_HEIGHT;
 
         } else {
