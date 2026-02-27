@@ -10,6 +10,8 @@ import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.HUDController;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import com.linexstudios.foxtrot.Denick.CacheManager;
+import com.linexstudios.foxtrot.Util.Ranks; 
+import com.linexstudios.foxtrot.Render.FocusManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -18,6 +20,7 @@ import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,7 +37,7 @@ public class CommandFoxtrot extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/foxtrot <friend|add|remove|list|alerts|toggle|clear|denick|debug|esp|autodenick|hud|nickhud|enemyhud|denickentry>";
+        return "/foxtrot <friend|add|remove|list|alerts|toggle|clear|denick|debug|esp|autodenick|hud|nickhud|enemyhud|denickentry|rank|focus>";
     }
 
     @Override
@@ -50,6 +53,7 @@ public class CommandFoxtrot extends CommandBase {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot add [name] " + EnumChatFormatting.GRAY + "- Add enemy"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot remove [name] " + EnumChatFormatting.GRAY + "- Remove enemy"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot list " + EnumChatFormatting.GRAY + "- View enemy list"));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot focus <name/remove/clear> " + EnumChatFormatting.GRAY + "- Hide all other players"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot alerts " + EnumChatFormatting.GRAY + "- Toggle join alerts"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot toggle " + EnumChatFormatting.GRAY + "- Toggle all HUDs"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot esp " + EnumChatFormatting.GRAY + "- Toggle ESP"));
@@ -60,6 +64,7 @@ public class CommandFoxtrot extends CommandBase {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot nickhud " + EnumChatFormatting.GRAY + "- Toggle NickedHUD"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot enemyhud " + EnumChatFormatting.GRAY + "- Toggle EnemyHUD"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot clear " + EnumChatFormatting.GRAY + "- Clear enemy list"));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot rank <prestige> <level> <rank> " + EnumChatFormatting.GRAY + "- Change your Prestige/Rank")); 
             return;
         }
 
@@ -67,6 +72,78 @@ public class CommandFoxtrot extends CommandBase {
         ConfigHandler.logDebug("User executed: /fx " + String.join(" ", args));
 
         switch (action) {
+            // ==========================================
+            //               NEW: FOCUS COMMAND
+            // ==========================================
+            case "focus":
+                if (args.length == 1) {
+                    if (FocusManager.focusList.isEmpty()) {
+                        sendMessage(sender, EnumChatFormatting.RED + "Usage: /fx focus [name] or /fx focus remove [name]");
+                    } else {
+                        sendMessage(sender, EnumChatFormatting.AQUA + "Currently Focusing: " + String.join(", ", FocusManager.focusList));
+                    }
+                } else if (args.length >= 2) {
+                    if (args[1].equalsIgnoreCase("clear")) {
+                        FocusManager.focusList.clear();
+                        sendMessage(sender, EnumChatFormatting.GREEN + "Cleared focus list. All players are now visible.");
+                    } else if (args[1].equalsIgnoreCase("remove") && args.length >= 3) {
+                        String target = args[2];
+                        if (FocusManager.focusList.removeIf(n -> n.equalsIgnoreCase(target))) {
+                            sendMessage(sender, EnumChatFormatting.RED + "Removed " + target + " from focus list.");
+                        } else {
+                            sendMessage(sender, EnumChatFormatting.YELLOW + target + " is not in your focus list.");
+                        }
+                    } else if (args[1].equalsIgnoreCase("remove")) {
+                        sendMessage(sender, EnumChatFormatting.RED + "Usage: /fx focus remove [name]");
+                    } else {
+                        String target = args[1];
+                        if (!FocusManager.focusList.contains(target.toLowerCase())) {
+                            FocusManager.focusList.add(target.toLowerCase());
+                            sendMessage(sender, EnumChatFormatting.GREEN + "Now focusing on: " + target + ". All other players are hidden.");
+                        } else {
+                            sendMessage(sender, EnumChatFormatting.RED + "You are already focusing on " + target + "!");
+                        }
+                    }
+                }
+                break;
+
+            case "rank":
+                if (args.length == 1) {
+                    Ranks.isEnabled = !Ranks.isEnabled;
+                    ConfigHandler.saveConfig();
+                    sendMessage(sender, EnumChatFormatting.YELLOW + "Rank Changer: " + (Ranks.isEnabled ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF"));
+                    return;
+                }
+                
+                if (args.length >= 4) {
+                    try {
+                        int prestige = Integer.parseInt(args[1]);
+                        int level = Integer.parseInt(args[2]);
+                        String rank = args[3].toLowerCase();
+
+                        List<String> validRanks = Arrays.asList("none", "vip", "vip+", "mvp", "mvp+", "mvp++", "youtube", "staff", "admin");
+                        if (!validRanks.contains(rank)) {
+                            sendMessage(sender, EnumChatFormatting.RED + "Invalid rank! Options: none, vip, vip+, mvp, mvp+, mvp++, youtube, staff, admin");
+                            return;
+                        }
+
+                        Ranks.targetPrestige = prestige;
+                        Ranks.targetLevel = level;
+                        Ranks.targetRank = rank;
+                        Ranks.isEnabled = true; 
+                        ConfigHandler.saveConfig();
+
+                        sendMessage(sender, EnumChatFormatting.GREEN + "Successfully updated your rank!");
+                        sendMessage(sender, EnumChatFormatting.GRAY + "Your new stats: Prestige " + prestige + ", Level " + level + ", Rank: " + rank.toUpperCase());
+                    } catch (NumberFormatException e) {
+                        sendMessage(sender, EnumChatFormatting.RED + "Prestige and Level must be numbers!");
+                    }
+                } else {
+                    sendMessage(sender, EnumChatFormatting.RED + "Usage: /fx rank <prestige> <level> <rank>");
+                    sendMessage(sender, EnumChatFormatting.GRAY + "Example: /fx rank 35 120 staff");
+                }
+                break;
+
             case "denickentry":
                 if (args.length >= 3 && args[1].equalsIgnoreCase("clear")) {
                     String target = args[2];
@@ -144,7 +221,6 @@ public class CommandFoxtrot extends CommandBase {
                         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "Friends List (" + FriendsHUD.friendsList.size() + ")"));
                         sender.addChatMessage(new ChatComponentText(""));
                         for (String name : FriendsHUD.friendsList) {
-                            // FIXED: Removed the missing getFormattedName call
                             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "- " + EnumChatFormatting.GREEN + name));
                         }
                     }
@@ -188,7 +264,6 @@ public class CommandFoxtrot extends CommandBase {
                     sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "Enemy List (" + EnemyHUD.targetList.size() + ")"));
                     sender.addChatMessage(new ChatComponentText(""));
                     for (String name : EnemyHUD.targetList) {
-                        // FIXED: Removed the missing getFormattedName call
                         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "- " + EnumChatFormatting.RED + name));
                     }
                 }
@@ -251,7 +326,26 @@ public class CommandFoxtrot extends CommandBase {
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                    "friend", "f", "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud", "denickentry");
+                    "friend", "f", "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud", "denickentry", "rank", "focus");
+        }
+
+        // --- NEW: FOCUS TAB COMPLETION ---
+        if (args.length == 2 && args[0].equalsIgnoreCase("focus")) {
+            List<String> options = Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap().stream()
+                    .map(info -> info.getGameProfile().getName())
+                    .collect(Collectors.toList());
+            options.add("remove");
+            options.add("clear");
+            return getListOfStringsMatchingLastWord(args, options);
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("focus") && args[1].equalsIgnoreCase("remove")) {
+            return getListOfStringsMatchingLastWord(args, FocusManager.focusList);
+        }
+
+        // --- RANK COMMAND AUTO-COMPLETE ---
+        if (args.length == 4 && args[0].equalsIgnoreCase("rank")) {
+            return getListOfStringsMatchingLastWord(args, "none", "vip", "vip+", "mvp", "mvp+", "mvp++", "youtube", "staff", "admin");
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("denickentry")) {

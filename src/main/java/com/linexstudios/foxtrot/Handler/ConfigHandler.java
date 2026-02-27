@@ -23,6 +23,8 @@ import com.linexstudios.foxtrot.Misc.AutoBulletTime;
 import com.linexstudios.foxtrot.Misc.AutoPantSwap; 
 import com.linexstudios.foxtrot.Misc.AutoGhead; 
 import com.linexstudios.foxtrot.Misc.AutoQuickMath; 
+import com.linexstudios.foxtrot.Misc.TelebowTimer;
+import com.linexstudios.foxtrot.Util.Ranks;
 import com.linexstudios.foxtrot.Render.PitESP; 
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.NickedRender;
@@ -195,6 +197,15 @@ public class ConfigHandler {
                 FriendsHUD.enabled = getBool(props, "friendsHudEnabled", true);
                 FriendsESP.enabled = getBool(props, "friendsEspEnabled", true);
 
+                // --- Ranks Load ---
+                com.linexstudios.foxtrot.Util.Ranks.isEnabled = getBool(props, "ranksEnabled", true);
+                com.linexstudios.foxtrot.Util.Ranks.changeLevel = getBool(props, "ranksChangeLevel", true);
+                com.linexstudios.foxtrot.Util.Ranks.targetLevel = getInt(props, "ranksTargetLevel", 120);
+                com.linexstudios.foxtrot.Util.Ranks.changePrestige = getBool(props, "ranksChangePrestige", true);
+                com.linexstudios.foxtrot.Util.Ranks.targetPrestige = getInt(props, "ranksTargetPrestige", 35);
+                com.linexstudios.foxtrot.Util.Ranks.changeRank = getBool(props, "ranksChangeRank", true);
+                com.linexstudios.foxtrot.Util.Ranks.targetRank = props.getProperty("ranksTargetRank", "staff");
+
                 // API - TELEMTRYMANAGER
                 telemetryEnabled = getBool(props, "telemetryEnabled", true); // NEW: Load toggle state
                 TelemetryManager.anonymousClientId = props.getProperty("telemetryId", "");
@@ -311,6 +322,15 @@ public class ConfigHandler {
             props.setProperty("nameTagsShowItems", String.valueOf(NameTags.showItems));
             props.setProperty("friendsHudEnabled", String.valueOf(FriendsHUD.enabled));
             props.setProperty("friendsEspEnabled", String.valueOf(FriendsESP.enabled));
+
+            // --- Ranks Save ---
+            props.setProperty("ranksEnabled", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.isEnabled));
+            props.setProperty("ranksChangeLevel", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.changeLevel));
+            props.setProperty("ranksTargetLevel", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.targetLevel));
+            props.setProperty("ranksChangePrestige", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.changePrestige));
+            props.setProperty("ranksTargetPrestige", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.targetPrestige));
+            props.setProperty("ranksChangeRank", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.changeRank));
+            props.setProperty("ranksTargetRank", com.linexstudios.foxtrot.Util.Ranks.targetRank);
 
             // API - TELEMTRYMANAGER
             props.setProperty("telemetryEnabled", String.valueOf(telemetryEnabled)); // NEW: Save toggle state

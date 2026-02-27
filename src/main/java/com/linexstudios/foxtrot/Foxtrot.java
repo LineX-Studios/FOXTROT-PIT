@@ -6,7 +6,7 @@ import com.linexstudios.foxtrot.Denick.NickScanner;
 import com.linexstudios.foxtrot.Enemy.EnemyESP;
 import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import com.linexstudios.foxtrot.Handler.KeybindHandler;
-import com.linexstudios.foxtrot.Handler.TelemetryManager; // Added this import
+import com.linexstudios.foxtrot.Handler.TelemetryManager;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
@@ -15,6 +15,7 @@ import com.linexstudios.foxtrot.Hud.DarksHUD;
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Render.LowLifeMystic;
+import com.linexstudios.foxtrot.Render.FocusManager;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Hud.SessionStatsHUD;
 import com.linexstudios.foxtrot.Hud.PotionHUD;
@@ -22,6 +23,7 @@ import com.linexstudios.foxtrot.Hud.ArmorHUD;
 import com.linexstudios.foxtrot.Hud.CoordsHUD;
 import com.linexstudios.foxtrot.Hud.ToggleSprintModule;
 import com.linexstudios.foxtrot.Util.EnemyAlert;
+import com.linexstudios.foxtrot.Util.Ranks;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
@@ -34,6 +36,7 @@ import com.linexstudios.foxtrot.Misc.AutoPantSwap;
 import com.linexstudios.foxtrot.Misc.AutoBulletTime;
 import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
+import com.linexstudios.foxtrot.Misc.TelebowTimer;
 import com.linexstudios.foxtrot.Hud.CPSModule;
 
 @Mod(modid = "foxtrot", name = "Foxtrot", version = "${version}", acceptedMinecraftVersions = "[1.8.9]")
@@ -92,7 +95,9 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(AutoGhead.instance);
         MinecraftForge.EVENT_BUS.register(AutoBulletTime.instance);
         MinecraftForge.EVENT_BUS.register(AutoQuickMath.instance);
-
+        MinecraftForge.EVENT_BUS.register(TelebowTimer.instance);
+        MinecraftForge.EVENT_BUS.register(Ranks.instance);
+        MinecraftForge.EVENT_BUS.register(FocusManager.instance);
 
         ClientCommandHandler.instance.registerCommand(new CommandFoxtrot());
 
