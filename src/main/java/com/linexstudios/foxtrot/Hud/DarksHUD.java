@@ -206,7 +206,7 @@ public class DarksHUD extends DraggableHUD {
 
         switch (key) {
             // --- Dark Enchants ---
-            case "venom": return EnumChatFormatting.DARK_PURPLE+ "vENOM";
+            case "venom": return EnumChatFormatting.DARK_PURPLE+ "VENOM";
             case "sanguisuge": return EnumChatFormatting.RED + "SANGUISUGE";
             case "grim_reaper": return EnumChatFormatting.GRAY + "GRIM REAPER";
             case "misery": return EnumChatFormatting.DARK_PURPLE + "MISERY";
