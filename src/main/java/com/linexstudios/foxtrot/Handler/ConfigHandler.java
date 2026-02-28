@@ -23,7 +23,7 @@ import com.linexstudios.foxtrot.Misc.AutoBulletTime;
 import com.linexstudios.foxtrot.Misc.AutoPantSwap; 
 import com.linexstudios.foxtrot.Misc.AutoGhead; 
 import com.linexstudios.foxtrot.Misc.AutoQuickMath; 
-import com.linexstudios.foxtrot.Misc.TelebowTimer;
+import com.linexstudios.foxtrot.Hud.TelebowHUD;
 import com.linexstudios.foxtrot.Util.Ranks;
 import com.linexstudios.foxtrot.Render.PitESP; 
 import com.linexstudios.foxtrot.Render.FriendsESP;
@@ -59,7 +59,7 @@ public class ConfigHandler {
             PotionHUD.instance, ArmorHUD.instance, CoordsHUD.instance, EnemyHUD.instance,
             NickedHUD.instance, FriendsHUD.instance, SessionStatsHUD.instance, EventHUD.instance,
             RegHUD.instance, DarksHUD.instance, ToggleSprintModule.instance, CPSModule.instance, FPSModule.instance, 
-            BossBarModule.instance
+            BossBarModule.instance, TelebowHUD.instance // Added TelebowHUD here!
         };
     }
 
@@ -190,6 +190,7 @@ public class ConfigHandler {
                 BossBarModule.enabled = getBool(props, "bossBarEnabled", true);
                 CPSModule.enabled = getBool(props, "cpsEnabled", true);
                 FPSModule.enabled = getBool(props, "fpsEnabled", true);
+                TelebowHUD.enabled = getBool(props, "telebowHudEnabled", true); // Added TelebowHUD Load
 
                 NameTags.enabled = getBool(props, "nameTagsEnabled", false);
                 NameTags.showHealth = getBool(props, "nameTagsShowHealth", true);
@@ -207,7 +208,7 @@ public class ConfigHandler {
                 com.linexstudios.foxtrot.Util.Ranks.targetRank = props.getProperty("ranksTargetRank", "staff");
 
                 // API - TELEMTRYMANAGER
-                telemetryEnabled = getBool(props, "telemetryEnabled", true); // NEW: Load toggle state
+                telemetryEnabled = getBool(props, "telemetryEnabled", true); 
                 TelemetryManager.anonymousClientId = props.getProperty("telemetryId", "");
             }
         } catch (Exception e) {
@@ -316,6 +317,7 @@ public class ConfigHandler {
             props.setProperty("bossBarEnabled", String.valueOf(BossBarModule.enabled));
             props.setProperty("cpsEnabled", String.valueOf(CPSModule.enabled));
             props.setProperty("fpsEnabled", String.valueOf(FPSModule.enabled));
+            props.setProperty("telebowHudEnabled", String.valueOf(TelebowHUD.enabled)); // Added TelebowHUD Save
 
             props.setProperty("nameTagsEnabled", String.valueOf(NameTags.enabled));
             props.setProperty("nameTagsShowHealth", String.valueOf(NameTags.showHealth));
@@ -333,7 +335,7 @@ public class ConfigHandler {
             props.setProperty("ranksTargetRank", com.linexstudios.foxtrot.Util.Ranks.targetRank);
 
             // API - TELEMTRYMANAGER
-            props.setProperty("telemetryEnabled", String.valueOf(telemetryEnabled)); // NEW: Save toggle state
+            props.setProperty("telemetryEnabled", String.valueOf(telemetryEnabled)); 
             if (TelemetryManager.anonymousClientId != null && !TelemetryManager.anonymousClientId.isEmpty()) {
                 props.setProperty("telemetryId", TelemetryManager.anonymousClientId);
             }

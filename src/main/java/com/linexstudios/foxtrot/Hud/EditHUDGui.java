@@ -47,12 +47,10 @@ public class EditHUDGui extends GuiScreen {
     private long lastClickTime = 0;
     private DraggableHUD lastClickedHUD = null;
 
-    // ADDED "Telemetry" TO THE TABS ARRAY
     private String[] tabs = {"Combat", "Render", "Denick", "HUD", "Misc", "Telemetry"};
     private GuiTextField whitelistField;
     private String currentTooltip = null;
 
-    // --- GUIDELINE STATE ---
     private float guideAlphaX = 0.0f;
     private float guideAlphaY = 0.0f;
     private boolean isSnappedX = false;
@@ -85,9 +83,6 @@ public class EditHUDGui extends GuiScreen {
         this.drawDefaultBackground();
         currentTooltip = null; 
 
-        // ============================================
-        //     DYNAMIC PROXIMITY GUIDELINES
-        // ============================================
         float targetAlphaX = 0.0f;
         float targetAlphaY = 0.0f;
         int revealRadius = 15;
@@ -241,12 +236,14 @@ public class EditHUDGui extends GuiScreen {
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "CPS HUD", CPSModule.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "FPS HUD", FPSModule.enabled, mouseX, mouseY);
 
-                drawSettingsCard(c2, y2, 100, 108); 
+                // Expanded card size to fit Telebow HUD
+                drawSettingsCard(c2, y2, 100, 126); 
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Reg HUD", RegHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Darks HUD", DarksHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Potion HUD", PotionHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Armor HUD", ArmorHUD.enabled, mouseX, mouseY); y2 += 18;
-                drawIOSToggle(c2 + 5, y2 + 6, 100, "Coords HUD", CoordsHUD.enabled, mouseX, mouseY); y2 += 28;
+                drawIOSToggle(c2 + 5, y2 + 6, 100, "Coords HUD", CoordsHUD.enabled, mouseX, mouseY); y2 += 18;
+                drawIOSToggle(c2 + 5, y2 + 6, 100, "Telebow Timer", TelebowHUD.enabled, mouseX, mouseY); y2 += 28;
                 drawIOSButton(c2, y2 + 4, 100, 14, "HUD Customization", mouseX, mouseY);
             }
             else if (selectedTab == 4) {
@@ -279,9 +276,6 @@ public class EditHUDGui extends GuiScreen {
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Chat", c2 + 5, y2 - 13, -1);
                 drawIOSToggle(c2 + 5, y2, 100, "Auto Quick Math", AutoQuickMath.enabled, mouseX, mouseY); 
             }
-            // ============================================
-            //     NEW: TELEMETRY TAB
-            // ============================================
             else if (selectedTab == 5) {
                 if (whitelistField != null) whitelistField.setVisible(false);
                 int y1 = rY;
@@ -292,7 +286,6 @@ public class EditHUDGui extends GuiScreen {
                 
                 y1 += 45;
                 
-                // Privacy Policy Description (Height increased to 125 to fit the new line)
                 drawSettingsCard(c1, y1, 215, 125);
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Privacy & Anonymity", c1 + 5, y1 + 5, -1);
                 
@@ -490,7 +483,8 @@ public class EditHUDGui extends GuiScreen {
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) DarksHUD.enabled = !DarksHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) PotionHUD.enabled = !PotionHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) ArmorHUD.enabled = !ArmorHUD.enabled; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) CoordsHUD.enabled = !CoordsHUD.enabled; y2 += 28;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) CoordsHUD.enabled = !CoordsHUD.enabled; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) TelebowHUD.enabled = !TelebowHUD.enabled; y2 += 28;
 
                 if (isInside(mouseX, mouseY, c2, y2 + 4, 100, 14)) { 
                     this.mc.displayGuiScreen(new HUDSettingsGui(this)); return; 
@@ -506,15 +500,12 @@ public class EditHUDGui extends GuiScreen {
                 
                 if (isInside(mouseX, mouseY, c2 + 5, y2, 100, 12)) AutoQuickMath.enabled = !AutoQuickMath.enabled;
             }
-            // ============================================
-            //     NEW: TELEMETRY CLICK LOGIC
-            // ============================================
             else if (selectedTab == 5) {
                 int y1 = rY;
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 6, 205, 12)) {
                     ConfigHandler.telemetryEnabled = !ConfigHandler.telemetryEnabled;
                     if (ConfigHandler.telemetryEnabled) {
-                        TelemetryManager.initialize(); // Boot it up instantly!
+                        TelemetryManager.initialize(); 
                     }
                 }
             }
@@ -564,6 +555,7 @@ public class EditHUDGui extends GuiScreen {
         if (lower.contains("cps")) return 11; 
         if (lower.contains("fps")) return 12; 
         if (lower.contains("boss")) return 13;
+        if (lower.contains("telebow")) return 14;
         return 0; 
     }
 

@@ -36,7 +36,7 @@ import com.linexstudios.foxtrot.Misc.AutoPantSwap;
 import com.linexstudios.foxtrot.Misc.AutoBulletTime;
 import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
-import com.linexstudios.foxtrot.Misc.TelebowTimer;
+import com.linexstudios.foxtrot.Hud.TelebowHUD;
 import com.linexstudios.foxtrot.Hud.CPSModule;
 
 @Mod(modid = "foxtrot", name = "Foxtrot", version = "${version}", acceptedMinecraftVersions = "[1.8.9]")
@@ -95,7 +95,7 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(AutoGhead.instance);
         MinecraftForge.EVENT_BUS.register(AutoBulletTime.instance);
         MinecraftForge.EVENT_BUS.register(AutoQuickMath.instance);
-        MinecraftForge.EVENT_BUS.register(TelebowTimer.instance);
+        MinecraftForge.EVENT_BUS.register(TelebowHUD.instance);
         MinecraftForge.EVENT_BUS.register(Ranks.instance);
         MinecraftForge.EVENT_BUS.register(FocusManager.instance);
 

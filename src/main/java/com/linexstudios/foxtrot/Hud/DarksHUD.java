@@ -4,18 +4,21 @@ import com.linexstudios.foxtrot.Util.SpawnRegions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public class DarksHUD extends DraggableHUD {
     public static final DarksHUD instance = new DarksHUD();
@@ -23,8 +26,19 @@ public class DarksHUD extends DraggableHUD {
 
     public static boolean enabled = true;
 
+    // ==========================================
+    //       NBT MEMORY CACHE
+    // ==========================================
+    private final Map<String, CachedDarkData> darkCache = new HashMap<>();
+
     // Set the default position slightly below RegHUD
     public DarksHUD() { super("Darks List", 10, 240); }
+
+    // Wipes the memory clean when you warp to a brand new lobby
+    @SubscribeEvent
+    public void onWorldLoad(WorldEvent.Load event) {
+        darkCache.clear();
+    }
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
@@ -43,18 +57,55 @@ public class DarksHUD extends DraggableHUD {
         int maxWidth = fr.getStringWidth("Dark Pants Players");
         boolean foundDark = false;
 
-        Set<String> renderedPlayers = new HashSet<>();
-
+        // ==========================================
+        //  STEP 1: SCAN LOADED PLAYERS & UPDATE CACHE
+        // ==========================================
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
 
-            String enchantsDisplay = getDarkEnchants(other);
-            if (enchantsDisplay == null) continue;
+            // Ghost & Disconnect Filter
+            if (other.isDead || other.getHealth() <= 0.0F) continue;
+            if (mc.getNetHandler().getPlayerInfo(other.getUniqueID()) == null) continue;
 
+            String enchantsDisplay = getDarkEnchants(other);
             String name = other.getName();
-            if (renderedPlayers.contains(name.toLowerCase())) continue;
-            renderedPlayers.add(name.toLowerCase());
+
+            // If we physically see them wearing Darks, lock them into memory!
+            if (enchantsDisplay != null) {
+                String displayName = EnumChatFormatting.DARK_PURPLE + "[" + EnumChatFormatting.LIGHT_PURPLE + "D" + EnumChatFormatting.DARK_PURPLE + "] " + EnumChatFormatting.RESET + other.getDisplayName().getFormattedText();
+                darkCache.put(name, new CachedDarkData(displayName, enchantsDisplay));
+            } 
+            // If we physically see them take the pants off, remove them
+            else {
+                darkCache.remove(name);
+            }
+        }
+
+        // ==========================================
+        //  STEP 2: DRAW EVERYONE FROM MEMORY
+        // ==========================================
+        Iterator<Map.Entry<String, CachedDarkData>> iterator = darkCache.entrySet().iterator();
+        
+        while (iterator.hasNext()) {
+            Map.Entry<String, CachedDarkData> entry = iterator.next();
+            String playerName = entry.getKey();
+            CachedDarkData data = entry.getValue();
+
+            // 1. Did they 100% leave the lobby?
+            boolean isStillInLobby = false;
+            for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
+                if (info.getGameProfile().getName().equalsIgnoreCase(playerName)) {
+                    isStillInLobby = true;
+                    break;
+                }
+            }
+            
+            // If they disconnected, delete them and don't draw
+            if (!isStillInLobby) {
+                iterator.remove();
+                continue;
+            }
 
             if (!foundDark) {
                 fr.drawStringWithShadow(EnumChatFormatting.DARK_PURPLE + "" + EnumChatFormatting.BOLD + "Dark Pants Players:", 0, currentY, 0xFFFFFF);
@@ -62,12 +113,19 @@ public class DarksHUD extends DraggableHUD {
                 foundDark = true;
             }
 
-            String displayName = other.getDisplayName().getFormattedText();
-            displayName = EnumChatFormatting.DARK_PURPLE + "[" + EnumChatFormatting.LIGHT_PURPLE + "D" + EnumChatFormatting.DARK_PURPLE + "] " + EnumChatFormatting.RESET + displayName;
+            // 2. Are they in render distance, or out of range?
+            EntityPlayer physicalPlayer = mc.theWorld.getPlayerEntityByName(playerName);
+            String dist;
+            
+            if (physicalPlayer != null) {
+                // They are close to us! Update live location
+                dist = SpawnRegions.getLocationFormat(mc.thePlayer, physicalPlayer);
+            } else {
+                // They are out of render distance! Keep them on screen, but mark as OOR
+                dist = EnumChatFormatting.DARK_GRAY + "OOR"; 
+            }
 
-            String dist = SpawnRegions.getLocationFormat(mc.thePlayer, other);
-
-            String fullLine = displayName + EnumChatFormatting.GRAY + " - " + enchantsDisplay + EnumChatFormatting.GRAY + " - " + dist;
+            String fullLine = data.displayName + EnumChatFormatting.GRAY + " - " + data.enchants + EnumChatFormatting.GRAY + " - " + dist;
             fr.drawStringWithShadow(fullLine, 0, currentY, 0xFFFFFF);
 
             int lineWidth = fr.getStringWidth(fullLine);
@@ -75,11 +133,12 @@ public class DarksHUD extends DraggableHUD {
             currentY += fr.FONT_HEIGHT;
         }
 
+        // Placeholder for the GUI Editor
         if (!foundDark) {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.DARK_PURPLE + "" + EnumChatFormatting.BOLD + "Dark Pants Players:", 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.DARK_PURPLE + "[" + EnumChatFormatting.LIGHT_PURPLE + "D" + EnumChatFormatting.DARK_PURPLE + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.DARK_PURPLE + "VENOM" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
+                String placeholder = EnumChatFormatting.DARK_PURPLE + "[" + EnumChatFormatting.LIGHT_PURPLE + "D" + EnumChatFormatting.DARK_PURPLE + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.DARK_PURPLE + "vENOM" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -149,17 +208,28 @@ public class DarksHUD extends DraggableHUD {
             // --- Dark Enchants ---
             case "venom": return EnumChatFormatting.DARK_PURPLE+ "vENOM";
             case "sanguisuge": return EnumChatFormatting.RED + "SANGUISUGE";
-            case "grim_reaper": return EnumChatFormatting.DARK_GRAY + "GRIM REAPER";
+            case "grim_reaper": return EnumChatFormatting.GRAY + "GRIM REAPER";
             case "misery": return EnumChatFormatting.DARK_PURPLE + "MISERY";
             case "spite": return EnumChatFormatting.DARK_PURPLE + "SPITE";
             case "nostalgia": return EnumChatFormatting.BLUE + "NOSTALGIA";
             case "golden_handcuffs": return EnumChatFormatting.GOLD + "GOLDEN CUFFS";
-            case "hedge_fund": return EnumChatFormatting.YELLOW + "HEDGE FUND";
+            case "hedge_fund": return EnumChatFormatting.GOLD + "HEDGE FUND";
             case "heartripper": return EnumChatFormatting.RED + "HEART RIPPER";
             case "needless_suffering": return EnumChatFormatting.YELLOW + "NEEDLESS SUFFERING";
             case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "MIND ASSAULTS";
             case "lycanthropy": return EnumChatFormatting.DARK_RED + "LYCANTHROPY";
             default: return null;
+        }
+    }
+
+    // A simple data container for our Memory Cache
+    private static class CachedDarkData {
+        String displayName;
+        String enchants;
+
+        CachedDarkData(String displayName, String enchants) {
+            this.displayName = displayName;
+            this.enchants = enchants;
         }
     }
 }

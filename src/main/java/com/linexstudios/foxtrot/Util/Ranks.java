@@ -76,19 +76,29 @@ public class Ranks {
 
         if (unformattedMessage.contains(realName)) {
             
-            // 1. Check if it is a standard chat message (Contains the colon separator)
-            String chatRegex = "^(.*?)" + realName + "((?:\\u00A7[0-9a-fk-or])*):((?:\\u00A7[0-9a-fk-or]|\\s)*)(.*)$";
+            // 1. CHECK IF WE ARE THE SENDER (Public, Party, Guild, Co-op, Shout)
+            // Group 1: The channel prefix (e.g., "Party > ", "Guild > ", "[SHOUT] ") and preceding colors
+            // Group 2: Our actual name 
+            // Group 3: The trailing colors before the colon
+            // Group 4: The message itself
+            String chatRegex = "^((?:\\u00A7[0-9a-fk-or])*(?:(?:Party|Guild|Officer|Co\\-op) \\> |\\[SHOUT\\] )?)(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*(" + realName + ")((?:\\u00A7[0-9a-fk-or])*):(.*)$";
             Matcher m = Pattern.compile(chatRegex).matcher(originalMessage);
             
             if (m.find()) {
+                String channelPrefix = m.group(1);
+                String trailingColors = m.group(3);
                 String chatMessage = m.group(4);
-                String customPrefix = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.WHITE + ": " + getChatColor(targetRank);
+                
+                // Rebuild the message perfectly, preserving the Guild/Party prefix!
+                String customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + trailingColors + ":" + getChatColor(targetRank);
                 event.message = new ChatComponentText(customPrefix + chatMessage);
                 return;
             }
             
-            // 2. Fallback for system messages
-            String fallbackRegex = "(?i)(\\u00A7[0-9a-fk-or])*\\[.*?\\].*?(?:\\[(?:VIP\\+?|MVP\\+\\+?|YOUTUBE|GM|ADMIN|\\u12DE)\\]\\s*)?(\\u00A7[0-9a-fk-or])*" + realName;
+            // 2. SAFE FALLBACK (For Kill Feeds, Bounties, and Mentions)
+            // The [^\\]]+ ensures the regex ONLY eats brackets physically touching your name. 
+            // It will no longer eat other players' names if they mention you!
+            String fallbackRegex = "(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*" + realName + "(?!\\w)";
             String replacement = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
             
             String replacedMessage = originalMessage.replaceAll(fallbackRegex, replacement);
@@ -136,32 +146,9 @@ public class Ranks {
                         }
                     }
 
-                    // B. Completely nuke and rewrite the Level line
-                    if (changeLevel || changePrestige) {
-                        Collection<Score> scores = scoreboard.getSortedScores(objective);
-                        for (Score score : scores) {
-                            ScorePlayerTeam team = scoreboard.getPlayersTeam(score.getPlayerName());
-                            if (team != null) {
-                                String fullLine = team.getColorPrefix() + score.getPlayerName() + team.getColorSuffix();
-                                String unformattedLine = StringUtils.stripControlCodes(fullLine);
-
-                                if (unformattedLine.startsWith("Level:")) {
-                                    // Hypixel Scoreboard Magic: Wipe prefix and suffix, set the player name itself to the full line
-                                    // This prevents any residual brackets like "[60" from bleeding through
-                                    team.setNamePrefix("");
-                                    team.setNameSuffix("");
-                                    
-                                    // We need to bypass the scoreboard cache by resetting the team's internal values.
-                                    // The safest way is to clear the suffix, and set the prefix to the full text.
-                                    String targetLine = EnumChatFormatting.WHITE + "Level: " + getCustomTabPitBracket();
-                                    
-                                    if (!team.getColorPrefix().equals(targetLine)) {
-                                        team.setNamePrefix(targetLine);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // B. Dynamic Tablist Hierarchy Sorter
+                    // Note: The old Scoreboard text replacement block was removed here because 
+                    // our new MixinScorePlayerTeam handles it with zero flickering!
                 }
 
                 // C. Dynamic Tablist Hierarchy Sorter

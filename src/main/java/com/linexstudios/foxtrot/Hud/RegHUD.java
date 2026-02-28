@@ -4,18 +4,21 @@ import com.linexstudios.foxtrot.Util.SpawnRegions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public class RegHUD extends DraggableHUD {
     public static final RegHUD instance = new RegHUD();
@@ -23,15 +26,25 @@ public class RegHUD extends DraggableHUD {
 
     public static boolean enabled = true;
 
-    // Set the default position here
+    // ==========================================
+    //       NBT MEMORY CACHE
+    // ==========================================
+    private final Map<String, CachedRegData> regCache = new HashMap<>();
+
     public RegHUD() { super("Regularity List", 10, 180); }
+
+    // Wipes the memory clean when you warp to a brand new lobby
+    @SubscribeEvent
+    public void onWorldLoad(WorldEvent.Load event) {
+        regCache.clear();
+    }
 
     @SubscribeEvent
     public void onRender(RenderGameOverlayEvent.Post event) {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return;
         if (mc.currentScreen instanceof HUDSettingsGui) return;
-        render(false, 0, 0); // Re-routes to the DraggableHUD render method
+        render(false, 0, 0); 
     }
 
     @Override
@@ -39,22 +52,58 @@ public class RegHUD extends DraggableHUD {
         if (!enabled || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
-        int currentY = 0; // Local Y starts at 0 now
+        int currentY = 0; 
         int maxWidth = fr.getStringWidth("Regularity Players");
         boolean foundReg = false;
 
-        Set<String> renderedPlayers = new HashSet<>();
-
+        // ==========================================
+        //  STEP 1: SCAN LOADED PLAYERS & UPDATE CACHE
+        // ==========================================
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
 
-            String enchantsDisplay = getRegEnchants(other);
-            if (enchantsDisplay == null) continue;
+            if (other.isDead || other.getHealth() <= 0.0F) continue;
+            if (mc.getNetHandler().getPlayerInfo(other.getUniqueID()) == null) continue;
 
+            String enchantsDisplay = getRegEnchants(other);
             String name = other.getName();
-            if (renderedPlayers.contains(name.toLowerCase())) continue;
-            renderedPlayers.add(name.toLowerCase());
+
+            // If we physically see them wearing Reg, lock them into memory!
+            if (enchantsDisplay != null) {
+                String displayName = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "R" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + other.getDisplayName().getFormattedText();
+                regCache.put(name, new CachedRegData(displayName, enchantsDisplay));
+            } 
+            // If we physically see them take the pants off, remove them so the list stays clean
+            else {
+                regCache.remove(name);
+            }
+        }
+
+        // ==========================================
+        //  STEP 2: DRAW EVERYONE FROM MEMORY
+        // ==========================================
+        Iterator<Map.Entry<String, CachedRegData>> iterator = regCache.entrySet().iterator();
+        
+        while (iterator.hasNext()) {
+            Map.Entry<String, CachedRegData> entry = iterator.next();
+            String playerName = entry.getKey();
+            CachedRegData data = entry.getValue();
+
+            // 1. Did they 100% leave the lobby?
+            boolean isStillInLobby = false;
+            for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
+                if (info.getGameProfile().getName().equalsIgnoreCase(playerName)) {
+                    isStillInLobby = true;
+                    break;
+                }
+            }
+            
+            // If they disconnected, delete them and don't draw
+            if (!isStillInLobby) {
+                iterator.remove();
+                continue;
+            }
 
             if (!foundReg) {
                 fr.drawStringWithShadow(EnumChatFormatting.DARK_RED + "" + EnumChatFormatting.BOLD + "Regularity Players:", 0, currentY, 0xFFFFFF);
@@ -62,12 +111,19 @@ public class RegHUD extends DraggableHUD {
                 foundReg = true;
             }
 
-            String displayName = other.getDisplayName().getFormattedText();
-            displayName = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "R" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + displayName;
+            // 2. Are they in render distance, or 500 blocks away?
+            EntityPlayer physicalPlayer = mc.theWorld.getPlayerEntityByName(playerName);
+            String dist;
+            
+            if (physicalPlayer != null) {
+                // They are close to us! Update live location
+                dist = SpawnRegions.getLocationFormat(mc.thePlayer, physicalPlayer);
+            } else {
+                // They are out of render distance! Keep them on screen, but mark as OOR
+                dist = EnumChatFormatting.DARK_GRAY + "OOR"; 
+            }
 
-            String dist = SpawnRegions.getLocationFormat(mc.thePlayer, other);
-
-            String fullLine = displayName + EnumChatFormatting.GRAY + " - " + enchantsDisplay + EnumChatFormatting.GRAY + " - " + dist;
+            String fullLine = data.displayName + EnumChatFormatting.GRAY + " - " + data.enchants + EnumChatFormatting.GRAY + " - " + dist;
             fr.drawStringWithShadow(fullLine, 0, currentY, 0xFFFFFF);
 
             int lineWidth = fr.getStringWidth(fullLine);
@@ -130,74 +186,51 @@ public class RegHUD extends DraggableHUD {
 
     public static String formatEnchant(String rawKey) {
         if (rawKey == null) return null;
-
         String key = rawKey.trim().toLowerCase();
-
         switch (key) {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
-            
-            // Re-mapped to properly detect Mirror NBT
             case "immune_true_damage": 
             case "mirror":
-            case "reflection":
-                return EnumChatFormatting.WHITE + "Mirror";
-                
+            case "reflection": return EnumChatFormatting.WHITE + "Mirror";
             case "respawn_absorption": 
-            case "respawn_with_absorption":
-                return EnumChatFormatting.GOLD + "Abs";
-                
+            case "respawn_with_absorption": return EnumChatFormatting.GOLD + "Abs";
             case "critically_funky": return EnumChatFormatting.DARK_AQUA + "Crit Funky";
             case "solitude": return EnumChatFormatting.RED + "Soli";
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
-            
-            // Added mapped version of Not Gladiator
             case "less_damage_nearby_players":
-            case "not_gladiator": 
-                return EnumChatFormatting.BLUE + "Glad";
-                
+            case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
             case "hunt_the_hunter": return EnumChatFormatting.GOLD + "Hunter";
-            
-            // Added mapped version of Peroxide
             case "regen_when_hit":
-            case "peroxide": 
-                return EnumChatFormatting.RED + "Pero";
-                
+            case "peroxide": return EnumChatFormatting.RED + "Pero";
             case "assassin": return EnumChatFormatting.LIGHT_PURPLE + "Assasin";
             case "escape_pod": return EnumChatFormatting.RED + "Pods";
             case "phoenix": return EnumChatFormatting.GOLD + "Phoenix";
-            
-            // Added mapped version of RGM
             case "rgm":
-            case "retro_gravity_microcosm": 
-                return EnumChatFormatting.RED + "RGM";
-                
+            case "retro_gravity_microcosm": return EnumChatFormatting.RED + "RGM";
             case "singularity": return EnumChatFormatting.RED + "Sing";
-            
-            // Added mapped version of Gomraws Heart
             case "regen_when_ooc":
-            case "gomraws_heart": 
-                return EnumChatFormatting.RED + "Gomraw";
-                
-            // Added mapped version of Last Stand
+            case "gomraws_heart": return EnumChatFormatting.RED + "Gomraw";
             case "resistance_when_low":
-            case "last_stand": 
-                return EnumChatFormatting.AQUA + "Stand";
-                
-            // Added mapped version of Gotta Go Fast
+            case "last_stand": return EnumChatFormatting.AQUA + "Stand";
             case "perma_speed":
-            case "gotta_go_fast": 
-                return EnumChatFormatting.DARK_PURPLE + "GTGF";
-                
+            case "gotta_go_fast": return EnumChatFormatting.DARK_PURPLE + "GTGF";
             case "diamond_allergy": return EnumChatFormatting.AQUA + "Diamond Allergy";
-            
-            // Added mapped version of David & Goliath
             case "less_damage_vs_bounties":
-            case "david_and_goliath": 
-                return EnumChatFormatting.YELLOW + "D&G";
-                
+            case "david_and_goliath": return EnumChatFormatting.YELLOW + "D&G";
             case "heigh_ho": return EnumChatFormatting.RED + "HeighHo";
             default: return null;
+        }
+    }
+
+    // A simple data container for our Memory Cache
+    private static class CachedRegData {
+        String displayName;
+        String enchants;
+
+        CachedRegData(String displayName, String enchants) {
+            this.displayName = displayName;
+            this.enchants = enchants;
         }
     }
 }
