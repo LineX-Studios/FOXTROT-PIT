@@ -445,7 +445,7 @@ public class Ranks {
         if (level >= 40) return EnumChatFormatting.GREEN;
         if (level >= 30) return EnumChatFormatting.DARK_GREEN;
         if (level >= 20) return EnumChatFormatting.DARK_AQUA;
-        if (level >= 10) return EnumChatFormatting.DARK_BLUE;
+        if (level >= 10) return EnumChatFormatting.BLUE;
         return EnumChatFormatting.GRAY;
     }
 }
