@@ -28,7 +28,7 @@ public class Ranks {
     public static boolean isEnabled = true;
 
     public static boolean changeLevel = true;
-    public static int targetLevel = 119;
+    public static int targetLevel = 120;
 
     public static boolean changePrestige = true;
     public static int targetPrestige = 30; 
@@ -170,6 +170,7 @@ public class Ranks {
                     if (changePrestige) {
                         boolean hasPrestigeLine = false;
                         int levelScorePoints = -1;
+                        Score existingBlankScore = null;
                         
                         for (Score score : scoreboard.getSortedScores(objective)) {
                             ScorePlayerTeam team = scoreboard.getPlayersTeam(score.getPlayerName());
@@ -177,24 +178,41 @@ public class Ranks {
                                 String clean = StringUtils.stripControlCodes(team.formatString(""));
                                 if (clean.contains("Prestige:")) hasPrestigeLine = true;
                                 if (clean.contains("Level:")) levelScorePoints = score.getScorePoints();
+                                
+                                // Find the invisible blank line right above Level
+                                if (clean.trim().isEmpty() && score.getScorePoints() == levelScorePoints + 1) {
+                                    existingBlankScore = score;
+                                }
                             }
                         }
                         
                         String fakePlayer = EnumChatFormatting.BLACK + "" + EnumChatFormatting.RESET;
                         
-                        // If they set target > 0 but don't have the line, inject it!
                         if (targetPrestige > 0) {
                             if (!hasPrestigeLine && levelScorePoints != -1) {
+                                // Shift the blank line up to make room
+                                if (existingBlankScore != null) existingBlankScore.setScorePoints(levelScorePoints + 2);
+                                
+                                // Inject Prestige right above Level
                                 Score fakeScore = scoreboard.getValueFromObjective(fakePlayer, objective);
                                 fakeScore.setScorePoints(levelScorePoints + 1);
                                 
                                 ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
                                 if (fakeTeam == null) fakeTeam = scoreboard.createTeam("FakePrestige");
-                                fakeTeam.setNamePrefix("Prestige: ");
+                                
+                                // Force exact formatting so the Mixin doesn't have to catch it
+                                fakeTeam.setNamePrefix(EnumChatFormatting.WHITE + "Prestige: " + EnumChatFormatting.YELLOW + toRoman(targetPrestige));
                                 scoreboard.addPlayerToTeam(fakePlayer, "FakePrestige");
+                                
+                            } else if (hasPrestigeLine) {
+                                // If we already injected it previously, just keep it updated
+                                ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
+                                if (fakeTeam != null) {
+                                    fakeTeam.setNamePrefix(EnumChatFormatting.WHITE + "Prestige: " + EnumChatFormatting.YELLOW + toRoman(targetPrestige));
+                                }
                             }
                         } else {
-                            // If they set target to 0, clean up the injected line
+                            // If target is 0, clean up the fake line completely
                             scoreboard.removeObjectiveFromEntity(fakePlayer, null);
                             ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
                             if (fakeTeam != null) scoreboard.removeTeam(fakeTeam);
@@ -266,15 +284,14 @@ public class Ranks {
     //             XP MATH ENGINE
     // ==========================================
     public String getSpoofedNeededXP() {
-        if (targetLevel >= 120) return EnumChatFormatting.AQUA + "MAXED!";
-
         int baseXP = getBaseXp(targetLevel);
         double multiplier = getPrestigeMultiplier(targetPrestige);
         
         // Use standard Java rounding to match the exact XP map
         long neededXP = Math.round(baseXP * multiplier);
 
-        return EnumChatFormatting.AQUA + String.format("%,d", neededXP);
+        // Just returns the raw number with commas now
+        return String.format("%,d", neededXP);
     }
 
     private int getBaseXp(int level) {
