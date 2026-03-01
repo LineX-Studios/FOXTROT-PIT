@@ -7,7 +7,7 @@
   "compatibilityLevel": "JAVA_8",
   "mixins": [
     "MixinScorePlayerTeam",
-    "MixinNetHandlerPlayClient"
+    "MixinNetHandlerPlayClient",
     "MixinEntityPlayerSP"
   ],
   "client": [
