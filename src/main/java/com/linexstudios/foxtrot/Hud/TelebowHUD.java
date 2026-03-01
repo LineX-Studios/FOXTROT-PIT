@@ -104,6 +104,20 @@ public class TelebowHUD extends DraggableHUD {
         }
     }
 
+    // ==========================================
+    //  STEP 1.5: CAPTURE THE /SPAWN COMMAND (Called by Mixin!)
+    // ==========================================
+    public void onPlayerCommand(String message) {
+        if (!enabled || message == null) return;
+
+        // OPTIMIZATION: Only listen to commands if the HUD timer is actually running!
+        if (this.timerEndTime <= System.currentTimeMillis()) return;
+
+        String msg = message.toLowerCase().trim();
+        if (msg.equals("/spawn") || msg.equals("/respawn") || msg.equals("/oof")) {
+            this.lastSpawnCommandTime = System.currentTimeMillis();
+        }
+    }
 
     // ==========================================
     //  STEP 2: WAIT FOR THE PHYSICAL TELEPORT
@@ -153,7 +167,6 @@ public class TelebowHUD extends DraggableHUD {
             }
         }
 
-        // Always update position for the next tick's delta calculation
         lastX = mc.thePlayer.posX;
         lastY = mc.thePlayer.posY;
         lastZ = mc.thePlayer.posZ;
@@ -207,7 +220,7 @@ public class TelebowHUD extends DraggableHUD {
             for (int i = 0; i < enchants.tagCount(); i++) {
                 NBTTagCompound enchant = enchants.getCompoundTagAt(i);
                 if (enchant.hasKey("Key", 8) && enchant.getString("Key").equals(enchantKey)) {
-                    return enchant.getInteger("Level");
+                        return enchant.getInteger("Level");
                 }
             }
         }
