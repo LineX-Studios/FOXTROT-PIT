@@ -2,7 +2,6 @@ package com.linexstudios.foxtrot.Util;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.NetworkPlayerInfo;
-import net.minecraft.scoreboard.Score;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
@@ -14,7 +13,6 @@ import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
-import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,10 +32,10 @@ public class Ranks {
     public static boolean isEnabled = true;
 
     public static boolean changeLevel = true;
-    public static int targetLevel = 120;
+    public static int targetLevel = 119;
 
     public static boolean changePrestige = true;
-    public static int targetPrestige = 50; 
+    public static int targetPrestige = 30; 
 
     public static boolean changeRank = true;
     public static String targetRank = "admin"; // Options: none, vip, vip+, mvp, mvp+, mvp++, youtube, staff, admin
@@ -45,7 +43,7 @@ public class Ranks {
     public static boolean hideLobby = true;
 
     // ==========================================
-    //            STATE CACHING ENGINE
+    //             STATE CACHING ENGINE
     // ==========================================
     private boolean wasEnabled = false;
     private String originalScoreboardTitle = null;
@@ -64,7 +62,7 @@ public class Ranks {
     }
 
     // ==========================================
-    //                CHAT REPLACER
+    //                 CHAT REPLACER
     // ==========================================
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChatReceived(ClientChatReceivedEvent event) {
@@ -76,8 +74,7 @@ public class Ranks {
 
         if (unformattedMessage.contains(realName)) {
             
-            // 1. CHECK IF WE ARE THE SENDER (Public, Party, Guild, Co-op, Shout)
-            // Group 1: The channel prefix (e.g., "Party > ", "Guild > ", "[SHOUT] ") and preceding colors
+            // Group 1: The channel prefix (e.g., "Party > ", "Guild > ", "[SHOUT] ")
             // Group 2: Our actual name 
             // Group 3: The trailing colors before the colon
             // Group 4: The message itself
@@ -89,15 +86,27 @@ public class Ranks {
                 String trailingColors = m.group(3);
                 String chatMessage = m.group(4);
                 
-                // Rebuild the message perfectly, preserving the Guild/Party prefix!
-                String customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + trailingColors + ":" + getChatColor(targetRank);
+                // Check if this is a private network channel!
+                String cleanPrefix = StringUtils.stripControlCodes(channelPrefix).trim();
+                boolean isNetworkChannel = cleanPrefix.equals("Party >") || 
+                                           cleanPrefix.equals("Guild >") || 
+                                           cleanPrefix.equals("Officer >") || 
+                                           cleanPrefix.equals("Co-op >");
+
+                String customPrefix;
+                if (isNetworkChannel) {
+                    // NETWORK CHAT: Draw ONLY the Rank and Name
+                    customPrefix = channelPrefix + getCustomRankPrefix() + getRankColor(targetRank) + realName + trailingColors + ":" + getChatColor(targetRank);
+                } else {
+                    // PUBLIC/SHOUT CHAT: Draw the Pit Bracket, Rank, and Name
+                    customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + trailingColors + ":" + getChatColor(targetRank);
+                }
+                
                 event.message = new ChatComponentText(customPrefix + chatMessage);
                 return;
             }
             
             // 2. SAFE FALLBACK (For Kill Feeds, Bounties, and Mentions)
-            // The [^\\]]+ ensures the regex ONLY eats brackets physically touching your name. 
-            // It will no longer eat other players' names if they mention you!
             String fallbackRegex = "(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*" + realName + "(?!\\w)";
             String replacement = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
             
@@ -136,7 +145,6 @@ public class Ranks {
                 ScoreObjective objective = scoreboard.getObjectiveInDisplaySlot(1);
                 
                 if (objective != null) {
-                    // A. Hide Lobby Name
                     if (hideLobby) {
                         String currentTitle = objective.getDisplayName();
                         String customTitle = EnumChatFormatting.YELLOW + "" + EnumChatFormatting.BOLD + "THE HYPIXEL PIT";
@@ -145,22 +153,15 @@ public class Ranks {
                             objective.setDisplayName(customTitle);
                         }
                     }
-
-                    // B. Dynamic Tablist Hierarchy Sorter
-                    // Note: The old Scoreboard text replacement block was removed here because 
-                    // our new MixinScorePlayerTeam handles it with zero flickering!
                 }
 
-                // C. Dynamic Tablist Hierarchy Sorter
+                // 3. Dynamic Tablist Hierarchy Sorter
                 if (changeLevel || changePrestige) {
                     ScorePlayerTeam currentTeam = scoreboard.getPlayersTeam(realName);
                     
-                    // Creates a hidden sorting prefix. 
-                    // Minecraft sorts Tab alphabetically based on the Team's prefix + player name.
-                    // A level 120 gets sorted before a level 0 because "A" comes before "Z"
                     char prestigeChar = (char) ('A' + (50 - Math.max(0, Math.min(50, targetPrestige))));
                     int lIndex = 120 - Math.max(0, Math.min(120, targetLevel));
-                    String sortKey = String.format("!%c%03d", prestigeChar, lIndex); // Exclamation mark pushes it to the absolute top
+                    String sortKey = String.format("!%c%03d", prestigeChar, lIndex); 
                     
                     String customTeamName = "Fx" + sortKey;
 
@@ -173,8 +174,6 @@ public class Ranks {
                         customTeam = scoreboard.createTeam(customTeamName);
                     }
                     
-                    // We must apply the sort key to the prefix, but make it invisible using color codes
-                    // We use §r so it doesn't color the actual name, but Minecraft still uses it for sorting
                     customTeam.setNamePrefix(EnumChatFormatting.RESET + "");
                     customTeam.setNameSuffix("");
                     
@@ -182,9 +181,7 @@ public class Ranks {
                 }
             }
         } 
-        // ==========================================
-        //         CLEANUP & REVERT TO NORMAL
-        // ==========================================
+        // CLEANUP
         else if (wasEnabled) {
             wasEnabled = false;
             String realName = mc.thePlayer.getName();
@@ -213,15 +210,68 @@ public class Ranks {
     }
 
     // ==========================================
+    //             XP MATH ENGINE
+    // ==========================================
+    public String getSpoofedNeededXP() {
+        if (targetLevel >= 120) return EnumChatFormatting.AQUA + "Max";
+
+        int baseXP = getBaseXp(targetLevel);
+        double multiplier = getPrestigeMultiplier(targetPrestige);
+        long neededXP = (long) Math.ceil(baseXP * multiplier);
+
+        // String.format("%,d") automatically adds the classic commas (e.g. 150,000)
+        return EnumChatFormatting.AQUA + String.format("%,d", neededXP);
+    }
+
+    private int getBaseXp(int level) {
+        if (level < 10) return 15;
+        if (level < 20) return 30;
+        if (level < 30) return 50;
+        if (level < 40) return 75;
+        if (level < 50) return 125;
+        if (level < 60) return 300;
+        if (level < 70) return 600;
+        if (level < 80) return 800;
+        if (level < 90) return 900;
+        if (level < 100) return 1000;
+        if (level < 110) return 1200;
+        if (level < 120) return 1500;
+        return 0; // Max
+    }
+
+    private double getPrestigeMultiplier(int prestige) {
+        switch (prestige) {
+            case 0: return 1.0;
+            case 1: return 1.1; case 2: return 1.2; case 3: return 1.3; case 4: return 1.4; case 5: return 1.5;
+            case 6: return 1.75;
+            case 7: return 2.0; case 8: return 2.5; case 9: return 3.0;
+            case 10: return 4.0; case 11: return 5.0; case 12: return 6.0; case 13: return 7.0; case 14: return 8.0; case 15: return 9.0; case 16: return 10.0;
+            case 17: return 12.0; case 18: return 14.0; case 19: return 16.0; case 20: return 18.0; case 21: return 20.0;
+            case 22: return 24.0; case 23: return 28.0; case 24: return 32.0; case 25: return 36.0; case 26: return 40.0;
+            case 27: return 45.0; case 28: return 50.0;
+            case 29: return 75.0;
+            case 30: return 100.0;
+            case 31: case 32: case 33: case 34: case 35: return 101.0;
+            case 36: return 200.0; case 37: return 300.0; case 38: return 400.0; case 39: return 500.0;
+            case 40: return 750.0;
+            case 41: return 1000.0; case 42: return 1250.0; case 43: return 1500.0; case 44: return 1750.0; case 45: return 2000.0;
+            case 46: return 3000.0;
+            case 47: return 5000.0;
+            case 48: return 10000.0;
+            case 49: return 50000.0;
+            case 50: return 100000.0;
+            default: return 1.0;
+        }
+    }
+
+    // ==========================================
     //             UTILITY & FORMATTING
     // ==========================================
-
-    private String getCustomChatPitBracket() {
+    public String getCustomChatPitBracket() {
         EnumChatFormatting prestigeColor = getPrestigeColor(targetPrestige);
         EnumChatFormatting levelColor = getLevelColor(targetLevel);
         
         StringBuilder bracket = new StringBuilder();
-        
         bracket.append(prestigeColor).append("[");
         
         if (targetPrestige > 0 && changePrestige) {
@@ -231,9 +281,7 @@ public class Ranks {
         if (changeLevel) {
             bracket.append(levelColor).append(targetLevel);
         }
-        
         bracket.append(prestigeColor).append("]");
-        
         return bracket.toString();
     }
 
@@ -242,17 +290,15 @@ public class Ranks {
         EnumChatFormatting levelColor = getLevelColor(targetLevel);
         
         StringBuilder bracket = new StringBuilder();
-        
         bracket.append(prestigeColor).append("[");
         if (changeLevel) {
             bracket.append(levelColor).append(targetLevel);
         }
         bracket.append(prestigeColor).append("]");
-        
         return bracket.toString();
     }
 
-    private String getCustomRankPrefix() {
+    public String getCustomRankPrefix() {
         switch (targetRank.toLowerCase()) {
             case "vip":     return EnumChatFormatting.GREEN + "[VIP] ";
             case "vip+":    return EnumChatFormatting.GREEN + "[VIP" + EnumChatFormatting.GOLD + "+" + EnumChatFormatting.GREEN + "] ";
@@ -267,7 +313,7 @@ public class Ranks {
         }
     }
 
-    private EnumChatFormatting getRankColor(String rank) {
+    public EnumChatFormatting getRankColor(String rank) {
         switch (rank.toLowerCase()) {
             case "vip": 
             case "vip+": return EnumChatFormatting.GREEN;
@@ -282,14 +328,12 @@ public class Ranks {
         }
     }
 
-    private EnumChatFormatting getChatColor(String rank) {
-        if (rank.equalsIgnoreCase("none")) {
-            return EnumChatFormatting.GRAY;
-        }
+    public EnumChatFormatting getChatColor(String rank) {
+        if (rank.equalsIgnoreCase("none")) return EnumChatFormatting.GRAY;
         return EnumChatFormatting.WHITE;
     }
 
-    private String toRoman(int num) {
+    public String toRoman(int num) {
         int[] values = {100, 90, 50, 40, 10, 9, 5, 4, 1};
         String[] romanLetters = {"C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
         StringBuilder roman = new StringBuilder();
@@ -302,7 +346,7 @@ public class Ranks {
         return roman.toString();
     }
 
-    private EnumChatFormatting getPrestigeColor(int prestige) {
+    public EnumChatFormatting getPrestigeColor(int prestige) {
         if (prestige >= 50) return EnumChatFormatting.DARK_GRAY;  
         if (prestige >= 48) return EnumChatFormatting.DARK_RED;   
         if (prestige >= 45) return EnumChatFormatting.BLACK;      
@@ -318,7 +362,7 @@ public class Ranks {
         return EnumChatFormatting.GRAY;                           
     }
 
-    private EnumChatFormatting getLevelColor(int level) {
+    public EnumChatFormatting getLevelColor(int level) {
         if (level >= 120) return EnumChatFormatting.AQUA;
         if (level >= 110) return EnumChatFormatting.WHITE;
         if (level >= 100) return EnumChatFormatting.LIGHT_PURPLE;
