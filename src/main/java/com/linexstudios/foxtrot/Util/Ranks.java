@@ -2,6 +2,7 @@ package com.linexstudios.foxtrot.Util;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.NetworkPlayerInfo;
+import net.minecraft.scoreboard.Score;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
@@ -16,11 +17,6 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Standalone Hypixel Pit Custom Rank Modifier
- * Replaces your Rank, Level, and Prestige in Chat, Tab, and Scoreboard locally.
- * STRICTLY activates only when inside a Hypixel Pit lobby, and cleans up after itself.
- */
 public class Ranks {
 
     public static final Ranks instance = new Ranks();
@@ -38,7 +34,7 @@ public class Ranks {
     public static int targetPrestige = 30; 
 
     public static boolean changeRank = true;
-    public static String targetRank = "admin"; // Options: none, vip, vip+, mvp, mvp+, mvp++, youtube, staff, admin
+    public static String targetRank = "admin"; 
 
     public static boolean hideLobby = true;
 
@@ -74,8 +70,7 @@ public class Ranks {
 
         if (unformattedMessage.contains(realName)) {
             
-            // 1. DYNAMIC CONTEXT SCANNER
-            // Determines if the message is a Hypixel-wide network message
+            // 1. DYNAMIC CONTEXT SCANNER (Blocks brackets in party/guild messages)
             boolean isNetwork = false;
             if (unformattedMessage.startsWith("Party >") || 
                 unformattedMessage.startsWith("Guild >") || 
@@ -97,21 +92,19 @@ public class Ranks {
                 isNetwork = true;
             }
 
-            // 2. PRIMARY CHAT MATCHER (For spoken messages ending in ": message")
+            // 2. PRIMARY CHAT MATCHER
             String chatRegex = "^((?:\\u00A7[0-9a-fk-or])*(?:(?:Party|Guild|Officer|Co\\-op|Friend) \\> |(?:From|To) |\\[SHOUT\\] )?)(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*(" + realName + ")((?:\\u00A7[0-9a-fk-or])*\\:)(.*)$";
             Matcher m = Pattern.compile(chatRegex).matcher(originalMessage);
             
             if (m.find()) {
                 String channelPrefix = m.group(1);
-                String colonWithColors = m.group(3); // Preserves exact colon coloring
+                String colonWithColors = m.group(3); 
                 String chatMessage = m.group(4);
                 
                 String customPrefix;
                 if (isNetwork) {
-                    // NETWORK CHAT: Render ONLY the Rank and Name (No Pit Brackets)
                     customPrefix = channelPrefix + getCustomRankPrefix() + getRankColor(targetRank) + realName + colonWithColors + getChatColor(targetRank);
                 } else {
-                    // PUBLIC/SHOUT CHAT: Render the Pit Bracket, Rank, and Name
                     customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + colonWithColors + getChatColor(targetRank);
                 }
                 
@@ -119,15 +112,13 @@ public class Ranks {
                 return;
             }
             
-            // 3. SAFE FALLBACK (For System Messages: Kill Feeds, Bounties, Invites)
+            // 3. SAFE FALLBACK (Kill Feeds, System Invites)
             String fallbackRegex = "(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*" + realName + "(?!\\w)";
             String replacement;
             
             if (isNetwork) {
-                // NETWORK SYSTEM MESSAGE (e.g. Party Invites): No Pit Bracket
                 replacement = getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
             } else {
-                // PIT SYSTEM MESSAGE (e.g. Bounties, Kill Feeds): Include Pit Bracket
                 replacement = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
             }
             
@@ -160,12 +151,12 @@ public class Ranks {
                 }
             }
 
-            // 2. Scoreboard Manipulation
             if (mc.theWorld != null) {
                 Scoreboard scoreboard = mc.theWorld.getScoreboard();
                 ScoreObjective objective = scoreboard.getObjectiveInDisplaySlot(1);
                 
                 if (objective != null) {
+                    // 2. Hide Lobby Name
                     if (hideLobby) {
                         String currentTitle = objective.getDisplayName();
                         String customTitle = EnumChatFormatting.YELLOW + "" + EnumChatFormatting.BOLD + "THE HYPIXEL PIT";
@@ -174,9 +165,44 @@ public class Ranks {
                             objective.setDisplayName(customTitle);
                         }
                     }
+
+                    // 3. SCOREBOARD PRESTIGE INJECTOR (For native Prestige 0 players)
+                    if (changePrestige) {
+                        boolean hasPrestigeLine = false;
+                        int levelScorePoints = -1;
+                        
+                        for (Score score : scoreboard.getSortedScores(objective)) {
+                            ScorePlayerTeam team = scoreboard.getPlayersTeam(score.getPlayerName());
+                            if (team != null) {
+                                String clean = StringUtils.stripControlCodes(team.formatString(""));
+                                if (clean.contains("Prestige:")) hasPrestigeLine = true;
+                                if (clean.contains("Level:")) levelScorePoints = score.getScorePoints();
+                            }
+                        }
+                        
+                        String fakePlayer = EnumChatFormatting.BLACK + "" + EnumChatFormatting.RESET;
+                        
+                        // If they set target > 0 but don't have the line, inject it!
+                        if (targetPrestige > 0) {
+                            if (!hasPrestigeLine && levelScorePoints != -1) {
+                                Score fakeScore = scoreboard.getValueFromObjective(fakePlayer, objective);
+                                fakeScore.setScorePoints(levelScorePoints + 1);
+                                
+                                ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
+                                if (fakeTeam == null) fakeTeam = scoreboard.createTeam("FakePrestige");
+                                fakeTeam.setNamePrefix("Prestige: ");
+                                scoreboard.addPlayerToTeam(fakePlayer, "FakePrestige");
+                            }
+                        } else {
+                            // If they set target to 0, clean up the injected line
+                            scoreboard.removeObjectiveFromEntity(fakePlayer, null);
+                            ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
+                            if (fakeTeam != null) scoreboard.removeTeam(fakeTeam);
+                        }
+                    }
                 }
 
-                // 3. Dynamic Tablist Hierarchy Sorter
+                // 4. Dynamic Tablist Hierarchy Sorter
                 if (changeLevel || changePrestige) {
                     ScorePlayerTeam currentTeam = scoreboard.getPlayersTeam(realName);
                     
@@ -226,6 +252,12 @@ public class Ranks {
                 if (originalTabTeam != null && !originalTabTeam.isEmpty()) {
                     scoreboard.addPlayerToTeam(realName, originalTabTeam);
                 }
+
+                // Remove injected prestige line
+                String fakePlayer = EnumChatFormatting.BLACK + "" + EnumChatFormatting.RESET;
+                scoreboard.removeObjectiveFromEntity(fakePlayer, null);
+                ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
+                if (fakeTeam != null) scoreboard.removeTeam(fakeTeam);
             }
         }
     }
@@ -234,13 +266,14 @@ public class Ranks {
     //             XP MATH ENGINE
     // ==========================================
     public String getSpoofedNeededXP() {
-        if (targetLevel >= 120) return EnumChatFormatting.AQUA + "Max";
+        if (targetLevel >= 120) return EnumChatFormatting.AQUA + "MAXED!";
 
         int baseXP = getBaseXp(targetLevel);
         double multiplier = getPrestigeMultiplier(targetPrestige);
-        long neededXP = (long) Math.ceil(baseXP * multiplier);
+        
+        // Use standard Java rounding to match the exact XP map
+        long neededXP = Math.round(baseXP * multiplier);
 
-        // String.format("%,d") automatically adds the classic commas (e.g. 150,000)
         return EnumChatFormatting.AQUA + String.format("%,d", neededXP);
     }
 
@@ -257,7 +290,7 @@ public class Ranks {
         if (level < 100) return 1000;
         if (level < 110) return 1200;
         if (level < 120) return 1500;
-        return 0; // Max
+        return 0; 
     }
 
     private double getPrestigeMultiplier(int prestige) {
