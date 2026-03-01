@@ -6,7 +6,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraftforge.client.event.ClientChatEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.event.entity.player.ArrowLooseEvent;
@@ -24,7 +23,7 @@ public class TelebowHUD extends DraggableHUD {
     // Timer & Tracking
     private long timerEndTime = 0L;
     private long lastTelebowPrimeTime = 0L;
-    private long lastSpawnCommandTime = 0L; // ADDED: Tracks when you typed /spawn
+    private long lastSpawnCommandTime = 0L; 
     private int lastTelebowLevel = 3;
     
     private double lastX = 0, lastY = 0, lastZ = 0;
@@ -105,20 +104,6 @@ public class TelebowHUD extends DraggableHUD {
         }
     }
 
-    // ==========================================
-    //  STEP 1.5: CAPTURE THE /SPAWN COMMAND
-    // ==========================================
-    @SubscribeEvent
-    public void onPlayerCommand(ClientChatEvent event) {
-        if (!enabled || event.message == null) return;
-
-        String msg = event.message.toLowerCase().trim();
-        
-        // Prime the "Spawn Tracker" for the next 10 seconds
-        if (msg.equals("/spawn") || msg.equals("/respawn") || msg.equals("/oof")) {
-            this.lastSpawnCommandTime = System.currentTimeMillis();
-        }
-    }
 
     // ==========================================
     //  STEP 2: WAIT FOR THE PHYSICAL TELEPORT
@@ -127,44 +112,48 @@ public class TelebowHUD extends DraggableHUD {
     public void onTick(TickEvent.ClientTickEvent event) {
         if (!enabled || event.phase != TickEvent.Phase.END || mc.thePlayer == null) return;
 
-        // Audio Cue
         boolean isTimerActiveNow = this.timerEndTime > System.currentTimeMillis();
         if (this.wasTimerActiveLastTick && !isTimerActiveNow && this.timerEndTime != 0) {
             mc.thePlayer.playSound("random.orb", 1.0f, 0.5f);
         }
         this.wasTimerActiveLastTick = isTimerActiveNow;
 
-        if (lastX != 0 || lastY != 0 || lastZ != 0) {
-            double dx = mc.thePlayer.posX - lastX;
-            double dy = mc.thePlayer.posY - lastY;
-            double dz = mc.thePlayer.posZ - lastZ;
-            double distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
+        // OPTIMIZATION: Are we actively waiting for a teleport?
+        boolean isPrimeActive = System.currentTimeMillis() - lastTelebowPrimeTime <= 15000L;
+        boolean isSpawnActive = System.currentTimeMillis() - lastSpawnCommandTime <= 10000L;
 
-            // Did the player instantly move more than 5 blocks?
-            if (distanceSquared > 25.0D) { 
-                
-                // 1. Was it a Telebow shot? (Takes priority!)
-                if (System.currentTimeMillis() - lastTelebowPrimeTime <= 15000L) {
-                    long cooldown = 20000L; 
-                    if (lastTelebowLevel == 1) cooldown = 90000L; 
-                    else if (lastTelebowLevel == 2) cooldown = 45000L; 
+        // Only do heavy physics math if we actually need to!
+        if (isPrimeActive || isSpawnActive) {
+            if (lastX != 0 || lastY != 0 || lastZ != 0) {
+                double dx = mc.thePlayer.posX - lastX;
+                double dy = mc.thePlayer.posY - lastY;
+                double dz = mc.thePlayer.posZ - lastZ;
+                double distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
 
-                    if (System.currentTimeMillis() >= this.timerEndTime) {
-                        this.timerEndTime = System.currentTimeMillis() + cooldown;
-                    }
+                // Did the player instantly move more than 5 blocks?
+                if (distanceSquared > 25.0D) { 
                     
-                    this.lastTelebowPrimeTime = 0L; 
-                    this.lastSpawnCommandTime = 0L; // Cancel spawn tracker so it doesn't double-trigger
-                }
-                
-                // 2. Was it a successful /spawn teleport?
-                else if (System.currentTimeMillis() - lastSpawnCommandTime <= 10000L) {
-                    clearCooldown();
-                    this.lastSpawnCommandTime = 0L;
+                    if (isPrimeActive) {
+                        long cooldown = 20000L; 
+                        if (lastTelebowLevel == 1) cooldown = 90000L; 
+                        else if (lastTelebowLevel == 2) cooldown = 45000L; 
+
+                        if (System.currentTimeMillis() >= this.timerEndTime) {
+                            this.timerEndTime = System.currentTimeMillis() + cooldown;
+                        }
+                        
+                        this.lastTelebowPrimeTime = 0L; 
+                        this.lastSpawnCommandTime = 0L; 
+                    }
+                    else if (isSpawnActive) {
+                        clearCooldown();
+                        this.lastSpawnCommandTime = 0L;
+                    }
                 }
             }
         }
 
+        // Always update position for the next tick's delta calculation
         lastX = mc.thePlayer.posX;
         lastY = mc.thePlayer.posY;
         lastZ = mc.thePlayer.posZ;
@@ -177,10 +166,11 @@ public class TelebowHUD extends DraggableHUD {
     public void onArrowHit(PlaySoundEvent event) {
         if (!enabled || mc.thePlayer == null) return;
 
+        // OPTIMIZATION: Only listen to audio if the HUD timer is actively running!
+        if (this.timerEndTime <= System.currentTimeMillis()) return;
+
         if (event.name.equals("random.successful_hit")) {
-            if (this.timerEndTime > System.currentTimeMillis()) {
-                this.timerEndTime -= 3000L;
-            }
+            this.timerEndTime -= 3000L;
         }
     }
 
