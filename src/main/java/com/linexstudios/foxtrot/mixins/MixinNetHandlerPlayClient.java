@@ -19,17 +19,12 @@ public class MixinNetHandlerPlayClient {
     public void onHandleChat(S02PacketChat packetIn, CallbackInfo ci) {
         if (packetIn == null || packetIn.getChatComponent() == null) return;
 
-        // FIXED: In 1.8.9 mappings, it is getType(), not getChatType()!
         if (packetIn.getType() == 2) {
             String cleanMessage = EnumChatFormatting.getTextWithoutFormattingCodes(packetIn.getChatComponent().getUnformattedText()).toLowerCase();
 
-            // If the server tries to push a Telebow action bar...
             if (cleanMessage.contains("telebow") && cleanMessage.contains("cooldown")) {
-                
-                // 1. DELETE THE PACKET. The vanilla action bar will never see this.
                 ci.cancel();
 
-                // 2. STEAL THE TIME AND FEED IT TO OUR HUD!
                 if (TelebowHUD.enabled) {
                     Matcher m = Pattern.compile("(\\d+)s").matcher(cleanMessage);
                     if (!m.find()) m = Pattern.compile("(\\d+) seconds").matcher(cleanMessage);
@@ -41,14 +36,16 @@ public class MixinNetHandlerPlayClient {
                 }
             }
         } 
-        // Chat Type 0/1 are standard chat messages (Failsafes)
         else {
             if (!TelebowHUD.enabled) return;
             String cleanMessage = EnumChatFormatting.getTextWithoutFormattingCodes(packetIn.getChatComponent().getUnformattedText());
             
+            // ADDED: "DEATH!" to immediately clear the timer when you get killed or /oof
             if (cleanMessage.contains("NOPE! Can't teleport there") || 
                 cleanMessage.contains("You died!") || 
-                cleanMessage.contains("RESPAWNED!")) {
+                cleanMessage.contains("RESPAWNED!") ||
+                cleanMessage.contains("DEATH!")) {
+                
                 TelebowHUD.instance.clearCooldown();
             }
         }

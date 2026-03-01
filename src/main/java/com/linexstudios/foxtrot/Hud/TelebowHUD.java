@@ -7,9 +7,11 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.event.entity.player.ArrowLooseEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 
 public class TelebowHUD extends DraggableHUD {
     
@@ -40,7 +42,7 @@ public class TelebowHUD extends DraggableHUD {
         this.timerEndTime = System.currentTimeMillis() + (seconds * 1000L);
     }
 
-    // Called by MixinNetHandlerPlayClient to reset on death
+    // Called by MixinNetHandlerPlayClient (or disconnect) to reset
     public void clearCooldown() {
         this.timerEndTime = 0L;
     }
@@ -88,16 +90,14 @@ public class TelebowHUD extends DraggableHUD {
     }
 
     // ==========================================
-    //  STEP 1: CAPTURE SHOT (FIXED NBT)
+    //  STEP 1: CAPTURE SHOT
     // ==========================================
     @SubscribeEvent
     public void onArrowLoose(ArrowLooseEvent event) {
         if (!enabled || mc.thePlayer == null || event.bow == null) return;
 
-        // Must be sneaking to telebow
         if (mc.thePlayer.isSneaking()) {
             int telebowLevel = getPitEnchantLevel(event.bow, "telebow");
-            
             if (telebowLevel > 0) {
                 this.lastTelebowPrimeTime = System.currentTimeMillis();
                 this.lastTelebowLevel = telebowLevel;
@@ -106,16 +106,16 @@ public class TelebowHUD extends DraggableHUD {
     }
 
     // ==========================================
-    //  STEP 2: WAIT FOR TELEPORT (Physics)
+    //  STEP 2: WAIT FOR TELEPORT
     // ==========================================
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
         if (!enabled || event.phase != TickEvent.Phase.END || mc.thePlayer == null) return;
 
-        // Audio Cue
+        // Audio Cue: XP Ding when the timer hits zero (Changed from arrow hit sound to avoid conflicts)
         boolean isTimerActiveNow = this.timerEndTime > System.currentTimeMillis();
         if (this.wasTimerActiveLastTick && !isTimerActiveNow && this.timerEndTime != 0) {
-            mc.thePlayer.playSound("random.successful_hit", 1.0f, 1.2f);
+            mc.thePlayer.playSound("random.orb", 1.0f, 0.5f);
         }
         this.wasTimerActiveLastTick = isTimerActiveNow;
 
@@ -125,51 +125,65 @@ public class TelebowHUD extends DraggableHUD {
             double dz = mc.thePlayer.posZ - lastZ;
             double distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
 
-            // If player instantly moves more than 5 blocks...
-            if (distanceSquared > 25.0D) {
-                
-                // ...and they shot a telebow in the last 15 seconds!
+            if (distanceSquared > 25.0D) { // 5 block teleport
                 if (System.currentTimeMillis() - lastTelebowPrimeTime <= 15000L) {
                     
-                    long cooldown = 30000L; // Tier 3
-                    if (lastTelebowLevel == 1) cooldown = 90000L; // Tier 1
-                    else if (lastTelebowLevel == 2) cooldown = 55000L; // Tier 2
+                    // FIXED EXACT PIT COOLDOWNS!
+                    long cooldown = 20000L; // Tier 3 (20s)
+                    if (lastTelebowLevel == 1) cooldown = 90000L; // Tier 1 (90s)
+                    else if (lastTelebowLevel == 2) cooldown = 45000L; // Tier 2 (45s)
 
-                    // We only start it if the Mixin hasn't already started it
                     if (System.currentTimeMillis() >= this.timerEndTime) {
                         this.timerEndTime = System.currentTimeMillis() + cooldown;
                     }
                     
-                    this.lastTelebowPrimeTime = 0L; // Consume prime
+                    this.lastTelebowPrimeTime = 0L; 
                 }
             }
         }
 
-        // Save position
         lastX = mc.thePlayer.posX;
         lastY = mc.thePlayer.posY;
         lastZ = mc.thePlayer.posZ;
     }
 
     // ==========================================
-    //  FIXED: NBT TAG LIST ITERATOR
+    //  MECHANIC: -3 SECONDS PER ARROW HIT
+    // ==========================================
+    @SubscribeEvent
+    public void onArrowHit(PlaySoundEvent event) {
+        if (!enabled || mc.thePlayer == null) return;
+
+        // Vanilla Minecraft always plays "random.successful_hit" when you land an arrow on a player!
+        if (event.name.equals("random.successful_hit")) {
+            // If the cooldown is currently running, chop 3 seconds (3000ms) off the timer!
+            if (this.timerEndTime > System.currentTimeMillis()) {
+                this.timerEndTime -= 3000L;
+            }
+        }
+    }
+
+    // ==========================================
+    //  MECHANIC: RESET ON LOBBY LEAVE
+    // ==========================================
+    @SubscribeEvent
+    public void onDisconnect(FMLNetworkEvent.ClientDisconnectionFromServerEvent event) {
+        clearCooldown();
+    }
+
+    // ==========================================
+    //  NBT TAG LIST ITERATOR
     // ==========================================
     private int getPitEnchantLevel(ItemStack stack, String enchantKey) {
         if (stack == null || !stack.hasTagCompound()) return 0;
         
         NBTTagCompound tag = stack.getTagCompound();
-        // Assuming CustomEnchants is inside ExtraAttributes like standard Pit items
         if (tag.hasKey("ExtraAttributes", 10)) {
             NBTTagCompound extra = tag.getCompoundTag("ExtraAttributes");
-            
-            // 9 is the NBT ID for a List!
             if (extra.hasKey("CustomEnchants", 9)) {
-                // 10 is the NBT ID for the Compounds inside the list
                 NBTTagList enchants = extra.getTagList("CustomEnchants", 10);
-                
                 for (int i = 0; i < enchants.tagCount(); i++) {
                     NBTTagCompound enchant = enchants.getCompoundTagAt(i);
-                    // Match the JSON structure you provided!
                     if (enchant.hasKey("Key", 8) && enchant.getString("Key").equals(enchantKey)) {
                         return enchant.getInteger("Level");
                     }
@@ -177,7 +191,6 @@ public class TelebowHUD extends DraggableHUD {
             }
         }
         
-        // Failsafe: Check if CustomEnchants is directly on the root tag instead of ExtraAttributes
         if (tag.hasKey("CustomEnchants", 9)) {
             NBTTagList enchants = tag.getTagList("CustomEnchants", 10);
             for (int i = 0; i < enchants.tagCount(); i++) {
@@ -187,7 +200,6 @@ public class TelebowHUD extends DraggableHUD {
                 }
             }
         }
-        
         return 0;
     }
 }
