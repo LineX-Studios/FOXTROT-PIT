@@ -1,4 +1,4 @@
-package com.linexstudios.foxtrot.mixin;
+package com.linexstudios.foxtrot.mixins;
 
 import com.linexstudios.foxtrot.Hud.TelebowHUD;
 import net.minecraft.client.network.NetHandlerPlayClient;
@@ -19,8 +19,8 @@ public class MixinNetHandlerPlayClient {
     public void onHandleChat(S02PacketChat packetIn, CallbackInfo ci) {
         if (packetIn == null || packetIn.getChatComponent() == null) return;
 
-        // Chat Type 2 is the Action Bar
-        if (packetIn.getChatType() == 2) {
+        // FIXED: In 1.8.9 mappings, it is getType(), not getChatType()!
+        if (packetIn.getType() == 2) {
             String cleanMessage = EnumChatFormatting.getTextWithoutFormattingCodes(packetIn.getChatComponent().getUnformattedText()).toLowerCase();
 
             // If the server tries to push a Telebow action bar...
