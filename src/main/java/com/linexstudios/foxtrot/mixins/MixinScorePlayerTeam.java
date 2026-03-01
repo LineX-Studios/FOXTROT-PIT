@@ -32,25 +32,30 @@ public class MixinScorePlayerTeam {
                 }
             }
             
-            // 2. SCOREBOARD FIX: Hijack the Prestige line
+            // 2. SCOREBOARD FIX: Hijack the natively drawn Prestige line
             else if (unformatted.startsWith("Prestige:")) {
                 if (Ranks.changePrestige) {
                     if (Ranks.targetPrestige > 0) {
                         String romanNum = Ranks.instance.toRoman(Ranks.targetPrestige);
-                        EnumChatFormatting color = Ranks.instance.getPrestigeColor(Ranks.targetPrestige);
-                        cir.setReturnValue(EnumChatFormatting.WHITE + "Prestige: " + color + romanNum);
+                        // Force the Roman Numeral to be Yellow
+                        cir.setReturnValue(EnumChatFormatting.WHITE + "Prestige: " + EnumChatFormatting.YELLOW + romanNum);
                     } else {
-                        // If you are natively Prestige 1+ but set target to 0, hide the line!
+                        // If they natively have prestige but spoof to 0, completely hide the line
                         cir.setReturnValue(EnumChatFormatting.RESET.toString());
                     }
                 }
             }
             
-            // 3. SCOREBOARD FIX: Hijack the Needed XP line
-            else if (unformatted.startsWith("Needed XP:")) {
+            // 3. SCOREBOARD FIX: Hijack the Needed XP / XP line
+            else if (unformatted.startsWith("Needed XP:") || unformatted.startsWith("XP:")) {
                 if (Ranks.changeLevel || Ranks.changePrestige) {
-                    String spoofedXP = Ranks.instance.getSpoofedNeededXP();
-                    cir.setReturnValue(EnumChatFormatting.WHITE + "Needed XP: " + spoofedXP);
+                    if (Ranks.targetLevel >= 120) {
+                        // At level 120, Hypixel drops "Needed"
+                        cir.setReturnValue(EnumChatFormatting.WHITE + "XP: " + EnumChatFormatting.AQUA + "MAXED!");
+                    } else {
+                        String spoofedXP = Ranks.instance.getSpoofedNeededXP();
+                        cir.setReturnValue(EnumChatFormatting.WHITE + "Needed XP: " + EnumChatFormatting.AQUA + spoofedXP);
+                    }
                 }
             }
             
