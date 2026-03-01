@@ -74,41 +74,62 @@ public class Ranks {
 
         if (unformattedMessage.contains(realName)) {
             
-            // Group 1: The channel prefix (e.g., "Party > ", "Guild > ", "[SHOUT] ")
-            // Group 2: Our actual name 
-            // Group 3: The trailing colors before the colon
-            // Group 4: The message itself
-            String chatRegex = "^((?:\\u00A7[0-9a-fk-or])*(?:(?:Party|Guild|Officer|Co\\-op) \\> |\\[SHOUT\\] )?)(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*(" + realName + ")((?:\\u00A7[0-9a-fk-or])*):(.*)$";
+            // 1. DYNAMIC CONTEXT SCANNER
+            // Determines if the message is a Hypixel-wide network message
+            boolean isNetwork = false;
+            if (unformattedMessage.startsWith("Party >") || 
+                unformattedMessage.startsWith("Guild >") || 
+                unformattedMessage.startsWith("Officer >") || 
+                unformattedMessage.startsWith("Co-op >") ||
+                unformattedMessage.startsWith("Friend >") ||
+                unformattedMessage.startsWith("From ") ||
+                unformattedMessage.startsWith("To ") ||
+                unformattedMessage.contains(" invited ") ||
+                unformattedMessage.contains(" joined the party") ||
+                unformattedMessage.contains(" left the party") ||
+                unformattedMessage.contains(" to the party") ||
+                unformattedMessage.contains(" party!") ||
+                unformattedMessage.contains(" has disbanded") ||
+                unformattedMessage.contains(" kicked ") ||
+                unformattedMessage.contains(" offline") ||
+                unformattedMessage.contains(" online")) {
+                
+                isNetwork = true;
+            }
+
+            // 2. PRIMARY CHAT MATCHER (For spoken messages ending in ": message")
+            String chatRegex = "^((?:\\u00A7[0-9a-fk-or])*(?:(?:Party|Guild|Officer|Co\\-op|Friend) \\> |(?:From|To) |\\[SHOUT\\] )?)(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*(" + realName + ")((?:\\u00A7[0-9a-fk-or])*\\:)(.*)$";
             Matcher m = Pattern.compile(chatRegex).matcher(originalMessage);
             
             if (m.find()) {
                 String channelPrefix = m.group(1);
-                String trailingColors = m.group(3);
+                String colonWithColors = m.group(3); // Preserves exact colon coloring
                 String chatMessage = m.group(4);
                 
-                // Check if this is a private network channel!
-                String cleanPrefix = StringUtils.stripControlCodes(channelPrefix).trim();
-                boolean isNetworkChannel = cleanPrefix.equals("Party >") || 
-                                           cleanPrefix.equals("Guild >") || 
-                                           cleanPrefix.equals("Officer >") || 
-                                           cleanPrefix.equals("Co-op >");
-
                 String customPrefix;
-                if (isNetworkChannel) {
-                    // NETWORK CHAT: Draw ONLY the Rank and Name
-                    customPrefix = channelPrefix + getCustomRankPrefix() + getRankColor(targetRank) + realName + trailingColors + ":" + getChatColor(targetRank);
+                if (isNetwork) {
+                    // NETWORK CHAT: Render ONLY the Rank and Name (No Pit Brackets)
+                    customPrefix = channelPrefix + getCustomRankPrefix() + getRankColor(targetRank) + realName + colonWithColors + getChatColor(targetRank);
                 } else {
-                    // PUBLIC/SHOUT CHAT: Draw the Pit Bracket, Rank, and Name
-                    customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + trailingColors + ":" + getChatColor(targetRank);
+                    // PUBLIC/SHOUT CHAT: Render the Pit Bracket, Rank, and Name
+                    customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + colonWithColors + getChatColor(targetRank);
                 }
                 
                 event.message = new ChatComponentText(customPrefix + chatMessage);
                 return;
             }
             
-            // 2. SAFE FALLBACK (For Kill Feeds, Bounties, and Mentions)
+            // 3. SAFE FALLBACK (For System Messages: Kill Feeds, Bounties, Invites)
             String fallbackRegex = "(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*" + realName + "(?!\\w)";
-            String replacement = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
+            String replacement;
+            
+            if (isNetwork) {
+                // NETWORK SYSTEM MESSAGE (e.g. Party Invites): No Pit Bracket
+                replacement = getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
+            } else {
+                // PIT SYSTEM MESSAGE (e.g. Bounties, Kill Feeds): Include Pit Bracket
+                replacement = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
+            }
             
             String replacedMessage = originalMessage.replaceAll(fallbackRegex, replacement);
             event.message = new ChatComponentText(replacedMessage);
