@@ -24,7 +24,7 @@ public class MixinScorePlayerTeam {
         
         if (Ranks.isEnabled && Ranks.instance.isInPit()) {
             
-            // 1. SCOREBOARD FIX: Hijack the Level line!
+            // 1. SCOREBOARD FIX: Hijack the Level line
             if (unformatted.startsWith("Level:")) {
                 if (Ranks.changeLevel) {
                     String newBracket = Ranks.instance.getCustomTabPitBracket();
@@ -32,20 +32,23 @@ public class MixinScorePlayerTeam {
                 }
             }
             
-            // 2. SCOREBOARD FIX: Hijack the Prestige line!
+            // 2. SCOREBOARD FIX: Hijack the Prestige line
             else if (unformatted.startsWith("Prestige:")) {
-                if (Ranks.changePrestige && Ranks.targetPrestige > 0) {
-                    String romanNum = Ranks.instance.toRoman(Ranks.targetPrestige);
-                    EnumChatFormatting color = Ranks.instance.getPrestigeColor(Ranks.targetPrestige);
-                    
-                    cir.setReturnValue(EnumChatFormatting.WHITE + "Prestige: " + color + romanNum);
+                if (Ranks.changePrestige) {
+                    if (Ranks.targetPrestige > 0) {
+                        String romanNum = Ranks.instance.toRoman(Ranks.targetPrestige);
+                        EnumChatFormatting color = Ranks.instance.getPrestigeColor(Ranks.targetPrestige);
+                        cir.setReturnValue(EnumChatFormatting.WHITE + "Prestige: " + color + romanNum);
+                    } else {
+                        // If you are natively Prestige 1+ but set target to 0, hide the line!
+                        cir.setReturnValue(EnumChatFormatting.RESET.toString());
+                    }
                 }
             }
             
-            // 3. SCOREBOARD FIX: Hijack the Needed XP line!
+            // 3. SCOREBOARD FIX: Hijack the Needed XP line
             else if (unformatted.startsWith("Needed XP:")) {
                 if (Ranks.changeLevel || Ranks.changePrestige) {
-                    // Pulls the dynamically calculated, comma-formatted XP from Ranks.java!
                     String spoofedXP = Ranks.instance.getSpoofedNeededXP();
                     cir.setReturnValue(EnumChatFormatting.WHITE + "Needed XP: " + spoofedXP);
                 }
