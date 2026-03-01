@@ -29,12 +29,10 @@ public class NameTags {
         if (!enabled || mc.thePlayer == null || mc.theWorld == null) return;
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
-            // FIX: Strictly ignore the local player so you never see your own tag
             if (player == mc.thePlayer) continue;
-            
             if (player.isDead || player.isInvisible()) continue; 
 
-            // Calculate precise interpolated positions
+            // Calculate precise interpolated positions for smooth rendering
             double x = player.lastTickPosX + (player.posX - player.lastTickPosX) * event.partialTicks - mc.getRenderManager().viewerPosX;
             double y = player.lastTickPosY + (player.posY - player.lastTickPosY) * event.partialTicks - mc.getRenderManager().viewerPosY;
             double z = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * event.partialTicks - mc.getRenderManager().viewerPosZ;
@@ -56,11 +54,18 @@ public class NameTags {
         GlStateManager.rotate(mc.getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-scale, -scale, scale);
 
+        // ====================================================
+        // CLEAN STATE SETUP (Using only GlStateManager)
+        // ====================================================
         GlStateManager.disableLighting();
-        GlStateManager.disableDepth(); 
-        GlStateManager.enableBlend();
-        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GlStateManager.disableDepth(); // Render through walls
         GlStateManager.depthMask(false);
+        GlStateManager.disableFog(); // Prevents Shader/Distance gray-out
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+
+        // Reset color to pure white to wipe any lingering Myau ESP tints
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
         String name = player.getDisplayName().getFormattedText();
         if (showHealth) {
@@ -78,20 +83,23 @@ public class NameTags {
 
         int width = mc.fontRendererObj.getStringWidth(name) / 2;
 
+        // 1. TURN TEXTURES OFF to draw the solid background box
         GlStateManager.disableTexture2D();
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
         worldrenderer.begin(7, DefaultVertexFormats.POSITION_COLOR);
-        
         worldrenderer.pos(-width - 2, -2, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         worldrenderer.pos(-width - 2, 11, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         worldrenderer.pos(width + 2, 11, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         worldrenderer.pos(width + 2, -2, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
         tessellator.draw();
+        
+        // 2. TURN TEXTURES ON to draw the text (This fixes the black screen bug!)
         GlStateManager.enableTexture2D();
-
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F); // Ensure text is white
         mc.fontRendererObj.drawStringWithShadow(name, -width, 0, -1);
 
+        // 3. RENDER ITEMS
         if (showItems) {
             List<ItemStack> items = new ArrayList<>();
             if (player.getHeldItem() != null) items.add(player.getHeldItem());
@@ -105,20 +113,19 @@ public class NameTags {
                 int startX = -(items.size() * 16) / 2;
                 int itemY = -18; 
 
-                // FIX: Force standard lighting ON so items aren't black silhouettes...
+                GlStateManager.enableRescaleNormal();
                 RenderHelper.enableGUIStandardItemLighting();
-                
-                // ... BUT force Depth Testing OFF immediately so they render through walls
-                GlStateManager.disableDepth();
-                GL11.glDisable(GL11.GL_DEPTH_TEST);
 
                 for (ItemStack item : items) {
                     GlStateManager.pushMatrix();
                     GlStateManager.translate(startX, itemY, 0);
                     GlStateManager.scale(1.0F, 1.0F, 0.01F);
                     
+                    // Force disable depth *right before* drawing the item so it stays visible through walls
+                    GlStateManager.disableDepth();
+                    
                     float prevZ = mc.getRenderItem().zLevel;
-                    mc.getRenderItem().zLevel = -100.0F; 
+                    mc.getRenderItem().zLevel = -150.0F; 
 
                     mc.getRenderItem().renderItemIntoGUI(item, 0, 0);
                     mc.getRenderItem().renderItemOverlays(mc.fontRendererObj, item, 0, 0);
@@ -126,19 +133,17 @@ public class NameTags {
                     mc.getRenderItem().zLevel = prevZ;
                     GlStateManager.popMatrix();
                     
-                    // Because Minecraft's renderItemIntoGUI automatically re-enables depth mid-loop, 
-                    // we must force it back off after EVERY single item is drawn.
-                    GlStateManager.disableDepth();
-                    GL11.glDisable(GL11.GL_DEPTH_TEST);
-                    
                     startX += 16;
                 }
 
                 RenderHelper.disableStandardItemLighting();
-                GlStateManager.disableDepth(); // Re-disable to maintain Nametag priority
+                GlStateManager.disableRescaleNormal();
             }
         }
 
+        // ====================================================
+        // RESTORE VANILLA STATE
+        // ====================================================
         GlStateManager.enableDepth();
         GlStateManager.depthMask(true);
         GlStateManager.enableLighting();
@@ -149,7 +154,6 @@ public class NameTags {
 
     @SubscribeEvent
     public void onRenderVanillaNametag(RenderLivingEvent.Specials.Pre event) {
-        // Cancel default nametags for all players if our module is active
         if (enabled && event.entity instanceof EntityPlayer) {
             event.setCanceled(true);
         }

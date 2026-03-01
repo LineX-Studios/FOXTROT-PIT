@@ -2,13 +2,8 @@ package com.linexstudios.foxtrot.Hud;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.StringUtils;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.event.entity.player.ArrowLooseEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -20,10 +15,6 @@ public class TelebowHUD extends DraggableHUD {
     public static boolean enabled = true;
 
     private long timerEndTime = 0L;
-    private long lastTelebowPrimeTime = 0L;
-    private int lastTelebowLevel = 3;
-    
-    private double lastX = 0, lastY = 0, lastZ = 0;
     private boolean wasTimerActiveLastTick = false;
 
     public TelebowHUD() {
@@ -33,6 +24,16 @@ public class TelebowHUD extends DraggableHUD {
     @Override
     public boolean isEnabled() {
         return enabled;
+    }
+
+    // Called by the Mixin!
+    public void setCooldown(long seconds) {
+        this.timerEndTime = System.currentTimeMillis() + (seconds * 1000L);
+    }
+
+    // Called by the Mixin!
+    public void clearCooldown() {
+        this.timerEndTime = 0L;
     }
 
     @SubscribeEvent
@@ -78,68 +79,14 @@ public class TelebowHUD extends DraggableHUD {
     }
 
     @SubscribeEvent
-    public void onArrowLoose(ArrowLooseEvent event) {
-        if (!enabled || mc.thePlayer == null || event.bow == null) return;
-
-        if (mc.thePlayer.isSneaking()) {
-            int telebowLevel = getPitEnchantLevel(event.bow, "telebow");
-            
-            if (telebowLevel == 0 && event.bow.hasDisplayName()) {
-                String cleanName = StringUtils.stripControlCodes(event.bow.getDisplayName()).toLowerCase();
-                if (cleanName.contains("telebow")) {
-                    telebowLevel = 3; 
-                }
-            }
-
-            if (telebowLevel > 0) {
-                lastTelebowPrimeTime = System.currentTimeMillis();
-                lastTelebowLevel = telebowLevel;
-                // Debug to see if the event even fires
-                if (EnemyHUD.debugMode) mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[Debug] Telebow Primed"));
-            }
-        }
-    }
-
-    @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
         if (!enabled || event.phase != TickEvent.Phase.END || mc.thePlayer == null) return;
 
+        // Audio Cue: Play a ding when the timer hits zero!
         boolean isTimerActiveNow = this.timerEndTime > System.currentTimeMillis();
         if (this.wasTimerActiveLastTick && !isTimerActiveNow && this.timerEndTime != 0) {
             mc.thePlayer.playSound("random.successful_hit", 1.0f, 1.2f);
         }
         this.wasTimerActiveLastTick = isTimerActiveNow;
-
-        if (lastX != 0 || lastY != 0 || lastZ != 0) {
-            double dx = mc.thePlayer.posX - lastX;
-            double dy = mc.thePlayer.posY - lastY;
-            double dz = mc.thePlayer.posZ - lastZ;
-            double distanceSquared = (dx * dx) + (dy * dy) + (dz * dz);
-
-            if (distanceSquared > 25.0D) { // 5 block teleport
-                if (System.currentTimeMillis() - lastTelebowPrimeTime <= 15000L) {
-                    long cooldown = 30000L; 
-                    if (lastTelebowLevel == 1) cooldown = 90000L; 
-                    else if (lastTelebowLevel == 2) cooldown = 55000L; 
-
-                    this.timerEndTime = System.currentTimeMillis() + cooldown;
-                    this.lastTelebowPrimeTime = 0L;
-                }
-            }
-        }
-        lastX = mc.thePlayer.posX;
-        lastY = mc.thePlayer.posY;
-        lastZ = mc.thePlayer.posZ;
-    }
-
-    private int getPitEnchantLevel(ItemStack stack, String enchantKey) {
-        if (stack == null || !stack.hasTagCompound()) return 0;
-        NBTTagCompound tag = stack.getTagCompound();
-        if (!tag.hasKey("ExtraAttributes", 10)) return 0; 
-        NBTTagCompound extra = tag.getCompoundTag("ExtraAttributes");
-        if (!extra.hasKey("CustomEnchants", 10)) return 0; 
-        NBTTagCompound enchants = extra.getCompoundTag("CustomEnchants");
-        if (enchants.hasKey(enchantKey)) return enchants.getInteger(enchantKey);
-        return 0;
     }
 }
