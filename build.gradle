@@ -90,12 +90,12 @@ shadowJar {
 reobf { shadowJar { mappingType = "SEARGE" } }
 tasks.reobfShadowJar.mustRunAfter shadowJar
 
-// Injecting Mixin parameters into the final .jar manifest
+// Injecting Mixin parameters into the final .jar manifest // Added FoxtrotTweaker for Auto-Updates
 jar {
     manifest.attributes(
         "Manifest-Version": "1.0",
         "MixinConfigs": "mixins.foxtrot.json",
-        "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
+        "TweakClass": "com.linexstudios.foxtrot.Update.FoxtrotTweaker",
         "TweakOrder": 0,
         "FMLCorePluginContainsFMLMod": "true",
         "ForceLoadAsMod": "true"

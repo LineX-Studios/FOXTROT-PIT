@@ -36,6 +36,7 @@ import java.util.*;
 
 public class ConfigHandler {
     public static boolean telemetryEnabled = true; // NEW: Telemetry Opt-Out toggle
+    public static boolean autoUpdateEnabled = true; // NEW: Auto-Update Toggle
 
     private static final File configDir = new File("config/Foxtrot");
     private static final File enemyFile = new File(configDir, "enemies.txt");

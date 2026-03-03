@@ -13,6 +13,7 @@ import com.linexstudios.foxtrot.Misc.AutoPantSwap;
 import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
 import com.linexstudios.foxtrot.Misc.AutoBulletTime;
+import com.linexstudios.foxtrot.Update.FoxtrotTweaker; // IMPORTANT IMPORT
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.renderer.GlStateManager;
@@ -47,7 +48,8 @@ public class EditHUDGui extends GuiScreen {
     private long lastClickTime = 0;
     private DraggableHUD lastClickedHUD = null;
 
-    private String[] tabs = {"Combat", "Render", "Denick", "HUD", "Misc", "Telemetry"};
+    // Added "Updates" to the tabs array
+    private String[] tabs = {"Combat", "Render", "Denick", "HUD", "Misc", "Telemetry", "Updates"};
     private GuiTextField whitelistField;
     private String currentTooltip = null;
 
@@ -152,6 +154,13 @@ public class EditHUDGui extends GuiScreen {
                     if (hovered) drawGradientRoundedRect(mainPanelX + 6, tY, 70, 16, 3, 0xFF2A2A2A, 0xFF202020);
                     this.fontRendererObj.drawStringWithShadow(tabs[i], mainPanelX + 10, tY + 4, 0xAAAAAA);
                 }
+                
+                // RED DOT LOGIC FOR UPDATES TAB
+                if (tabs[i].equals("Updates") && !ConfigHandler.autoUpdateEnabled && FoxtrotTweaker.UPDATE_AVAILABLE) {
+                    int textWidth = this.fontRendererObj.getStringWidth(tabs[i]);
+                    this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "\u2022", mainPanelX + 10 + textWidth + 2, tY + 4, -1);
+                }
+
                 tY += 20; 
             }
 
@@ -236,7 +245,6 @@ public class EditHUDGui extends GuiScreen {
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "CPS HUD", CPSModule.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "FPS HUD", FPSModule.enabled, mouseX, mouseY);
 
-                // Expanded card size to fit Telebow HUD
                 drawSettingsCard(c2, y2, 100, 126); 
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Reg HUD", RegHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Darks HUD", DarksHUD.enabled, mouseX, mouseY); y2 += 18;
@@ -301,6 +309,23 @@ public class EditHUDGui extends GuiScreen {
                 this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "We only track active player counts to", c1 + 5, textY, -1); textY += 10;
                 this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "display live stats on linex-studios.github.io", c1 + 5, textY, -1);
             }
+            // --- NEW UPDATES TAB ---
+            else if (selectedTab == 6) {
+                if (whitelistField != null) whitelistField.setVisible(false);
+                int y1 = rY;
+                
+                drawSettingsCard(c1, y1, 215, FoxtrotTweaker.UPDATE_AVAILABLE && !ConfigHandler.autoUpdateEnabled ? 65 : 40);
+                this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.BOLD + "Mod Updates", c1 + 5, y1 + 5, -1);
+                
+                drawIOSToggle(c1 + 5, y1 + 20, 205, "Auto Updates", ConfigHandler.autoUpdateEnabled, mouseX, mouseY);
+                
+                // Show manual update button if auto updates are off and a new version is found
+                if (!ConfigHandler.autoUpdateEnabled && FoxtrotTweaker.UPDATE_AVAILABLE) {
+                    drawIOSButton(c1 + 5, y1 + 40, 205, 16, EnumChatFormatting.GREEN + "Install Update (v" + FoxtrotTweaker.LATEST_VERSION + ")", mouseX, mouseY);
+                }
+            }
+            
+            ConfigHandler.saveConfig();
         }
         
         if (currentTooltip != null) {
@@ -506,6 +531,19 @@ public class EditHUDGui extends GuiScreen {
                     ConfigHandler.telemetryEnabled = !ConfigHandler.telemetryEnabled;
                     if (ConfigHandler.telemetryEnabled) {
                         TelemetryManager.initialize(); 
+                    }
+                }
+            }
+            // --- UPDATES TAB CLICK LOGIC ---
+            else if (selectedTab == 6) {
+                int y1 = rY;
+                if (isInside(mouseX, mouseY, c1 + 5, y1 + 20, 205, 12)) {
+                    ConfigHandler.autoUpdateEnabled = !ConfigHandler.autoUpdateEnabled;
+                }
+                
+                if (!ConfigHandler.autoUpdateEnabled && FoxtrotTweaker.UPDATE_AVAILABLE) {
+                    if (isInside(mouseX, mouseY, c1 + 5, y1 + 40, 205, 16)) {
+                        FoxtrotTweaker.triggerManualUpdate();
                     }
                 }
             }
