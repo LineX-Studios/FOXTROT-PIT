@@ -38,6 +38,7 @@ import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
 import com.linexstudios.foxtrot.Hud.TelebowHUD;
 import com.linexstudios.foxtrot.Hud.CPSModule;
+import com.linexstudios.foxtrot.Hud.PlayerCounterHUD;
 
 @Mod(modid = "foxtrot", name = "Foxtrot", version = "${version}", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
@@ -79,6 +80,7 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.EventHUD.instance);
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.RegHUD.instance);
         MinecraftForge.EVENT_BUS.register(com.linexstudios.foxtrot.Hud.DarksHUD.instance);
+        MinecraftForge.EVENT_BUS.register(PlayerCounterHUD.instance);
         MinecraftForge.EVENT_BUS.register(PotionHUD.instance);
         MinecraftForge.EVENT_BUS.register(ArmorHUD.instance);
         MinecraftForge.EVENT_BUS.register(CoordsHUD.instance);

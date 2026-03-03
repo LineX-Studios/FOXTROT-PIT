@@ -38,20 +38,13 @@ public class FoxtrotTweaker implements ITweaker {
     public static String LATEST_VERSION = "";
     public static String DOWNLOAD_URL = "";
     
-    // --- DEVELOPER TEST MODE ---
-    public static boolean DEV_TEST_MODE = false; // < change this value to true or false, true = test mode is on false = test mode is off
-
-
-    // --------------------------------------
-    private static boolean IS_BOOTING = true; // DO NOT CHANGE THIS VALUE TO FALSE KEEP IT AS IS!!!!!!!
+    public static boolean DEV_TEST_MODE = false; 
     public static File foxtrotDir;
 
     @SuppressWarnings("unchecked")
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
         
-        // --- NEW: THE BLACKBOARD INJECTION ---
-        // This flawlessly chains the MixinTweaker without Minecraft ignoring it!
         List<String> tweakClasses = (List<String>) Launch.blackboard.get("TweakClasses");
         if (tweakClasses != null && !tweakClasses.contains("org.spongepowered.asm.launch.MixinTweaker")) {
             tweakClasses.add("org.spongepowered.asm.launch.MixinTweaker");
@@ -61,11 +54,29 @@ public class FoxtrotTweaker implements ITweaker {
         if (!foxtrotDir.exists()) foxtrotDir.mkdirs();
 
         try {
-            File modsDir = new File(gameDir, "mods");
-            if (modsDir.exists() && modsDir.isDirectory()) {
-                File[] oldFiles = modsDir.listFiles((dir, name) -> name.endsWith(".old"));
+            File installerJar = new File(foxtrotDir, "updater.jar");
+            if (installerJar.exists()) installerJar.delete();
+        } catch (Exception ignored) {}
+
+        try {
+            File currentJar = new File(FoxtrotTweaker.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            File actualModsDir = currentJar.getParentFile(); 
+            
+            if (actualModsDir.exists() && actualModsDir.isDirectory()) {
+                File[] oldFiles = actualModsDir.listFiles((dir, name) -> name.endsWith(".old"));
                 if (oldFiles != null) {
-                    for (File oldFile : oldFiles) oldFile.delete(); 
+                    for (File old : oldFiles) old.delete();
+                }
+                
+                File[] duplicateJars = actualModsDir.listFiles((dir, name) -> name.toLowerCase().startsWith("foxtrot-") && name.endsWith(".jar") && !name.equals(currentJar.getName()));
+                if (duplicateJars != null) {
+                    for (File dup : duplicateJars) {
+                        try { 
+                            if (!dup.delete()) {
+                                dup.renameTo(new File(dup.getAbsolutePath() + ".old"));
+                            } 
+                        } catch (Exception ignored) {}
+                    }
                 }
             }
         } catch (Exception ignored) {}
@@ -96,9 +107,6 @@ public class FoxtrotTweaker implements ITweaker {
         if (DEV_TEST_MODE) {
             UPDATE_AVAILABLE = true;
             LATEST_VERSION = "0.7.9-TEST";
-            if (autoUpdateEnabled) {
-                runUpdateUIAndSimulate();
-            }
             return;
         }
 
@@ -115,7 +123,7 @@ public class FoxtrotTweaker implements ITweaker {
 
                 String latestVersion = response.get("tag_name").getAsString().replace("v", "");
                 
-                if (!CURRENT_VERSION.equals(latestVersion)) {
+                if (isNewerVersion(CURRENT_VERSION, latestVersion)) {
                     UPDATE_AVAILABLE = true;
                     LATEST_VERSION = latestVersion;
                     DOWNLOAD_URL = response.getAsJsonArray("assets").get(0).getAsJsonObject().get("browser_download_url").getAsString();
@@ -130,19 +138,19 @@ public class FoxtrotTweaker implements ITweaker {
         }
     }
 
-    private void runUpdateUIAndSimulate() {
-        FoxtrotUpdateWindow window = new FoxtrotUpdateWindow(LATEST_VERSION);
-        SwingUtilities.invokeLater(() -> window.setVisible(true));
-
+    private boolean isNewerVersion(String current, String latest) {
         try {
-            for (int i = 0; i <= 100; i += 2) {
-                window.setProgress(i);
-                Thread.sleep(50); 
+            String[] cParts = current.replaceAll("[^0-9.]", "").split("\\.");
+            String[] lParts = latest.replaceAll("[^0-9.]", "").split("\\.");
+            int length = Math.max(cParts.length, lParts.length);
+            for (int i = 0; i < length; i++) {
+                int c = i < cParts.length && !cParts[i].isEmpty() ? Integer.parseInt(cParts[i]) : 0;
+                int l = i < lParts.length && !lParts[i].isEmpty() ? Integer.parseInt(lParts[i]) : 0;
+                if (l > c) return true;
+                if (l < c) return false;
             }
-            Thread.sleep(1000);
         } catch (Exception ignored) {}
-
-        SwingUtilities.invokeLater(window::dispose);
+        return false;
     }
 
     public static void runRealDownload(String downloadUrl) {
@@ -150,18 +158,18 @@ public class FoxtrotTweaker implements ITweaker {
         SwingUtilities.invokeLater(() -> window.setVisible(true));
 
         try {
-            File newJar = new File(foxtrotDir, "Foxtrot-" + LATEST_VERSION + ".jar");
+            File tempJar = new File(foxtrotDir, "update_temp.jar");
+            File updaterJar = new File(foxtrotDir, "updater.jar");
 
             HttpURLConnection conn = (HttpURLConnection) new URL(downloadUrl).openConnection();
             conn.setRequestProperty("User-Agent", "Foxtrot-Updater");
             int totalBytes = conn.getContentLength();
 
             try (InputStream in = new BufferedInputStream(conn.getInputStream());
-                 OutputStream out = new BufferedOutputStream(new FileOutputStream(newJar))) {
+                 OutputStream out = new BufferedOutputStream(new FileOutputStream(tempJar))) {
 
                 byte[] buffer = new byte[8192];
-                int bytesRead = 0;
-                int nRead;
+                int bytesRead = 0, nRead;
                 while ((nRead = in.read(buffer)) != -1) {
                     out.write(buffer, 0, nRead);
                     bytesRead += nRead;
@@ -169,23 +177,34 @@ public class FoxtrotTweaker implements ITweaker {
                 }
             }
 
-            Thread.sleep(1000); 
+            Thread.sleep(500); 
 
             File currentJar = new File(FoxtrotTweaker.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            File oldJar = new File(currentJar.getAbsolutePath() + ".old");
+            File destinationInMods = new File(currentJar.getParentFile(), "Foxtrot-" + LATEST_VERSION + ".jar");
 
-            if (currentJar.exists()) {
-                currentJar.renameTo(oldJar);
-            }
+            Files.copy(currentJar.toPath(), updaterJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-            File destinationInMods = new File(currentJar.getParentFile(), newJar.getName());
-            Files.copy(newJar.toPath(), destinationInMods.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+            String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + (isWindows ? "javaw.exe" : "java");
 
-            SwingUtilities.invokeLater(window::dispose);
+            ProcessBuilder pb = new ProcessBuilder(
+                    javaBin, 
+                    "-cp", updaterJar.getAbsolutePath(), 
+                    "com.linexstudios.foxtrot.Update.FoxtrotRelocator", 
+                    currentJar.getAbsolutePath(), 
+                    tempJar.getAbsolutePath(), 
+                    destinationInMods.getAbsolutePath()
+            );
 
-            if (!IS_BOOTING) {
-                System.exit(0);
-            }
+            pb.redirectError(new File(foxtrotDir, "updater_error.log"));
+            pb.redirectOutput(new File(foxtrotDir, "updater_output.log"));
+            pb.start();
+
+            SwingUtilities.invokeLater(() -> {
+                window.dispose(); 
+                FoxtrotSuccessWindow successWindow = new FoxtrotSuccessWindow(LATEST_VERSION, null);
+                successWindow.setVisible(true);
+            });
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -195,37 +214,11 @@ public class FoxtrotTweaker implements ITweaker {
 
     public static void triggerManualUpdate() {
         new Thread(() -> {
-            if (DEV_TEST_MODE) {
-                FoxtrotUpdateWindow window = new FoxtrotUpdateWindow(LATEST_VERSION);
-                SwingUtilities.invokeLater(() -> window.setVisible(true));
-                try {
-                    for (int i = 0; i <= 100; i += 5) {
-                        window.setProgress(i);
-                        Thread.sleep(100);
-                    }
-                    Thread.sleep(1000);
-                    SwingUtilities.invokeLater(window::dispose);
-                    System.exit(0); 
-                } catch (Exception ignored) {}
-            } else {
-                runRealDownload(DOWNLOAD_URL);
-            }
+            runRealDownload(DOWNLOAD_URL);
         }).start();
     }
 
-    @Override
-    public void injectIntoClassLoader(LaunchClassLoader classLoader) { 
-        IS_BOOTING = false;
-    }
-    
-    @Override
-    public String getLaunchTarget() { 
-        return "net.minecraft.client.main.Main"; 
-    }
-
-    @Override
-    public String[] getLaunchArguments() { 
-        // THIS MUST BE EMPTY NOW! The blackboard handles the Mixins above.
-        return new String[0]; 
-    }
+    @Override public void injectIntoClassLoader(LaunchClassLoader classLoader) {}
+    @Override public String getLaunchTarget() { return "net.minecraft.client.main.Main"; }
+    @Override public String[] getLaunchArguments() { return new String[0]; }
 }
