@@ -23,9 +23,13 @@ public class Ranks {
     private final Minecraft mc = Minecraft.getMinecraft();
 
     // ==========================================
-    //             MODULE SETTINGS
+    //              MODULE SETTINGS
     // ==========================================
     public static boolean isEnabled = true;
+
+    // --- NICKNAME CHANGER ---
+    public static boolean changeName = false;
+    public static String targetName = "";
 
     public static boolean changeLevel = true;
     public static int targetLevel = 120;
@@ -39,7 +43,7 @@ public class Ranks {
     public static boolean hideLobby = true;
 
     // ==========================================
-    //             STATE CACHING ENGINE
+    //              STATE CACHING ENGINE
     // ==========================================
     private boolean wasEnabled = false;
     private String originalScoreboardTitle = null;
@@ -58,7 +62,7 @@ public class Ranks {
     }
 
     // ==========================================
-    //                 CHAT REPLACER
+    //                  CHAT REPLACER
     // ==========================================
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChatReceived(ClientChatReceivedEvent event) {
@@ -67,10 +71,13 @@ public class Ranks {
         String originalMessage = event.message.getFormattedText();
         String unformattedMessage = StringUtils.stripControlCodes(originalMessage);
         String realName = mc.thePlayer.getName();
+        
+        // Use targetName if enabled, otherwise use realName
+        String displayUsername = (changeName && targetName != null && !targetName.isEmpty()) ? targetName : realName;
 
         if (unformattedMessage.contains(realName)) {
             
-            // 1. DYNAMIC CONTEXT SCANNER (Blocks brackets in party/guild messages)
+            // 1. DYNAMIC CONTEXT SCANNER
             boolean isNetwork = false;
             if (unformattedMessage.startsWith("Party >") || 
                 unformattedMessage.startsWith("Guild >") || 
@@ -103,9 +110,9 @@ public class Ranks {
                 
                 String customPrefix;
                 if (isNetwork) {
-                    customPrefix = channelPrefix + getCustomRankPrefix() + getRankColor(targetRank) + realName + colonWithColors + getChatColor(targetRank);
+                    customPrefix = channelPrefix + getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + colonWithColors + getChatColor(targetRank);
                 } else {
-                    customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + colonWithColors + getChatColor(targetRank);
+                    customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + colonWithColors + getChatColor(targetRank);
                 }
                 
                 event.message = new ChatComponentText(customPrefix + chatMessage);
@@ -117,9 +124,9 @@ public class Ranks {
             String replacement;
             
             if (isNetwork) {
-                replacement = getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
+                replacement = getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + EnumChatFormatting.RESET;
             } else {
-                replacement = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + realName + EnumChatFormatting.RESET;
+                replacement = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + EnumChatFormatting.RESET;
             }
             
             String replacedMessage = originalMessage.replaceAll(fallbackRegex, replacement);
@@ -139,11 +146,12 @@ public class Ranks {
         if (isEnabled && pit) {
             wasEnabled = true;
             String realName = mc.thePlayer.getName();
+            String displayUsername = (changeName && targetName != null && !targetName.isEmpty()) ? targetName : realName;
 
             // 1. Replace in Tab List
             for (NetworkPlayerInfo playerInfo : mc.getNetHandler().getPlayerInfoMap()) {
                 if (playerInfo.getGameProfile().getName().equals(realName)) {
-                    String tabName = getRankColor(targetRank) + realName;
+                    String tabName = getRankColor(targetRank) + displayUsername; // Uses custom username here!
                     if (changeLevel || changePrestige) {
                         tabName = getCustomTabPitBracket() + " " + tabName;
                     }
@@ -287,10 +295,7 @@ public class Ranks {
         int baseXP = getBaseXp(targetLevel);
         double multiplier = getPrestigeMultiplier(targetPrestige);
         
-        // Use standard Java rounding to match the exact XP map
         long neededXP = Math.round(baseXP * multiplier);
-
-        // Just returns the raw number with commas now
         return String.format("%,d", neededXP);
     }
 

@@ -92,14 +92,22 @@ public class PitESP {
                 if (tile instanceof TileEntityChest) {
                     BlockPos pos = tile.getPos();
                     
-                    // Chests are exactly 0.875 blocks tall, and pushed in 0.0625 from the edges
-                    AxisAlignedBB bb = new AxisAlignedBB(
-                            pos.getX() - renderPosX + 0.0625, pos.getY() - renderPosY, pos.getZ() - renderPosZ + 0.0625,
-                            pos.getX() + 0.9375 - renderPosX, pos.getY() + 0.875 - renderPosY, pos.getZ() + 0.9375 - renderPosZ
-                        );
+                    int cx = pos.getX();
+                    int cy = pos.getY();
+                    int cz = pos.getZ();
+
+                    // BOUNDARY CHECK: Only render if inside the Sewers Zone 1 & 2 Coordinates
+                    if (cx >= 0 && cx <= 117 && cy >= 47 && cy <= 63 && cz >= -23 && cz <= 95) {
                         
-                    if (camera.isBoundingBoxInFrustum(bb.offset(renderPosX, renderPosY, renderPosZ))) {
-                        drawFilledAndOutlinedBox(bb, 255, 0, 0); // PERFECT RED
+                        // Chests are exactly 0.875 blocks tall, and pushed in 0.0625 from the edges
+                        AxisAlignedBB bb = new AxisAlignedBB(
+                                pos.getX() - renderPosX + 0.0625, pos.getY() - renderPosY, pos.getZ() - renderPosZ + 0.0625,
+                                pos.getX() + 0.9375 - renderPosX, pos.getY() + 0.875 - renderPosY, pos.getZ() + 0.9375 - renderPosZ
+                            );
+                            
+                        if (camera.isBoundingBoxInFrustum(bb.offset(renderPosX, renderPosY, renderPosZ))) {
+                            drawFilledAndOutlinedBox(bb, 255, 0, 0); // PERFECT RED
+                        }
                     }
                 }
             }

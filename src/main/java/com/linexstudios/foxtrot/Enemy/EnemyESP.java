@@ -22,14 +22,18 @@ public class EnemyESP {
         if (!enabled || mc.theWorld == null || mc.thePlayer == null) return;
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
-            if (player != mc.thePlayer && isTarget(player.getName())) {
+            if (player == mc.thePlayer) continue;
+
+            // --- ANTI-GHOSTING FIX ---
+            // Ignores dead players, players with 0 health, and invisible bots
+            if (player.isDead || player.getHealth() <= 0 || player.isInvisible()) continue;
+
+            // --- UUID SPOOF PROTECTION ---
+            // Uses EnemyHUD's strict validator to ensure the UUID matches the name
+            if (EnemyHUD.isTarget(player)) {
                 renderESP(player, event.partialTicks);
             }
         }
-    }
-
-    private boolean isTarget(String name) {
-        return EnemyHUD.targetList.stream().anyMatch(target -> target.equalsIgnoreCase(name));
     }
 
     private void renderESP(EntityPlayer player, float partialTicks) {

@@ -17,33 +17,34 @@ import com.linexstudios.foxtrot.Hud.BossBarModule;
 import com.linexstudios.foxtrot.Hud.CPSModule;
 import com.linexstudios.foxtrot.Hud.FPSModule;
 import com.linexstudios.foxtrot.Hud.DraggableHUD;
+import com.linexstudios.foxtrot.Hud.TelebowHUD;
+import com.linexstudios.foxtrot.Hud.PlayerCounterHUD; 
 import com.linexstudios.foxtrot.Denick.AutoDenick;
 import com.linexstudios.foxtrot.Combat.AutoClicker;
 import com.linexstudios.foxtrot.Misc.AutoBulletTime;
 import com.linexstudios.foxtrot.Misc.AutoPantSwap; 
 import com.linexstudios.foxtrot.Misc.AutoGhead; 
 import com.linexstudios.foxtrot.Misc.AutoQuickMath; 
-import com.linexstudios.foxtrot.Hud.TelebowHUD;
 import com.linexstudios.foxtrot.Util.Ranks;
 import com.linexstudios.foxtrot.Render.PitESP; 
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.NickedRender;
 import com.linexstudios.foxtrot.Render.LowLifeMystic;
+import com.linexstudios.foxtrot.Enemy.EnemyManager; // NEW IMPORT
 
 import net.minecraft.client.Minecraft;
 import java.io.*;
 import java.util.*;
 
 public class ConfigHandler {
-    public static boolean telemetryEnabled = true; // NEW: Telemetry Opt-Out toggle
-    public static boolean autoUpdateEnabled = true; // NEW: Auto-Update Toggle
+    public static boolean telemetryEnabled = true; 
+    public static boolean autoUpdateEnabled = true; 
 
     private static final File configDir = new File("config/Foxtrot");
     private static final File enemyFile = new File(configDir, "enemies.txt");
     private static final File friendsFile = new File(configDir, "friends.txt");
     private static final File settingsFile = new File(configDir, "settings.txt");
 
-    // --- CRASH PREVENTION HELPERS ---
     private static int getInt(Properties props, String key, int def) {
         try { return (int) Float.parseFloat(props.getProperty(key, String.valueOf(def))); } catch (Exception e) { return def; }
     }
@@ -54,13 +55,12 @@ public class ConfigHandler {
         try { return Boolean.parseBoolean(props.getProperty(key, String.valueOf(def))); } catch (Exception e) { return def; }
     }
 
-    // Forces Java to load the modules so they actually exist in the DraggableHUD Registry
     private static void initHUDs() {
         Object[] forceLoad = {
             PotionHUD.instance, ArmorHUD.instance, CoordsHUD.instance, EnemyHUD.instance,
             NickedHUD.instance, FriendsHUD.instance, SessionStatsHUD.instance, EventHUD.instance,
             RegHUD.instance, DarksHUD.instance, ToggleSprintModule.instance, CPSModule.instance, FPSModule.instance, 
-            BossBarModule.instance, TelebowHUD.instance // Added TelebowHUD here!
+            BossBarModule.instance, TelebowHUD.instance, PlayerCounterHUD.instance
         };
     }
 
@@ -82,7 +82,9 @@ public class ConfigHandler {
     }
 
     public static void loadConfig() {
-        initHUDs(); // Ensure registry is full!
+        initHUDs();
+        EnemyManager.loadCache(); // <--- LOADS THE UUID CACHE ON STARTUP
+
         try {
             if (!configDir.exists()) configDir.mkdirs();
 
@@ -105,9 +107,6 @@ public class ConfigHandler {
                 FileInputStream in = new FileInputStream(settingsFile);
                 props.load(in); in.close();
 
-                // ==========================================
-                //     AUTOMATIC HUD POSITION LOADING
-                // ==========================================
                 for (DraggableHUD hud : DraggableHUD.getRegistry()) {
                     String cleanName = hud.name.replaceAll("\\s+", "");
                     hud.x = getInt(props, cleanName + "X", hud.x);
@@ -115,7 +114,6 @@ public class ConfigHandler {
                     hud.scale = getFloat(props, cleanName + "Scale", hud.scale);
                 }
 
-                // Layouts & Colors
                 PotionHUD.instance.isHorizontal = getBool(props, "potionHorizontal", false);
                 PotionHUD.nameColor = getInt(props, "potionNameColor", 16777215); 
                 PotionHUD.durationColor = getInt(props, "potionDurationColor", 11184810); 
@@ -125,7 +123,6 @@ public class ConfigHandler {
                 CoordsHUD.axisColor = getInt(props, "coordsAxisColor", 16733525); 
                 CoordsHUD.numberColor = getInt(props, "coordsNumberColor", 16777215);
                 
-                // Toggle Sprint
                 ToggleSprintModule.instance.enabled = getBool(props, "toggleSprintEnabled", true);
                 ToggleSprintModule.instance.toggleSprint = getBool(props, "tsSprint", true);
                 ToggleSprintModule.instance.toggleSneak = getBool(props, "tsSneak", false);
@@ -134,7 +131,6 @@ public class ConfigHandler {
                 ToggleSprintModule.instance.flyBoostAmount = getFloat(props, "tsFlyBoostAmount", 4.0f);
                 ToggleSprintModule.instance.textColor = getInt(props, "tsTextColor", 16777215);
 
-                // Modules
                 CPSModule.showBackground = getBool(props, "cpsShowBg", true);
                 CPSModule.textColor = getInt(props, "cpsTextColor", 16777215);
                 FPSModule.showBackground = getBool(props, "fpsShowBg", true);
@@ -144,7 +140,6 @@ public class ConfigHandler {
                 EditHUDGui.collapsedY = getInt(props, "panelY", -1);
                 EditHUDGui.panelCollapsed = getBool(props, "panelCollapsed", false);
 
-                // AutoClicker
                 AutoClicker.enabled = getBool(props, "clickerEnabled", false);
                 AutoClicker.leftClick = getBool(props, "clickerLeft", true);
                 AutoClicker.fastPlaceEnabled = getBool(props, "fastPlace", false);
@@ -159,7 +154,6 @@ public class ConfigHandler {
                 String whitelistStr = props.getProperty("clickerWhitelist", "sword,axe,pickaxe");
                 AutoClicker.itemWhitelist = new ArrayList<>(Arrays.asList(whitelistStr.split(",")));
 
-                // ESP & Tags
                 AutoDenick.enabled = getBool(props, "autoDenick", false);
                 NickedRender.enabled = getBool(props, "nickedNametags", true);
                 PitESP.espChests = getBool(props, "pitEspChests", true);
@@ -168,7 +162,6 @@ public class ConfigHandler {
                 PitESP.espMystics = getBool(props, "pitEspMystics", true);
                 LowLifeMystic.enabled = getBool(props, "lowLifeMysticEnabled", true);
 
-                // Misc Auto Use
                 AutoPantSwap.pantSwapEnabled = getBool(props, "autoPantSwap", true);
                 AutoPantSwap.venomSwapEnabled = getBool(props, "autoVenomSwap", true);
                 AutoPantSwap.autoPodEnabled = getBool(props, "autoPod", true);
@@ -176,7 +169,6 @@ public class ConfigHandler {
                 AutoQuickMath.enabled = getBool(props, "autoQuickMath", true);
                 AutoBulletTime.enabled = getBool(props, "autoBulletTime", false);
 
-                // HUD Enables
                 EnemyHUD.enabled = getBool(props, "enemyHudEnabled", true);
                 EnemyHUD.notificationsEnabled = getBool(props, "enemyHudAlerts", true);
                 EnemyHUD.debugMode = getBool(props, "enemyHudDebug", false);
@@ -191,7 +183,11 @@ public class ConfigHandler {
                 BossBarModule.enabled = getBool(props, "bossBarEnabled", true);
                 CPSModule.enabled = getBool(props, "cpsEnabled", true);
                 FPSModule.enabled = getBool(props, "fpsEnabled", true);
-                TelebowHUD.enabled = getBool(props, "telebowHudEnabled", true); // Added TelebowHUD Load
+                TelebowHUD.enabled = getBool(props, "telebowHudEnabled", true); 
+                
+                PlayerCounterHUD.enabled = getBool(props, "playerCounterEnabled", true);
+                PlayerCounterHUD.prefixColor = getInt(props, "playerCounterPrefixColor", 0xFFFFFF);
+                PlayerCounterHUD.countColor = getInt(props, "playerCounterCountColor", 0xAAAAAA);
 
                 NameTags.enabled = getBool(props, "nameTagsEnabled", false);
                 NameTags.showHealth = getBool(props, "nameTagsShowHealth", true);
@@ -199,7 +195,6 @@ public class ConfigHandler {
                 FriendsHUD.enabled = getBool(props, "friendsHudEnabled", true);
                 FriendsESP.enabled = getBool(props, "friendsEspEnabled", true);
 
-                // --- Ranks Load ---
                 com.linexstudios.foxtrot.Util.Ranks.isEnabled = getBool(props, "ranksEnabled", true);
                 com.linexstudios.foxtrot.Util.Ranks.changeLevel = getBool(props, "ranksChangeLevel", true);
                 com.linexstudios.foxtrot.Util.Ranks.targetLevel = getInt(props, "ranksTargetLevel", 120);
@@ -207,8 +202,9 @@ public class ConfigHandler {
                 com.linexstudios.foxtrot.Util.Ranks.targetPrestige = getInt(props, "ranksTargetPrestige", 35);
                 com.linexstudios.foxtrot.Util.Ranks.changeRank = getBool(props, "ranksChangeRank", true);
                 com.linexstudios.foxtrot.Util.Ranks.targetRank = props.getProperty("ranksTargetRank", "staff");
+                com.linexstudios.foxtrot.Util.Ranks.changeName = getBool(props, "ranksChangeName", false);
+                com.linexstudios.foxtrot.Util.Ranks.targetName = props.getProperty("ranksTargetName", "");
 
-                // API - TELEMTRYMANAGER
                 telemetryEnabled = getBool(props, "telemetryEnabled", true); 
                 TelemetryManager.anonymousClientId = props.getProperty("telemetryId", "");
             }
@@ -218,7 +214,9 @@ public class ConfigHandler {
     }
 
     public static void saveConfig() {
-        initHUDs(); // Ensure registry is full!
+        initHUDs();
+        EnemyManager.saveCache(); // <--- SAVES THE UUID CACHE ON EXIT
+
         try {
             if (!configDir.exists()) configDir.mkdirs();
 
@@ -232,9 +230,6 @@ public class ConfigHandler {
 
             Properties props = new Properties();
 
-            // ==========================================
-            //     AUTOMATIC HUD POSITION SAVING
-            // ==========================================
             for (DraggableHUD hud : DraggableHUD.getRegistry()) {
                 String cleanName = hud.name.replaceAll("\\s+", "");
                 props.setProperty(cleanName + "X", String.valueOf(hud.x));
@@ -242,7 +237,6 @@ public class ConfigHandler {
                 props.setProperty(cleanName + "Scale", String.valueOf(hud.scale));
             }
 
-            // Layouts & Colors
             props.setProperty("potionHorizontal", String.valueOf(PotionHUD.instance.isHorizontal));
             props.setProperty("potionNameColor", String.valueOf(PotionHUD.nameColor));
             props.setProperty("potionDurationColor", String.valueOf(PotionHUD.durationColor));
@@ -252,7 +246,6 @@ public class ConfigHandler {
             props.setProperty("coordsAxisColor", String.valueOf(CoordsHUD.axisColor));
             props.setProperty("coordsNumberColor", String.valueOf(CoordsHUD.numberColor));
             
-            // Toggle Sprint
             props.setProperty("toggleSprintEnabled", String.valueOf(ToggleSprintModule.instance.enabled));
             props.setProperty("tsSprint", String.valueOf(ToggleSprintModule.instance.toggleSprint));
             props.setProperty("tsSneak", String.valueOf(ToggleSprintModule.instance.toggleSneak));
@@ -261,7 +254,6 @@ public class ConfigHandler {
             props.setProperty("tsFlyBoostAmount", String.valueOf(ToggleSprintModule.instance.flyBoostAmount));
             props.setProperty("tsTextColor", String.valueOf(ToggleSprintModule.instance.textColor));
 
-            // Modules
             props.setProperty("cpsShowBg", String.valueOf(CPSModule.showBackground));
             props.setProperty("cpsTextColor", String.valueOf(CPSModule.textColor));
             props.setProperty("fpsShowBg", String.valueOf(FPSModule.showBackground));
@@ -271,7 +263,6 @@ public class ConfigHandler {
             props.setProperty("panelY", String.valueOf(EditHUDGui.collapsedY));
             props.setProperty("panelCollapsed", String.valueOf(EditHUDGui.panelCollapsed));
 
-            // AutoClicker
             props.setProperty("clickerEnabled", String.valueOf(AutoClicker.enabled));
             props.setProperty("clickerLeft", String.valueOf(AutoClicker.leftClick));
             props.setProperty("fastPlace", String.valueOf(AutoClicker.fastPlaceEnabled));
@@ -286,7 +277,6 @@ public class ConfigHandler {
             String whitelistStr = String.join(",", AutoClicker.itemWhitelist);
             props.setProperty("clickerWhitelist", whitelistStr);
 
-            // ESP & Tags
             props.setProperty("autoDenick", String.valueOf(AutoDenick.enabled));
             props.setProperty("nickedNametags", String.valueOf(NickedRender.enabled));
             props.setProperty("pitEspChests", String.valueOf(PitESP.espChests));
@@ -295,7 +285,6 @@ public class ConfigHandler {
             props.setProperty("pitEspMystics", String.valueOf(PitESP.espMystics));
             props.setProperty("lowLifeMysticEnabled", String.valueOf(LowLifeMystic.enabled));
 
-            // Misc Auto Use
             props.setProperty("autoPantSwap", String.valueOf(AutoPantSwap.pantSwapEnabled));
             props.setProperty("autoVenomSwap", String.valueOf(AutoPantSwap.venomSwapEnabled));
             props.setProperty("autoPod", String.valueOf(AutoPantSwap.autoPodEnabled));
@@ -303,7 +292,6 @@ public class ConfigHandler {
             props.setProperty("autoQuickMath", String.valueOf(AutoQuickMath.enabled));
             props.setProperty("autoBulletTime", String.valueOf(AutoBulletTime.enabled));
 
-            // HUD Enables
             props.setProperty("enemyHudEnabled", String.valueOf(EnemyHUD.enabled));
             props.setProperty("enemyHudAlerts", String.valueOf(EnemyHUD.notificationsEnabled));
             props.setProperty("enemyHudDebug", String.valueOf(EnemyHUD.debugMode));
@@ -318,7 +306,11 @@ public class ConfigHandler {
             props.setProperty("bossBarEnabled", String.valueOf(BossBarModule.enabled));
             props.setProperty("cpsEnabled", String.valueOf(CPSModule.enabled));
             props.setProperty("fpsEnabled", String.valueOf(FPSModule.enabled));
-            props.setProperty("telebowHudEnabled", String.valueOf(TelebowHUD.enabled)); // Added TelebowHUD Save
+            props.setProperty("telebowHudEnabled", String.valueOf(TelebowHUD.enabled)); 
+            
+            props.setProperty("playerCounterEnabled", String.valueOf(PlayerCounterHUD.enabled));
+            props.setProperty("playerCounterPrefixColor", String.valueOf(PlayerCounterHUD.prefixColor));
+            props.setProperty("playerCounterCountColor", String.valueOf(PlayerCounterHUD.countColor));
 
             props.setProperty("nameTagsEnabled", String.valueOf(NameTags.enabled));
             props.setProperty("nameTagsShowHealth", String.valueOf(NameTags.showHealth));
@@ -326,7 +318,6 @@ public class ConfigHandler {
             props.setProperty("friendsHudEnabled", String.valueOf(FriendsHUD.enabled));
             props.setProperty("friendsEspEnabled", String.valueOf(FriendsESP.enabled));
 
-            // --- Ranks Save ---
             props.setProperty("ranksEnabled", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.isEnabled));
             props.setProperty("ranksChangeLevel", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.changeLevel));
             props.setProperty("ranksTargetLevel", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.targetLevel));
@@ -334,8 +325,9 @@ public class ConfigHandler {
             props.setProperty("ranksTargetPrestige", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.targetPrestige));
             props.setProperty("ranksChangeRank", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.changeRank));
             props.setProperty("ranksTargetRank", com.linexstudios.foxtrot.Util.Ranks.targetRank);
+            props.setProperty("ranksChangeName", String.valueOf(com.linexstudios.foxtrot.Util.Ranks.changeName));
+            props.setProperty("ranksTargetName", com.linexstudios.foxtrot.Util.Ranks.targetName != null ? com.linexstudios.foxtrot.Util.Ranks.targetName : "");
 
-            // API - TELEMTRYMANAGER
             props.setProperty("telemetryEnabled", String.valueOf(telemetryEnabled)); 
             if (TelemetryManager.anonymousClientId != null && !TelemetryManager.anonymousClientId.isEmpty()) {
                 props.setProperty("telemetryId", TelemetryManager.anonymousClientId);

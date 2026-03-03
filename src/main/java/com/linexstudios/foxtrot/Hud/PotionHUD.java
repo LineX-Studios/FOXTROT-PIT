@@ -2,7 +2,6 @@ package com.linexstudios.foxtrot.Hud;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.potion.Potion;
@@ -80,16 +79,26 @@ public class PotionHUD extends DraggableHUD {
         FontRenderer fr = mc.fontRendererObj;
         Collection<PotionEffect> effects = mc.thePlayer.getActivePotionEffects();
         
+        // ==========================================
+        //         ISOLATED DUMMY RENDERING
+        // ==========================================
         if (isEditing && effects.isEmpty()) {
             this.width = 80;
             this.height = 45;
             
+            // STRICT STATE RESET FOR DUMMY RENDERING
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+            GlStateManager.enableTexture2D();
+            GlStateManager.enableBlend();
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+            
+            // Dummy Icon 1 (Speed)
             mc.getTextureManager().bindTexture(INVENTORY_RESOURCE);
-            GlStateManager.color(1, 1, 1, 1);
             mc.ingameGUI.drawTexturedModalRect(5, 5, 0, 198, 18, 18);
             fr.drawStringWithShadow("Speed II", 27, 5, nameColor);
             fr.drawStringWithShadow("1:30", 27, 15, durationColor);
             
+            // Dummy Icon 2 (Strength)
             mc.getTextureManager().bindTexture(INVENTORY_RESOURCE);
             mc.ingameGUI.drawTexturedModalRect(5, 25, 18, 198, 18, 18);
             fr.drawStringWithShadow("Strength I", 27, 25, nameColor);
@@ -106,14 +115,23 @@ public class PotionHUD extends DraggableHUD {
         int currentY = 5;
         int maxWidth = 50; 
 
+        // ==========================================
+        //           REAL POTION RENDERING
+        // ==========================================
         for (PotionEffect effect : effects) {
             Potion potion = Potion.potionTypes[effect.getPotionID()];
             String name = I18n.format(potion.getName()) + getLevelName(effect.getAmplifier());
             String duration = Potion.getDurationString(effect);
             boolean blink = shouldBlink(effect.getDuration());
 
+            // STRICT STATE RESET PER ICON
             GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+            GlStateManager.enableTexture2D();
+            GlStateManager.enableBlend();
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+            
             mc.getTextureManager().bindTexture(INVENTORY_RESOURCE);
+            
             if (potion.hasStatusIcon()) {
                 int iconIndex = potion.getStatusIconIndex();
                 int u = iconIndex % 8 * 18;

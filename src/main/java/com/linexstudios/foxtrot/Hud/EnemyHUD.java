@@ -1,9 +1,9 @@
 package com.linexstudios.foxtrot.Hud;
 
+import com.linexstudios.foxtrot.Enemy.EnemyManager;
 import com.linexstudios.foxtrot.Util.SpawnRegions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -35,7 +35,7 @@ public class EnemyHUD extends DraggableHUD {
         if (event.type != RenderGameOverlayEvent.ElementType.TEXT) return;
         if (mc.currentScreen instanceof EditHUDGui) return;
         if (mc.currentScreen instanceof HUDSettingsGui) return;
-        render(false, 0, 0); // Re-routes to the DraggableHUD render method
+        render(false, 0, 0); 
     }
 
     @Override
@@ -43,7 +43,7 @@ public class EnemyHUD extends DraggableHUD {
         if (!enabled || mc.theWorld == null) return;
 
         FontRenderer fr = mc.fontRendererObj;
-        int currentY = 0; // Local Y relative to the scaled box
+        int currentY = 0; 
         int maxWidth = fr.getStringWidth("Enemy List");
         boolean foundEnemy = false;
 
@@ -52,9 +52,11 @@ public class EnemyHUD extends DraggableHUD {
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
-            String name = other.getName();
 
-            if (!isTarget(name)) continue;
+            // Uses the new strict UUID validator
+            if (!isTarget(other)) continue;
+            
+            String name = other.getName();
             if (renderedEnemies.contains(name.toLowerCase())) continue;
             renderedEnemies.add(name.toLowerCase());
 
@@ -71,6 +73,15 @@ public class EnemyHUD extends DraggableHUD {
                 displayName = rawFormatted.substring(0, nameIndex + name.length());
             } else {
                 displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.RED + name;
+            }
+
+            // --- NAME CHANGE DETECTOR (ALIAS DISPLAY) ---
+            String currentUUID = other.getUniqueID().toString();
+            String cachedName = EnemyManager.enemyCache.get(currentUUID);
+            
+            // If we have them cached, and their current name doesn't match the cache, display the alias!
+            if (cachedName != null && !cachedName.equalsIgnoreCase(name)) {
+                displayName += EnumChatFormatting.YELLOW + " (" + EnumChatFormatting.YELLOW + cachedName + EnumChatFormatting.YELLOW + ")";
             }
 
             displayName = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.RESET + displayName;
@@ -90,7 +101,7 @@ public class EnemyHUD extends DraggableHUD {
             if (isEditing) {
                 fr.drawStringWithShadow(EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "Enemy List:", 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT + 2;
-                String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[120] Player" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
+                String placeholder = EnumChatFormatting.DARK_RED + "[" + EnumChatFormatting.RED + "E" + EnumChatFormatting.DARK_RED + "] " + EnumChatFormatting.GRAY + "[120] Player " + EnumChatFormatting.YELLOW + "(" + EnumChatFormatting.YELLOW + "OLD_USERNAME" + EnumChatFormatting.YELLOW + ")" + EnumChatFormatting.GRAY + " - " + EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
                 fr.drawStringWithShadow(placeholder, 0, currentY, 0xFFFFFF);
                 currentY += fr.FONT_HEIGHT;
                 maxWidth = Math.max(maxWidth, fr.getStringWidth(placeholder));
@@ -131,12 +142,15 @@ public class EnemyHUD extends DraggableHUD {
         if (key == null) return null;
         switch (key.toLowerCase()) {
             case "regularity": return EnumChatFormatting.DARK_RED + "Reg";
-            case "respawn_absorption": return EnumChatFormatting.GOLD + "Abs";
-            case "mirror": return EnumChatFormatting.WHITE + "Mirror";
+            case "immune_true_damage": 
+            case "mirror":
+            case "reflection": return EnumChatFormatting.WHITE + "Mirror";
+            case "respawn_absorption": 
+            case "respawn_with_absorption": return EnumChatFormatting.GOLD + "Abs";
             case "critically_funky": return EnumChatFormatting.DARK_AQUA + "Crit Funky";
-            case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
-            case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Assaults";
             case "solitude": return EnumChatFormatting.RED + "Soli";
+            case "venom": case "combo_venom": return EnumChatFormatting.DARK_PURPLE + "Venom";
+            case "mind_assault": return EnumChatFormatting.DARK_PURPLE + "Mind Assaults";
             case "protection": return EnumChatFormatting.BLUE + "Prot";
             case "fractional_reserve": return EnumChatFormatting.BLUE + "Frac";
             case "not_gladiator": return EnumChatFormatting.BLUE + "Glad";
@@ -144,7 +158,30 @@ public class EnemyHUD extends DraggableHUD {
         }
     }
 
+    // --- STRICT ANTI-SPOOF VALIDATOR ---
+    public static boolean isTarget(EntityPlayer player) {
+        if (player == null) return false;
+        
+        String currentName = player.getName();
+        String currentUUID = player.getUniqueID().toString();
+
+        if (EnemyManager.enemyCache.containsKey(currentUUID)) {
+            return true;
+        }
+
+        if (targetList.stream().anyMatch(t -> t.equalsIgnoreCase(currentName))) {
+            String expectedUUID = EnemyManager.getUUIDFromName(currentName);
+            if (expectedUUID != null && !expectedUUID.equals(currentUUID)) {
+                return false; 
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // --- SECONDARY STRING VALIDATOR (For the Denick System) ---
     public static boolean isTarget(String name) {
-        return name != null && targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
+        if (name == null) return false;
+        return targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));
     }
 }

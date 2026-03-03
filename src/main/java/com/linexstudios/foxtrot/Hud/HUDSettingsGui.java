@@ -16,8 +16,8 @@ import java.io.IOException;
 public class HUDSettingsGui extends GuiScreen {
     private final GuiScreen previousScreen;
     
-    // Added Telebow Timer to the end of the array
-    private String[] modules = {"Potion Status", "Armor Status", "Coordinates", "Enemy List", "Nicked List", "Friend List", "Session Stats", "Event Tracker", "Regularity List", "Darks List", "Toggle Sprint", "CPS", "FPS", "Boss Bar", "Telebow Timer"};
+    // Added Player Counter to the end of the array
+    private String[] modules = {"Potion Status", "Armor Status", "Coordinates", "Enemy List", "Nicked List", "Friend List", "Session Stats", "Event Tracker", "Regularity List", "Darks List", "Toggle Sprint", "CPS", "FPS", "Boss Bar", "Telebow Timer", "Player Counter"};
     
     private boolean inSettingsMenu = false;
     private int selectedModule = -1;
@@ -97,7 +97,8 @@ public class HUDSettingsGui extends GuiScreen {
         if (CPSModule.enabled) CPSModule.instance.render(true, mouseX, mouseY);
         if (FPSModule.enabled) FPSModule.instance.render(true, mouseX, mouseY); 
         if (BossBarModule.enabled) BossBarModule.instance.render(true, mouseX, mouseY);
-        if (TelebowHUD.enabled) TelebowHUD.instance.render(true, mouseX, mouseY); // Renders Telebow Dummy
+        if (TelebowHUD.enabled) TelebowHUD.instance.render(true, mouseX, mouseY); 
+        if (PlayerCounterHUD.enabled) PlayerCounterHUD.instance.render(true, mouseX, mouseY); // NEW: Renders Dummy
         GlStateManager.popMatrix();
 
         GlStateManager.disableLighting();
@@ -245,10 +246,10 @@ public class HUDSettingsGui extends GuiScreen {
                 drawIOSToggle(rX + 10, rY + 10, 340, "Enable Module", ToggleSprintModule.instance.enabled, mouseX, mouseY);
                 drawIOSToggle(rX + 10, rY + 30, 340, "Toggle Sprint", ToggleSprintModule.instance.toggleSprint, mouseX, mouseY);
                 drawIOSToggle(rX + 10, rY + 50, 340, "Toggle Sneak", ToggleSprintModule.instance.toggleSneak, mouseX, mouseY);
-                drawIOSToggle(rX + 10, rY + 70, 340, "W-Tap Fix", ToggleSprintModule.instance.wTapFix, mouseX, mouseY);
+                drawIOSToggle(rX + 10, rY + 70, 340, "W-Tap", ToggleSprintModule.instance.wTapFix, mouseX, mouseY);
                 drawIOSToggle(rX + 10, rY + 90, 340, "Fly Boost", ToggleSprintModule.instance.flyBoost, mouseX, mouseY);
                 drawSolidRect(rX + 10, rY + 110, 340, 1, 0x11FFFFFF);
-                this.fontRendererObj.drawStringWithShadow("Boost Amt", rX + 10, rY + 118, 0xDDDDDD);
+                this.fontRendererObj.drawStringWithShadow("Fly Boost", rX + 10, rY + 118, 0xDDDDDD);
                 drawIOSSlider(rX + 80, rY + 116, ToggleSprintModule.instance.flyBoostAmount, 1.0f, 10.0f, 250);
                 this.fontRendererObj.drawStringWithShadow("Text Color", rX + 10, rY + 140, 0xDDDDDD);
                 drawPalette(rX + 80, rY + 135, ToggleSprintModule.instance.textColor, mouseX, mouseY, 7);
@@ -268,9 +269,15 @@ public class HUDSettingsGui extends GuiScreen {
                 drawSettingsCard(rX, rY, 360, 30);
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.GRAY + "Use scale to resize Boss Bar.", rX + 10, rY + 11, -1);
             } else if (selectedModule == 14) { 
-                // Telebow Setting View
                 drawSettingsCard(rX, rY, 360, 30);
                 this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.GRAY + "Use scale to resize Telebow Timer.", rX + 10, rY + 11, -1);
+            } else if (selectedModule == 15) { 
+                // --- NEW PLAYER COUNTER COLOR PICKERS ---
+                drawSettingsCard(rX, rY, 360, 85);
+                this.fontRendererObj.drawStringWithShadow("Prefix Color (Text)", rX + 10, rY + 10, 0xDDDDDD);
+                drawPalette(rX + 10, rY + 23, PlayerCounterHUD.prefixColor, mouseX, mouseY, 11);
+                this.fontRendererObj.drawStringWithShadow("Number of Players", rX + 10, rY + 50, 0xDDDDDD);
+                drawPalette(rX + 10, rY + 63, PlayerCounterHUD.countColor, mouseX, mouseY, 12);
             }
 
             if (activeCustomColorTarget != -1) drawColorPickerPopup(pickerX, pickerY, mouseX, mouseY);
@@ -295,6 +302,7 @@ public class HUDSettingsGui extends GuiScreen {
         if (i == 12) return FPSModule.enabled;
         if (i == 13) return BossBarModule.enabled;
         if (i == 14) return TelebowHUD.enabled;
+        if (i == 15) return PlayerCounterHUD.enabled;
         return false;
     }
 
@@ -314,6 +322,7 @@ public class HUDSettingsGui extends GuiScreen {
         if (i == 12) FPSModule.enabled = !FPSModule.enabled;
         if (i == 13) BossBarModule.enabled = !BossBarModule.enabled;
         if (i == 14) TelebowHUD.enabled = !TelebowHUD.enabled;
+        if (i == 15) PlayerCounterHUD.enabled = !PlayerCounterHUD.enabled;
     }
 
     @Override
@@ -459,6 +468,20 @@ public class HUDSettingsGui extends GuiScreen {
                         else FPSModule.textColor = palette[i]; return; 
                     }
                 }
+            } else if (selectedModule == 15) { 
+                // NEW: Player Counter Color Pickers
+                for (int i = 0; i < palette.length; i++) {
+                    if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 23, 12, 12)) {
+                        if (i == palette.length - 1) openCustomColorPicker(11, rX + 10 + (i * 22), rY + 23, PlayerCounterHUD.prefixColor); 
+                        else PlayerCounterHUD.prefixColor = palette[i]; return; 
+                    }
+                }
+                for (int i = 0; i < palette.length; i++) {
+                    if (isInside(mouseX, mouseY, rX + 10 + (i * 22), rY + 63, 12, 12)) {
+                        if (i == palette.length - 1) openCustomColorPicker(12, rX + 10 + (i * 22), rY + 63, PlayerCounterHUD.countColor); 
+                        else PlayerCounterHUD.countColor = palette[i]; return; 
+                    }
+                }
             }
         }
     }
@@ -526,6 +549,9 @@ public class HUDSettingsGui extends GuiScreen {
         else if (activeCustomColorTarget == 7) ToggleSprintModule.instance.textColor = finalColor & 0x00FFFFFF;
         else if (activeCustomColorTarget == 8) CPSModule.textColor = finalColor & 0x00FFFFFF;
         else if (activeCustomColorTarget == 10) FPSModule.textColor = finalColor & 0x00FFFFFF;
+        // Map new targets to Player Counter Colors
+        else if (activeCustomColorTarget == 11) PlayerCounterHUD.prefixColor = finalColor & 0x00FFFFFF;
+        else if (activeCustomColorTarget == 12) PlayerCounterHUD.countColor = finalColor & 0x00FFFFFF;
     }
 
     private void openCustomColorPicker(int targetId, int x, int y, int currentColor) {
@@ -549,7 +575,8 @@ public class HUDSettingsGui extends GuiScreen {
         else if (selectedModule == 11) CPSModule.instance.scale = val;
         else if (selectedModule == 12) FPSModule.instance.scale = val;
         else if (selectedModule == 13) BossBarModule.instance.scale = val;
-        else if (selectedModule == 14) TelebowHUD.instance.scale = val; // Added Scale Mapping
+        else if (selectedModule == 14) TelebowHUD.instance.scale = val;
+        else if (selectedModule == 15) PlayerCounterHUD.instance.scale = val; // Scale mapping
     }
 
     private float getScaleForTab(int tab) {
@@ -567,7 +594,8 @@ public class HUDSettingsGui extends GuiScreen {
         if (tab == 11) return CPSModule.instance.scale;
         if (tab == 12) return FPSModule.instance.scale;
         if (tab == 13) return BossBarModule.instance.scale;
-        if (tab == 14) return TelebowHUD.instance.scale; // Added Scale Mapping
+        if (tab == 14) return TelebowHUD.instance.scale;
+        if (tab == 15) return PlayerCounterHUD.instance.scale; // Scale mapping
         return 1.0f;
     }
 

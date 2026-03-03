@@ -13,7 +13,7 @@ import com.linexstudios.foxtrot.Misc.AutoPantSwap;
 import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
 import com.linexstudios.foxtrot.Misc.AutoBulletTime;
-import com.linexstudios.foxtrot.Update.FoxtrotTweaker; // IMPORTANT IMPORT
+import com.linexstudios.foxtrot.Update.FoxtrotTweaker;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.renderer.GlStateManager;
@@ -48,7 +48,6 @@ public class EditHUDGui extends GuiScreen {
     private long lastClickTime = 0;
     private DraggableHUD lastClickedHUD = null;
 
-    // Added "Updates" to the tabs array
     private String[] tabs = {"Combat", "Render", "Denick", "HUD", "Misc", "Telemetry", "Updates"};
     private GuiTextField whitelistField;
     private String currentTooltip = null;
@@ -155,7 +154,6 @@ public class EditHUDGui extends GuiScreen {
                     this.fontRendererObj.drawStringWithShadow(tabs[i], mainPanelX + 10, tY + 4, 0xAAAAAA);
                 }
                 
-                // RED DOT LOGIC FOR UPDATES TAB
                 if (tabs[i].equals("Updates") && !ConfigHandler.autoUpdateEnabled && FoxtrotTweaker.UPDATE_AVAILABLE) {
                     int textWidth = this.fontRendererObj.getStringWidth(tabs[i]);
                     this.fontRendererObj.drawStringWithShadow(EnumChatFormatting.RED + "\u2022", mainPanelX + 10 + textWidth + 2, tY + 4, -1);
@@ -245,13 +243,15 @@ public class EditHUDGui extends GuiScreen {
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "CPS HUD", CPSModule.enabled, mouseX, mouseY); y1 += 18;
                 drawIOSToggle(c1 + 5, y1 + 6, 105, "FPS HUD", FPSModule.enabled, mouseX, mouseY);
 
-                drawSettingsCard(c2, y2, 100, 126); 
+                // EXPANDED TO FIT NEW PLAYER COUNTER
+                drawSettingsCard(c2, y2, 100, 144); 
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Reg HUD", RegHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Darks HUD", DarksHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Potion HUD", PotionHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Armor HUD", ArmorHUD.enabled, mouseX, mouseY); y2 += 18;
                 drawIOSToggle(c2 + 5, y2 + 6, 100, "Coords HUD", CoordsHUD.enabled, mouseX, mouseY); y2 += 18;
-                drawIOSToggle(c2 + 5, y2 + 6, 100, "Telebow Timer", TelebowHUD.enabled, mouseX, mouseY); y2 += 28;
+                drawIOSToggle(c2 + 5, y2 + 6, 100, "Telebow Timer", TelebowHUD.enabled, mouseX, mouseY); y2 += 18;
+                drawIOSToggle(c2 + 5, y2 + 6, 100, "Player Counter", PlayerCounterHUD.enabled, mouseX, mouseY); y2 += 28;
                 drawIOSButton(c2, y2 + 4, 100, 14, "HUD Customization", mouseX, mouseY);
             }
             else if (selectedTab == 4) {
@@ -309,7 +309,6 @@ public class EditHUDGui extends GuiScreen {
                 this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "We only track active player counts to", c1 + 5, textY, -1); textY += 10;
                 this.fontRendererObj.drawString(EnumChatFormatting.GRAY + "display live stats on linex-studios.github.io", c1 + 5, textY, -1);
             }
-            // --- NEW UPDATES TAB ---
             else if (selectedTab == 6) {
                 if (whitelistField != null) whitelistField.setVisible(false);
                 int y1 = rY;
@@ -319,7 +318,6 @@ public class EditHUDGui extends GuiScreen {
                 
                 drawIOSToggle(c1 + 5, y1 + 20, 205, "Auto Updates", ConfigHandler.autoUpdateEnabled, mouseX, mouseY);
                 
-                // Show manual update button if auto updates are off and a new version is found
                 if (!ConfigHandler.autoUpdateEnabled && FoxtrotTweaker.UPDATE_AVAILABLE) {
                     drawIOSButton(c1 + 5, y1 + 40, 205, 16, EnumChatFormatting.GREEN + "Install Update (v" + FoxtrotTweaker.LATEST_VERSION + ")", mouseX, mouseY);
                 }
@@ -509,7 +507,8 @@ public class EditHUDGui extends GuiScreen {
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) PotionHUD.enabled = !PotionHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) ArmorHUD.enabled = !ArmorHUD.enabled; y2 += 18;
                 if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) CoordsHUD.enabled = !CoordsHUD.enabled; y2 += 18;
-                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) TelebowHUD.enabled = !TelebowHUD.enabled; y2 += 28;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) TelebowHUD.enabled = !TelebowHUD.enabled; y2 += 18;
+                if (isInside(mouseX, mouseY, c2 + 5, y2 + 6, 100, 12)) PlayerCounterHUD.enabled = !PlayerCounterHUD.enabled; y2 += 28;
 
                 if (isInside(mouseX, mouseY, c2, y2 + 4, 100, 14)) { 
                     this.mc.displayGuiScreen(new HUDSettingsGui(this)); return; 
@@ -534,7 +533,6 @@ public class EditHUDGui extends GuiScreen {
                     }
                 }
             }
-            // --- UPDATES TAB CLICK LOGIC ---
             else if (selectedTab == 6) {
                 int y1 = rY;
                 if (isInside(mouseX, mouseY, c1 + 5, y1 + 20, 205, 12)) {
@@ -594,6 +592,7 @@ public class EditHUDGui extends GuiScreen {
         if (lower.contains("fps")) return 12; 
         if (lower.contains("boss")) return 13;
         if (lower.contains("telebow")) return 14;
+        if (lower.contains("player") || lower.contains("counter")) return 15; // Player Counter double click map
         return 0; 
     }
 

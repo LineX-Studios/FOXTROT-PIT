@@ -31,6 +31,11 @@ public class NameTags {
         for (EntityPlayer player : mc.theWorld.playerEntities) {
             if (player == mc.thePlayer) continue;
             if (player.isDead || player.isInvisible()) continue; 
+            
+            // --- NPC FIX ---
+            // Citizens NPCs use Version 2 UUIDs. Real players use Version 4 (or 3).
+            // This prevents the mod from drawing custom nametags over the Item Shop, etc.
+            if (player.getUniqueID().version() == 2) continue;
 
             // Calculate precise interpolated positions for smooth rendering
             double x = player.lastTickPosX + (player.posX - player.lastTickPosX) * event.partialTicks - mc.getRenderManager().viewerPosX;
@@ -43,8 +48,12 @@ public class NameTags {
 
     private void renderNameTag(EntityPlayer player, double x, double y, double z) {
         float distance = mc.thePlayer.getDistanceToEntity(player);
-        float scale = (distance / 4.0F) * 0.015F;
-        if (scale < 0.020F) scale = 0.020F; 
+        
+        // --- SCALE ADJUSTMENTS HERE ---
+        // Changed 0.015F to 0.010F to make the overall nametag scale smaller
+        float scale = (distance / 4.0F) * 0.010F;
+        // Changed 0.020F to 0.015F so they can shrink more when you are close
+        if (scale < 0.015F) scale = 0.015F; 
 
         GlStateManager.pushMatrix();
         GlStateManager.translate((float)x, (float)y + player.height + 0.6F, (float)z);
@@ -64,7 +73,7 @@ public class NameTags {
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
 
-        // Reset color to pure white to wipe any lingering Myau ESP tints
+        // Reset color to pure white to wipe any lingering ESP tints
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
         String name = player.getDisplayName().getFormattedText();
@@ -155,7 +164,11 @@ public class NameTags {
     @SubscribeEvent
     public void onRenderVanillaNametag(RenderLivingEvent.Specials.Pre event) {
         if (enabled && event.entity instanceof EntityPlayer) {
-            event.setCanceled(true);
+            // Cancel vanilla nametags ONLY for real players. 
+            // This lets NPCs keep their default Hypixel hologram text!
+            if (event.entity.getUniqueID().version() != 2) {
+                event.setCanceled(true);
+            }
         }
     }
 }

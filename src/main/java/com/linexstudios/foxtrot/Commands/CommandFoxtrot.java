@@ -37,7 +37,7 @@ public class CommandFoxtrot extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/foxtrot <friend|add|remove|list|alerts|toggle|clear|denick|debug|esp|autodenick|hud|nickhud|enemyhud|denickentry|rank|focus>";
+        return "/foxtrot <friend|add|remove|list|alerts|toggle|clear|denick|debug|esp|autodenick|hud|nickhud|enemyhud|denickentry|rank|focus|nickname>";
     }
 
     @Override
@@ -65,6 +65,7 @@ public class CommandFoxtrot extends CommandBase {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot enemyhud " + EnumChatFormatting.GRAY + "- Toggle EnemyHUD"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot clear " + EnumChatFormatting.GRAY + "- Clear enemy list"));
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot rank <prestige> <level> <rank> " + EnumChatFormatting.GRAY + "- Change your Prestige/Rank")); 
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "/foxtrot nickname <name|off> " + EnumChatFormatting.GRAY + "- Change your username")); 
             return;
         }
 
@@ -73,8 +74,27 @@ public class CommandFoxtrot extends CommandBase {
 
         switch (action) {
             // ==========================================
-            //               NEW: FOCUS COMMAND
+            //                 NICKNAME
             // ==========================================
+            case "nickname":
+            case "nick":
+                if (args.length >= 2) {
+                    if (args[1].equalsIgnoreCase("reset") || args[1].equalsIgnoreCase("off") || args[1].equalsIgnoreCase("clear")) {
+                        Ranks.changeName = false;
+                        Ranks.targetName = "";
+                        ConfigHandler.saveConfig();
+                        sendMessage(sender, EnumChatFormatting.GREEN + "Nickname cleared! Reverted to your real username.");
+                    } else {
+                        Ranks.changeName = true;
+                        Ranks.targetName = args[1];
+                        ConfigHandler.saveConfig();
+                        sendMessage(sender, EnumChatFormatting.GREEN + "Nickname set to " + EnumChatFormatting.WHITE + args[1]);
+                    }
+                } else {
+                    sendMessage(sender, EnumChatFormatting.RED + "Usage: /fx nickname <name|off>");
+                }
+                break;
+
             case "focus":
                 if (args.length == 1) {
                     if (FocusManager.focusList.isEmpty()) {
@@ -326,10 +346,15 @@ public class CommandFoxtrot extends CommandBase {
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args,
-                    "friend", "f", "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud", "denickentry", "rank", "focus");
+                    "friend", "f", "add", "remove", "list", "alerts", "toggle", "clear", "denick", "debug", "esp", "autodenick", "hud", "nickhud", "enemyhud", "denickentry", "rank", "focus", "nickname", "nick");
+        }
+        
+        // --- NICKNAME TAB COMPLETION ---
+        if (args.length == 2 && (args[0].equalsIgnoreCase("nickname") || args[0].equalsIgnoreCase("nick"))) {
+            return getListOfStringsMatchingLastWord(args, "off", "reset", "clear");
         }
 
-        // --- NEW: FOCUS TAB COMPLETION ---
+        // --- FOCUS TAB COMPLETION ---
         if (args.length == 2 && args[0].equalsIgnoreCase("focus")) {
             List<String> options = Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap().stream()
                     .map(info -> info.getGameProfile().getName())

@@ -1,5 +1,7 @@
 package com.linexstudios.foxtrot.Util;
 
+import com.linexstudios.foxtrot.Enemy.EnemyManager;
+import com.linexstudios.foxtrot.Handler.ConfigHandler;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
@@ -13,36 +15,53 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class EnemyAlert {
-
     private final Set<String> alertedThisLobby = new HashSet<>();
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
-        // Runs perfectly in sync with EnemyHUD's detection
         if (event.phase != TickEvent.Phase.END || !EnemyHUD.notificationsEnabled || Minecraft.getMinecraft().thePlayer == null || Minecraft.getMinecraft().theWorld == null) return;
 
-        // Scans the exact same list EnemyHUD uses to draw on your screen
         for (EntityPlayer player : Minecraft.getMinecraft().theWorld.playerEntities) {
             if (player == Minecraft.getMinecraft().thePlayer) continue;
 
-            String name = player.getName();
+            String currentName = player.getName();
+            String uuid = player.getUniqueID().toString();
 
-            if (EnemyHUD.isTarget(name) && !alertedThisLobby.contains(name)) {
-                alertedThisLobby.add(name);
+            // ONLY alert if EnemyHUD fully validates them (Checks for UUID spoofing)
+            if (EnemyHUD.isTarget(player) && !alertedThisLobby.contains(uuid)) {
+                alertedThisLobby.add(uuid);
 
-                String alert = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] "
-                        + EnumChatFormatting.DARK_RED + EnumChatFormatting.BOLD + "ENEMY: "
-                        + EnumChatFormatting.RED + name + EnumChatFormatting.YELLOW + " has entered your lobby!";
+                String cachedName = EnemyManager.enemyCache.get(uuid);
 
-                Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(alert));
-                // NO SOUND PLAYED - Purely visual chat alert
+                // If we have a cached UUID for them, check if their name changed!
+                if (cachedName != null && !cachedName.equals(currentName)) {
+                    String alert = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] "
+                            + EnumChatFormatting.DARK_RED + EnumChatFormatting.BOLD + "NAME CHANGE: "
+                            + EnumChatFormatting.RED + cachedName + EnumChatFormatting.YELLOW + " is now " + EnumChatFormatting.RED + currentName + EnumChatFormatting.YELLOW + "!";
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(alert));
+
+                    // Automatically update the main enemies.txt list so commands still work on their new name
+                    if (!EnemyHUD.targetList.contains(currentName)) {
+                        EnemyHUD.targetList.add(currentName);
+                        ConfigHandler.saveConfig();
+                    }
+                    
+                    // NOTE: We DO NOT update enemyCache here anymore! 
+                    // Leaving the original name in the cache allows EnemyHUD to read it and display the Alias!
+                    
+                } else {
+                    // Standard Join Alert
+                    String alert = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] "
+                            + EnumChatFormatting.DARK_RED + EnumChatFormatting.BOLD + "ENEMY: "
+                            + EnumChatFormatting.RED + currentName + EnumChatFormatting.YELLOW + " has entered your lobby!";
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(alert));
+                }
             }
         }
     }
 
     @SubscribeEvent
     public void onWorldChange(WorldEvent.Load event) {
-        // Resets the tracker when you switch lobbies or drop into the Pit
         alertedThisLobby.clear();
     }
 }

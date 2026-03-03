@@ -22,7 +22,13 @@ public class FriendsESP {
         if (!enabled || mc.theWorld == null || mc.thePlayer == null) return;
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
-            if (player != mc.thePlayer && isFriend(player.getName())) {
+            if (player == mc.thePlayer) continue;
+
+            // --- ANTI-GHOSTING FIX ---
+            // Ignores dead players, players with 0 health, and invisible Watchdog bots!
+            if (player.isDead || player.getHealth() <= 0 || player.isInvisible()) continue;
+
+            if (isFriend(player.getName())) {
                 renderESP(player, event.partialTicks);
             }
         }

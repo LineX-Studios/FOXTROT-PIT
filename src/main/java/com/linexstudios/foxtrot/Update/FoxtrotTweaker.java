@@ -39,7 +39,7 @@ public class FoxtrotTweaker implements ITweaker {
     public static String DOWNLOAD_URL = "";
     
     // --- DEVELOPER TEST MODE ---
-    public static boolean DEV_TEST_MODE = true; // < change this value to true or false, true = test mode is on false = test mode is off
+    public static boolean DEV_TEST_MODE = false; // < change this value to true or false, true = test mode is on false = test mode is off
 
 
     // --------------------------------------
