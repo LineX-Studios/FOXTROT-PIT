@@ -8,6 +8,10 @@ import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -22,6 +26,11 @@ public class WhoGotBanned {
 
     // Memory bank of people who left in the last 5 seconds (Name -> Timestamp)
     private final Map<String, Long> recentlyLeft = new HashMap<>();
+
+    // ========================================================================
+    //                                  API
+    // ========================================================================
+    private static final String PROXY_API_URL = "https://foxtrot-api.vercel.app/ban";
 
     @SubscribeEvent
     public void onTick(TickEvent.ClientTickEvent event) {
@@ -74,7 +83,7 @@ public class WhoGotBanned {
         if (unformatted.contains("A player has been removed from your game") ||
                 unformatted.contains("A player has been removed from your lobby")) {
 
-            // The ban message just hit! Let's find the person who vanished closest to this exact millisecond.
+            // The ban message - too fast
             String bannedPlayer = "Unknown (Too Fast)";
             long closestTime = Long.MAX_VALUE;
 
@@ -87,7 +96,7 @@ public class WhoGotBanned {
                 }
             }
 
-            // --- TRIGGER THE CHAT ALERT ---
+            // --- TRIGGER THE IN-GAME CHAT ALERT ---
             if (mc.thePlayer != null) {
                 mc.thePlayer.addChatMessage(new ChatComponentText(
                         EnumChatFormatting.GRAY + "[" + 
@@ -99,8 +108,50 @@ public class WhoGotBanned {
                 ));
             }
 
+            // --- TRIGGER THE DISCORD WEBHOOK SECURELY ---
+            sendBanToDiscord(bannedPlayer);
+
             // Clear the map so we don't accidentally flag the same person twice if the server lags
             recentlyLeft.clear();
         }
+    }
+
+    private void sendBanToDiscord(String username) {
+        // Do not spam the API if the player couldn't be calculated
+        if (username == null || username.equals("Unknown (Too Fast)")) return;
+
+        // Run the HTTP request on a separate thread so it doesn't freeze Minecraft
+        new Thread(() -> {
+            try {
+                URL url = new URL(PROXY_API_URL);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                
+                // Configure connection for a POST request
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json; utf-8");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setDoOutput(true);
+
+                // Build the JSON payload
+                String jsonInputString = "{\"username\": \"" + username + "\"}";
+
+                // Send the payload
+                try (OutputStream os = conn.getOutputStream()) {
+                    byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
+                    os.write(input, 0, input.length);
+                }
+
+                // Execute the request and read the status code
+                int responseCode = conn.getResponseCode();
+                
+                if (responseCode != 200) {
+                    System.out.println("[Foxtrot] Vercel API rejected the ban payload. Code: " + responseCode);
+                }
+
+            } catch (Exception e) {
+                System.out.println("[Foxtrot] Failed to connect to Vercel API.");
+                e.printStackTrace();
+            }
+        }).start();
     }
 }
