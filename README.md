@@ -3,6 +3,7 @@
 [![Foxtrot Version](https://img.shields.io/github/v/tag/LineX-Studios/FOXTROT-PIT?label=Foxtrot&color=blue&style=flat-square)](https://github.com/LineX-Studios/FOXTROT-PIT/releases/latest)
 [![Build Status](https://github.com/LineX-Studios/FOXTROT-PIT/actions/workflows/build.yml/badge.svg)](https://github.com/LineX-Studios/FOXTROT-PIT/actions)
 ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.8.9-gray?style=flat-square)
+[![Total Downloads](https://img.shields.io/github/downloads/LineX-Studios/FOXTROT-PIT/total.svg)]([https://github.com/linexstudios/foxtrot/](https://github.com/LineX-Studios/FOXTROT-PIT/)releases)
 
 FOXTROT PIT is a highly optimized 1.8.9 Forge utility mod designed specifically for Hypixel Pit. My goal with this project was to create a MOD that everyone can use for free and provides really useful features such as autodenick and more.
 
