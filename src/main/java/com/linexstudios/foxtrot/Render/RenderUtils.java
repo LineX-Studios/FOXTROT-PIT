@@ -7,7 +7,7 @@ import org.lwjgl.opengl.GL11;
 public class RenderUtils {
 
     // ==========================================
-    //    3D WORLD RENDERING (ESP And others)
+    //          3D WORLD RENDERING (ESP)
     // ==========================================
 
     public static void setup3D() {
@@ -60,7 +60,35 @@ public class RenderUtils {
     }
 
     // ==========================================
-    //     2D SCREEN RENDERING (HUDs, Menus)
+    //        2D RENDERING [LowLifeMystics]
+    // ==========================================
+
+    public static void setup2D() {
+        GlStateManager.pushMatrix();
+        GlStateManager.enableBlend();
+        GlStateManager.disableTexture2D();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+    }
+
+    public static void end2D() {
+        GlStateManager.enableTexture2D();
+        GlStateManager.disableBlend();
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        GlStateManager.popMatrix();
+    }
+
+    public static void drawRect(float x, float y, float width, float height, float r, float g, float b, float a) {
+        GlStateManager.color(r, g, b, a);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glVertex2f(x, y);
+        GL11.glVertex2f(x, y + height);
+        GL11.glVertex2f(x + width, y + height);
+        GL11.glVertex2f(x + width, y);
+        GL11.glEnd();
+    }
+
+    // ==========================================
+    //           HUD / MENU RENDERING 
     // ==========================================
 
     public static void setupSmoothRender(boolean isGradient) { GlStateManager.pushMatrix(); GlStateManager.enableBlend(); GlStateManager.disableTexture2D(); GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0); GL11.glDisable(GL11.GL_LINE_SMOOTH); GL11.glDisable(GL11.GL_POLYGON_SMOOTH); GL11.glDisable(GL11.GL_CULL_FACE); if(isGradient) GlStateManager.shadeModel(GL11.GL_SMOOTH); }
