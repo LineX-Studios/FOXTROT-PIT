@@ -12,6 +12,7 @@ import com.linexstudios.foxtrot.Hud.NickedHUD;
 import com.linexstudios.foxtrot.Hud.NameTags;
 import com.linexstudios.foxtrot.Hud.FriendsHUD;
 import com.linexstudios.foxtrot.Hud.DarksHUD;
+import com.linexstudios.foxtrot.Hud.VenomTimer; 
 import com.linexstudios.foxtrot.Render.FriendsESP;
 import com.linexstudios.foxtrot.Render.PitESP;
 import com.linexstudios.foxtrot.Render.LowLifeMystic;
@@ -24,33 +25,33 @@ import com.linexstudios.foxtrot.Hud.CoordsHUD;
 import com.linexstudios.foxtrot.Hud.ToggleSprintModule;
 import com.linexstudios.foxtrot.Util.EnemyAlert;
 import com.linexstudios.foxtrot.Util.Ranks;
+import com.linexstudios.foxtrot.Util.WorldLoadListener; 
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import org.lwjgl.input.Keyboard;
 import com.linexstudios.foxtrot.Misc.AutoPantSwap;
 import com.linexstudios.foxtrot.Misc.AutoBulletTime;
 import com.linexstudios.foxtrot.Misc.AutoGhead;
 import com.linexstudios.foxtrot.Misc.AutoQuickMath;
+import com.linexstudios.foxtrot.Misc.EnchantNames; 
+import com.linexstudios.foxtrot.Util.SpawnShortcut;
 import com.linexstudios.foxtrot.Hud.TelebowHUD;
 import com.linexstudios.foxtrot.Hud.CPSModule;
 import com.linexstudios.foxtrot.Hud.PlayerCounterHUD;
+import com.linexstudios.foxtrot.Misc.RingHelper; 
+import com.linexstudios.foxtrot.Util.DeadLobbyFinder; 
+import com.linexstudios.foxtrot.Misc.NonHighlighter; 
 
 @Mod(modid = "foxtrot", name = "Foxtrot", version = "${version}", acceptedMinecraftVersions = "[1.8.9]")
 public class Foxtrot {
 
     public static KeyBinding toggleCombatKey;
     public static KeyBinding toggleInvFillKey;
-
-    @Mod.EventHandler
-    public void preInit(FMLPreInitializationEvent event) {
-        // --- 1. DISABLE FORGE SPLASH SCREEN ---
-        ConfigHandler.disableForgeSplashScreen();
-    }
+    public static KeyBinding spawnKey;
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
@@ -66,6 +67,9 @@ public class Foxtrot {
 
         toggleInvFillKey = new KeyBinding("Toggle Inv Fill", Keyboard.KEY_RIGHT, "Foxtrot");
         ClientRegistry.registerKeyBinding(toggleInvFillKey);
+
+        spawnKey = new KeyBinding("/Spawn", Keyboard.KEY_NONE, "Foxtrot");
+        ClientRegistry.registerKeyBinding(spawnKey);
 
         MinecraftForge.EVENT_BUS.register(EnemyHUD.instance);
         MinecraftForge.EVENT_BUS.register(NickedHUD.instance);
@@ -100,7 +104,15 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(TelebowHUD.instance);
         MinecraftForge.EVENT_BUS.register(Ranks.instance);
         MinecraftForge.EVENT_BUS.register(FocusManager.instance);
+        MinecraftForge.EVENT_BUS.register(new SpawnShortcut());
+        MinecraftForge.EVENT_BUS.register(RingHelper.instance);
+        MinecraftForge.EVENT_BUS.register(DeadLobbyFinder.instance);
+        MinecraftForge.EVENT_BUS.register(NonHighlighter.instance);
+        MinecraftForge.EVENT_BUS.register(VenomTimer.instance); 
+        MinecraftForge.EVENT_BUS.register(EnchantNames.instance); 
+        MinecraftForge.EVENT_BUS.register(WorldLoadListener.instance); 
 
+        // COMMAND HANDLER
         ClientCommandHandler.instance.registerCommand(new CommandFoxtrot());
 
         System.out.println("[Foxtrot] Loaded.");

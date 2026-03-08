@@ -1,8 +1,8 @@
 package com.linexstudios.foxtrot.Hud;
 
+import com.linexstudios.foxtrot.Render.RenderUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
-import org.lwjgl.opengl.GL11;
+import net.minecraft.client.renderer.GlStateManager;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,77 +49,58 @@ public abstract class DraggableHUD {
     public void render(boolean isEditing, int mouseX, int mouseY) {
         boolean hovered = isHovered(mouseX, mouseY);
 
-        GL11.glPushMatrix();
-        GL11.glTranslatef(x, y, 0);
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x, y, 0);
 
         if (isEditing) {
-            GL11.glPushMatrix();
-            GL11.glScalef(0.8f, 0.8f, 1.0f);
+            GlStateManager.pushMatrix();
+            GlStateManager.scale(0.8f, 0.8f, 1.0f);
             Minecraft.getMinecraft().fontRendererObj.drawStringWithShadow(name, 0, -11, 0xFFFFFF);
-            GL11.glPopMatrix();
+            GlStateManager.popMatrix();
         }
 
-        GL11.glScalef(scale, scale, 1);
+        GlStateManager.scale(scale, scale, 1);
 
         if (isEditing) {
-            int bgColor = hovered ? 0x45FFFFFF : 0x25FFFFFF; 
-            int borderColor = 0x55FFFFFF; 
-            drawCleanBox(0, 0, width, height, bgColor, borderColor);
+            float bgAlpha = hovered ? 0.35F : 0.15F; 
+            
+            RenderUtils.setup2D();
+            
+            // Draw Translucent Fill
+            RenderUtils.drawRect(0, 0, width, height, 1.0F, 1.0F, 1.0F, bgAlpha);
+            
+            // Draw Clean Thin Outlines
+            RenderUtils.drawRect(0, 0, width, 1, 1.0F, 1.0F, 1.0F, 0.4F); // Top
+            RenderUtils.drawRect(0, height - 1, width, 1, 1.0F, 1.0F, 1.0F, 0.4F); // Bottom
+            RenderUtils.drawRect(0, 0, 1, height, 1.0F, 1.0F, 1.0F, 0.4F); // Left
+            RenderUtils.drawRect(width - 1, 0, 1, height, 1.0F, 1.0F, 1.0F, 0.4F); // Right
+            
+            RenderUtils.end2D();
         }
 
         draw(isEditing); 
 
-        GL11.glPopMatrix();
+        GlStateManager.popMatrix();
 
         if (isEditing && hovered) {
             int corner = getHoveredCorner(mouseX, mouseY);
             
-            // This represents half the width of the red box. 
-            // Setting it to 2 means it creates a 4x4 square perfectly centered on the vertex.
             float boxSize = 2.0f; 
-            
             float actualW = width * scale;
             float actualH = height * scale;
 
-            // Draw perfectly centered corner nodes
+            // Draw perfectly centered corner nodes using RenderUtils
+            RenderUtils.setup2D();
             if (corner == 1) drawCornerBox(x, y, boxSize); 
             else if (corner == 2) drawCornerBox(x + actualW, y, boxSize); 
             else if (corner == 3) drawCornerBox(x, y + actualH, boxSize); 
             else if (corner == 4) drawCornerBox(x + actualW, y + actualH, boxSize); 
+            RenderUtils.end2D();
         }
     }
 
-    private void drawCleanBox(float x, float y, float w, float h, int bgColor, int borderColor) {
-        Gui.drawRect((int)x, (int)y, (int)(x + w), (int)(y + h), bgColor);
-        
-        float alpha = (float)(borderColor >> 24 & 255) / 255.0F;
-        float red = (float)(borderColor >> 16 & 255) / 255.0F;
-        float green = (float)(borderColor >> 8 & 255) / 255.0F;
-        float blue = (float)(borderColor & 255) / 255.0F;
-        
-        GL11.glPushMatrix();
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GL11.glColor4f(red, green, blue, alpha);
-        
-        GL11.glLineWidth(1.0F); 
-        
-        GL11.glBegin(GL11.GL_LINE_LOOP);
-        GL11.glVertex2f(x, y);
-        GL11.glVertex2f(x, y + h);
-        GL11.glVertex2f(x + w, y + h);
-        GL11.glVertex2f(x + w, y);
-        GL11.glEnd();
-        
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glDisable(GL11.GL_BLEND);
-        GL11.glPopMatrix();
-    }
-
-    // Now uses center X and center Y so the red square is exactly halfway inside/outside the corner
     private void drawCornerBox(float cx, float cy, float halfSize) {
-        Gui.drawRect((int)(cx - halfSize), (int)(cy - halfSize), (int)(cx + halfSize), (int)(cy + halfSize), 0xFFFF0000); 
+        RenderUtils.drawRect(cx - halfSize, cy - halfSize, halfSize * 2, halfSize * 2, 1.0F, 0.0F, 0.0F, 1.0F); 
     }
 
     public boolean isHovered(int mouseX, int mouseY) {

@@ -26,8 +26,8 @@ compileJava {
     targetCompatibility = '1.8'
 }
 
-// Change your version here, and it will update everywhere automatically!
-version = "0.8.0"
+// Change your version here, and it will update everywhere automatically
+version = "0.8.1"
 group = "com.linexstudios.foxtrot"
 archivesBaseName = "Foxtrot"
 
@@ -36,7 +36,6 @@ minecraft {
     runDir = "run"
     mappings = "stable_20"
 
-    // Tells ForgeGradle to replace this exact string in all Java files during build
     replace '${version}', project.version
 
     // Tells terminal to launch with Mixins when using ./gradlew runClient
@@ -81,23 +80,37 @@ processResources {
     }
 }
 
+// ========================================================================
+//                           MANIFEST AND SHADOW
+// ========================================================================
+
+jar {
+    manifest {
+        attributes(
+            "Manifest-Version": "1.0",
+            "MixinConfigs": "mixins.foxtrot.json",
+            "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
+            "TweakOrder": "0",
+            "FMLCorePluginContainsFMLMod": "true",
+            "ForceLoadAsMod": "true"
+        )
+    }
+}
+
 shadowJar {
     classifier = ""
-    // Relocate your JSON library
     relocate "org.json", "com.linexstudios.foxtrot.repack.org.json"
+    manifest {
+        attributes(
+            "Manifest-Version": "1.0",
+            "MixinConfigs": "mixins.foxtrot.json",
+            "TweakClass": "org.spongepowered.asm.launch.MixinTweaker",
+            "TweakOrder": "0",
+            "FMLCorePluginContainsFMLMod": "true",
+            "ForceLoadAsMod": "true"
+        )
+    }
 }
 
 reobf { shadowJar { mappingType = "SEARGE" } }
 tasks.reobfShadowJar.mustRunAfter shadowJar
-
-// Injecting Mixin parameters into the final .jar manifest // Added FoxtrotTweaker for Auto-Updates
-jar {
-    manifest.attributes(
-        "Manifest-Version": "1.0",
-        "MixinConfigs": "mixins.foxtrot.json",
-        "TweakClass": "com.linexstudios.foxtrot.Update.FoxtrotTweaker",
-        "TweakOrder": 0,
-        "FMLCorePluginContainsFMLMod": "true",
-        "ForceLoadAsMod": "true"
-    )
-}

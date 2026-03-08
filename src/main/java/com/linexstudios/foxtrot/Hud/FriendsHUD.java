@@ -3,7 +3,6 @@ package com.linexstudios.foxtrot.Hud;
 import com.linexstudios.foxtrot.Util.SpawnRegions;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;

@@ -9,7 +9,7 @@ import org.lwjgl.input.Keyboard;
 
 public class HUDController {
     public static boolean enabled = true;
-    public static boolean dragMode = false; // Kept to prevent CommandFoxtrot compile errors
+    public static boolean dragMode = false;
 
     public static final KeyBinding dragHudKey = new KeyBinding("key.foxtrot.draghud", Keyboard.KEY_U, "key.categories.foxtrot");
 

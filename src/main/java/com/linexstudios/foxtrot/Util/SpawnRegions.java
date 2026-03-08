@@ -30,12 +30,10 @@ public class SpawnRegions {
     //          GENESIS FACTION REGIONS
     // ==========================================
 
-    /** ANGEL FACTION SPAWN (Aqua) */
     public static final List<BoundingBox> GENESIS_ANGEL_SPAWN = Collections.singletonList(
             new BoundingBox(-20, 0, -20, 20, 255, 20)
     );
 
-    /** DEMON FACTION SPAWN (Red) */
     public static final List<BoundingBox> GENESIS_DEMON_SPAWN = Arrays.asList(
             new BoundingBox(-160, 0, -160, -20, 255, 0),
             new BoundingBox(-20, 0, -160, 0, 255, -20)
@@ -46,7 +44,7 @@ public class SpawnRegions {
     );
 
     // ==========================================
-    //             OTHER MAP SPAWNS
+    //              OTHER MAP SPAWNS
     // ==========================================
 
     public static final List<BoundingBox> FOUR_SEASONS_SPAWN = Collections.singletonList(
@@ -67,29 +65,8 @@ public class SpawnRegions {
     );
 
     // ==========================================
-    //             CORE LOGIC
+    //              CORE LOGIC
     // ==========================================
-
-    public static PitMap getCurrentMap() {
-        long epoch = 1768341600000L;
-        long weekMs = 604800000L;
-
-        long diff = System.currentTimeMillis() - epoch;
-        if (diff < 0) {
-            diff = (diff % (weekMs * 5)) + (weekMs * 5);
-        }
-
-        int mapIndex = (int) ((diff / weekMs) % 5);
-
-        switch (mapIndex) {
-            case 0: return PitMap.ELEMENTS;
-            case 1: return PitMap.CASTLE;
-            case 2: return PitMap.CORALS;
-            case 3: return PitMap.GENESIS;
-            case 4: return PitMap.FOUR_SEASONS;
-            default: return PitMap.FOUR_SEASONS;
-        }
-    }
 
     public static String getRegionString(EntityPlayer player) {
         if (player == null) return "";
@@ -98,27 +75,20 @@ public class SpawnRegions {
         double y = player.posY;
         double z = player.posZ;
 
-        PitMap currentMap = getCurrentMap();
-
-        switch (currentMap) {
-            case GENESIS:
-                if (isInside(x, y, z, GENESIS_SPAWN)) return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-                if (isInside(x, y, z, GENESIS_ANGEL_SPAWN)) return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "ANGEL";
-                if (isInside(x, y, z, GENESIS_DEMON_SPAWN)) return EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "DEMON";
-                break;
-            case FOUR_SEASONS:
-                if (isInside(x, y, z, FOUR_SEASONS_SPAWN)) return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-                break;
-            case ELEMENTS:
-                if (isInside(x, y, z, ELEMENTS_SPAWN)) return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-                break;
-            case CORALS:
-                if (isInside(x, y, z, CORALS_SPAWN)) return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-                break;
-            case CASTLE:
-                if (isInside(x, y, z, CASTLE_SPAWN)) return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
-                break;
+        // Bypasses the broken math completely. If they are in ANY of these boxes, they are in spawn!
+        if (isInside(x, y, z, GENESIS_SPAWN) || isInside(x, y, z, FOUR_SEASONS_SPAWN) || 
+            isInside(x, y, z, ELEMENTS_SPAWN) || isInside(x, y, z, CORALS_SPAWN) || 
+            isInside(x, y, z, CASTLE_SPAWN)) {
+            return EnumChatFormatting.GREEN + "" + EnumChatFormatting.BOLD + "SPAWN";
         }
+
+        if (isInside(x, y, z, GENESIS_ANGEL_SPAWN)) {
+            return EnumChatFormatting.AQUA + "" + EnumChatFormatting.BOLD + "ANGEL";
+        }
+        if (isInside(x, y, z, GENESIS_DEMON_SPAWN)) {
+            return EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + "DEMON";
+        }
+
         return "";
     }
 
@@ -130,13 +100,9 @@ public class SpawnRegions {
     }
 
     // ==========================================
-    //       DYNAMIC DISTANCE / HUD FORMATTER
+    //        DYNAMIC DISTANCE / HUD FORMATTER
     // ==========================================
 
-    /**
-     * Call this in your HUDs. It returns the region if they are in spawn,
-     * otherwise it calculates the exact distance with a color gradient!
-     */
     public static String getLocationFormat(EntityPlayer localPlayer, EntityPlayer targetPlayer) {
         if (targetPlayer == null || localPlayer == null) return "";
 
@@ -150,18 +116,16 @@ public class SpawnRegions {
         int distance = (int) localPlayer.getDistanceToEntity(targetPlayer);
         EnumChatFormatting distColor;
 
-        // Apply dynamic color gradient based on threat proximity
         if (distance >= 100) {
-            distColor = EnumChatFormatting.GREEN;          // > 100m away GREEN COLOR
+            distColor = EnumChatFormatting.GREEN;
         } else if (distance >= 50) {
-            distColor = EnumChatFormatting.YELLOW;         // 50m - 99m away YELLOW COLOR
+            distColor = EnumChatFormatting.YELLOW;
         } else if (distance >= 20) {
-            distColor = EnumChatFormatting.GOLD;       // 20m - 49m away GOLD COLOR
+            distColor = EnumChatFormatting.GOLD;
         } else {
-            distColor = EnumChatFormatting.RED;        // < 20m away (Danger close) - RED COLOR
+            distColor = EnumChatFormatting.RED;
         }
 
-        // Returns formatted string like: "45m" in Yellow
         return distColor + String.valueOf(distance) + "m";
     }
 }

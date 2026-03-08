@@ -1,18 +1,11 @@
 package com.linexstudios.foxtrot.Render;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraftforge.client.event.GuiScreenEvent;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import org.lwjgl.opengl.GL11;
 
-import java.lang.reflect.Field;
 import java.util.List;
 
 public class LowLifeMystic {
@@ -22,94 +15,34 @@ public class LowLifeMystic {
     
     public static boolean enabled = true; 
 
-    // Used to safely locate the inventory slots on your screen
-    private Field guiLeftField = null;
-    private Field guiTopField = null;
-    private boolean reflectionInitialized = false;
-
-    private void initReflection() {
-        if (reflectionInitialized) return;
-        try {
-            guiLeftField = GuiContainer.class.getDeclaredField("guiLeft");
-            guiLeftField.setAccessible(true);
-            guiTopField = GuiContainer.class.getDeclaredField("guiTop");
-            guiTopField.setAccessible(true);
-        } catch (Exception e) {
-            try {
-                guiLeftField = GuiContainer.class.getDeclaredField("field_147003_i");
-                guiLeftField.setAccessible(true);
-                guiTopField = GuiContainer.class.getDeclaredField("field_147009_r");
-                guiTopField.setAccessible(true);
-            } catch (Exception ex) {
-                // Ignore
-            }
-        }
-        reflectionInitialized = true;
-    }
-
-    @SubscribeEvent
-    public void onDrawScreenPost(GuiScreenEvent.DrawScreenEvent.Post event) {
-        if (!enabled || mc.thePlayer == null) return;
-        
-        GuiScreen gui = event.gui;
-        
-        if (gui instanceof GuiContainer) {
-            GuiContainer container = (GuiContainer) gui;
-            initReflection();
-
-            if (guiLeftField == null || guiTopField == null) return;
-
-            int guiLeft = 0;
-            int guiTop = 0;
-            try {
-                guiLeft = guiLeftField.getInt(container);
-                guiTop = guiTopField.getInt(container);
-            } catch (Exception e) {
-                return;
-            }
+    // Called by MixinRenderItem
+    public void checkAndDraw(ItemStack item, int x, int y) {
+        if (isTrueMystic(item)) {
+            int currentLives = getMysticLives(item);
             
-            for (Slot slot : container.inventorySlots.inventorySlots) {
-                if (slot != null && slot.getHasStack()) {
-                    ItemStack item = slot.getStack();
-                    
-                    // 1. MUST verify it is a real Hypixel Pit Mystic first!
-                    if (isTrueMystic(item)) {
-                        // 2. Only then do we parse the lore for the remaining lives
-                        int currentLives = getMysticLives(item);
-                        
-                        if (currentLives != -1 && currentLives <= 4) {
-                            drawDangerBorder(guiLeft + slot.xDisplayPosition, guiTop + slot.yDisplayPosition);
-                        }
-                    }
-                }
+            // If it has 5 or fewer lives draw corner markers
+            if (currentLives != -1 && currentLives <= 5) {
+                drawDangerBorder(x, y);
             }
         }
     }
 
-    /**
-     * Strictly verifies the item has Hypixel Pit ExtraAttributes (Nonce / CustomEnchants)
-     */
     private boolean isTrueMystic(ItemStack stack) {
         if (stack == null || !stack.hasTagCompound()) return false;
         
         NBTTagCompound nbt = stack.getTagCompound();
-        if (nbt.hasKey("ExtraAttributes", 10)) { // 10 is the tag ID for Compounds
+        if (nbt.hasKey("ExtraAttributes", 10)) { 
             NBTTagCompound extra = nbt.getCompoundTag("ExtraAttributes");
-            // True mystics always have a Nonce and usually CustomEnchants
             return extra.hasKey("Nonce") || extra.hasKey("CustomEnchants");
         }
         return false;
     }
 
-    /**
-     * Scans the literal item tooltip line-by-line to guarantee we always find the exact lives.
-     */
     private int getMysticLives(ItemStack stack) {
         try {
             List<String> tooltip = stack.getTooltip(mc.thePlayer, false);
             for (String line : tooltip) {
                 String rawLine = EnumChatFormatting.getTextWithoutFormattingCodes(line);
-                
                 if (rawLine != null && rawLine.contains("Lives: ")) {
                     try {
                         String livesStr = rawLine.substring(rawLine.indexOf("Lives: ") + 7);
@@ -117,67 +50,50 @@ public class LowLifeMystic {
                             String currentLivesStr = livesStr.split("/")[0].trim();
                             return Integer.parseInt(currentLivesStr);
                         }
-                    } catch (Exception e) {
-                        // Ignored
-                    }
+                    } catch (Exception e) { }
                 }
             }
-        } catch (Exception e) {
-            // Ignored
-        }
+        } catch (Exception e) { }
         return -1;
     }
 
-    /**
-     * Draws a very obvious red overlay and four corner markers to alert you of low lives.
-     */
     private void drawDangerBorder(int x, int y) {
         float alpha = 0.6F + (float)(Math.sin(System.currentTimeMillis() / 200.0) * 0.3F);
 
-        GlStateManager.pushMatrix();
-        GlStateManager.disableTexture2D();
-        GlStateManager.enableBlend();
+        // --- PREPARE 2D GL STATE ---
+        RenderUtils.setup2D();
+        
         GlStateManager.disableLighting();
-        GlStateManager.disableDepth(); // Crucial so it draws *over* the item
-        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.disableDepth(); 
         
-        // 1. Faint solid red inner box to tint the item icon
-        GL11.glColor4f(1.0F, 0.0F, 0.0F, 0.25F); 
-        GL11.glBegin(GL11.GL_QUADS);
-        GL11.glVertex2f(x, y);
-        GL11.glVertex2f(x, y + 16);
-        GL11.glVertex2f(x + 16, y + 16);
-        GL11.glVertex2f(x + 16, y);
-        GL11.glEnd();
+        // 1. Faint solid red inner box
+        RenderUtils.drawRect(x, y, 16, 16, 1.0F, 0.0F, 0.0F, 0.25F);
 
-        // 2. Bright pulsating red corner markers
-        GL11.glColor4f(1.0F, 0.0F, 0.0F, alpha); 
-        GL11.glLineWidth(2.5F);
+        // 2. Pulse corner markers (t = thickness, l = length)
+        float t = 2.0F;
+        float l = 5.0F;
         
-        float cornerLen = 4.5F; 
+        // Top-Left
+        RenderUtils.drawRect(x, y, l, t, 1.0F, 0.0F, 0.0F, alpha);             // Horizontal
+        RenderUtils.drawRect(x, y + t, t, l - t, 1.0F, 0.0F, 0.0F, alpha);     // Vertical
         
-        GL11.glBegin(GL11.GL_LINES);
-        // Top-Left Corner
-        GL11.glVertex2f(x, y); GL11.glVertex2f(x + cornerLen, y);
-        GL11.glVertex2f(x, y); GL11.glVertex2f(x, y + cornerLen);
+        // Top-Right
+        RenderUtils.drawRect(x + 16 - l, y, l, t, 1.0F, 0.0F, 0.0F, alpha);
+        RenderUtils.drawRect(x + 16 - t, y + t, t, l - t, 1.0F, 0.0F, 0.0F, alpha);
         
-        // Top-Right Corner
-        GL11.glVertex2f(x + 16, y); GL11.glVertex2f(x + 16 - cornerLen, y);
-        GL11.glVertex2f(x + 16, y); GL11.glVertex2f(x + 16, y + cornerLen);
+        // Bottom-Left
+        RenderUtils.drawRect(x, y + 16 - t, l, t, 1.0F, 0.0F, 0.0F, alpha);
+        RenderUtils.drawRect(x, y + 16 - l, t, l - t, 1.0F, 0.0F, 0.0F, alpha);
         
-        // Bottom-Left Corner
-        GL11.glVertex2f(x, y + 16); GL11.glVertex2f(x + cornerLen, y + 16);
-        GL11.glVertex2f(x, y + 16); GL11.glVertex2f(x, y + 16 - cornerLen);
-        
-        // Bottom-Right Corner
-        GL11.glVertex2f(x + 16, y + 16); GL11.glVertex2f(x + 16 - cornerLen, y + 16);
-        GL11.glVertex2f(x + 16, y + 16); GL11.glVertex2f(x + 16, y + 16 - cornerLen);
-        GL11.glEnd();
+        // Bottom-Right
+        RenderUtils.drawRect(x + 16 - l, y + 16 - t, l, t, 1.0F, 0.0F, 0.0F, alpha);
+        RenderUtils.drawRect(x + 16 - t, y + 16 - l, t, l - t, 1.0F, 0.0F, 0.0F, alpha);
 
+        // Re-enable before cleaning up the 2D state
         GlStateManager.enableDepth();
         GlStateManager.enableLighting();
-        GlStateManager.enableTexture2D();
-        GlStateManager.disableBlend();
-        GlStateManager.popMatrix();
+        
+        // --- RESTORE GL STATE ---
+        RenderUtils.end2D();
     }
 }

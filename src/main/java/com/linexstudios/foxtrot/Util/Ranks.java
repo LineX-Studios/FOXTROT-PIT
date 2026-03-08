@@ -27,7 +27,6 @@ public class Ranks {
     // ==========================================
     public static boolean isEnabled = true;
 
-    // --- NICKNAME CHANGER ---
     public static boolean changeName = false;
     public static String targetName = "";
 
@@ -42,9 +41,6 @@ public class Ranks {
 
     public static boolean hideLobby = true;
 
-    // ==========================================
-    //              STATE CACHING ENGINE
-    // ==========================================
     private boolean wasEnabled = false;
     private String originalScoreboardTitle = null;
     private String originalTabTeam = null;
@@ -62,7 +58,7 @@ public class Ranks {
     }
 
     // ==========================================
-    //                  CHAT REPLACER
+    //                 CHAT REPLACER
     // ==========================================
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onChatReceived(ClientChatReceivedEvent event) {
@@ -72,65 +68,60 @@ public class Ranks {
         String unformattedMessage = StringUtils.stripControlCodes(originalMessage);
         String realName = mc.thePlayer.getName();
         
-        // Use targetName if enabled, otherwise use realName
         String displayUsername = (changeName && targetName != null && !targetName.isEmpty()) ? targetName : realName;
 
         if (unformattedMessage.contains(realName)) {
             
-            // 1. DYNAMIC CONTEXT SCANNER
-            boolean isNetwork = false;
-            if (unformattedMessage.startsWith("Party >") || 
-                unformattedMessage.startsWith("Guild >") || 
-                unformattedMessage.startsWith("Officer >") || 
-                unformattedMessage.startsWith("Co-op >") ||
-                unformattedMessage.startsWith("Friend >") ||
-                unformattedMessage.startsWith("From ") ||
-                unformattedMessage.startsWith("To ") ||
-                unformattedMessage.contains(" invited ") ||
-                unformattedMessage.contains(" joined the party") ||
-                unformattedMessage.contains(" left the party") ||
-                unformattedMessage.contains(" to the party") ||
-                unformattedMessage.contains(" party!") ||
-                unformattedMessage.contains(" has disbanded") ||
-                unformattedMessage.contains(" kicked ") ||
-                unformattedMessage.contains(" offline") ||
-                unformattedMessage.contains(" online")) {
-                
-                isNetwork = true;
+            // 1. Check if the player is the AUTHOR of this chat message
+            boolean isAuthor = false;
+            int colonIdx = unformattedMessage.indexOf(':');
+            
+            if (colonIdx != -1 && colonIdx < 40) {
+                String beforeColon = unformattedMessage.substring(0, colonIdx);
+                if (beforeColon.contains(realName)) {
+                    isAuthor = true;
+                }
             }
 
-            // 2. PRIMARY CHAT MATCHER
-            String chatRegex = "^((?:\\u00A7[0-9a-fk-or])*(?:(?:Party|Guild|Officer|Co\\-op|Friend) \\> |(?:From|To) |\\[SHOUT\\] )?)(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*(" + realName + ")((?:\\u00A7[0-9a-fk-or])*\\:)(.*)$";
-            Matcher m = Pattern.compile(chatRegex).matcher(originalMessage);
-            
-            if (m.find()) {
-                String channelPrefix = m.group(1);
-                String colonWithColors = m.group(3); 
-                String chatMessage = m.group(4);
+            if (isAuthor) {
+                boolean isNetwork = unformattedMessage.startsWith("Party >") || 
+                                    unformattedMessage.startsWith("Guild >") || 
+                                    unformattedMessage.startsWith("Officer >") || 
+                                    unformattedMessage.startsWith("Co-op >") ||
+                                    unformattedMessage.startsWith("Friend >") ||
+                                    unformattedMessage.startsWith("From ") ||
+                                    unformattedMessage.startsWith("To ");
+
+                String chatRegex = "^((?:\\u00A7[0-9a-fk-or])*(?:(?:Party|Guild|Officer|Co\\-op|Friend) \\> |(?:From|To) |\\[SHOUT\\] )?)(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*(" + realName + ")((?:\\u00A7[0-9a-fk-or])*\\s*\\:)(.*)$";
+                Matcher m = Pattern.compile(chatRegex).matcher(originalMessage);
                 
-                String customPrefix;
-                if (isNetwork) {
-                    customPrefix = channelPrefix + getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + colonWithColors + getChatColor(targetRank);
-                } else {
-                    customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + colonWithColors + getChatColor(targetRank);
+                if (m.find()) {
+                    String channelPrefix = m.group(1);
+                    String colonWithColors = m.group(3); 
+                    String chatMessage = m.group(4);
+                    
+                    String customPrefix;
+                    if (isNetwork) {
+                        customPrefix = channelPrefix + getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + colonWithColors + getChatColor(targetRank);
+                    } else {
+                        customPrefix = channelPrefix + getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + colonWithColors + getChatColor(targetRank);
+                    }
+                    
+                    event.message = new ChatComponentText(customPrefix + chatMessage);
+                    return;
                 }
-                
-                event.message = new ChatComponentText(customPrefix + chatMessage);
-                return;
             }
+
+            // 3. SAFE MENTION FALLBACK (If someone else mentions you, or a killfeed)
+            // This safely swaps just the text of the name and applies the rank color, completely hiding the brackets!
+            String fallbackRegex = "(?<!\\w)(?:\\u00A7[0-9a-fk-or])*" + realName + "(?!\\w)";
+            String simpleReplacement = getRankColor(targetRank) + displayUsername + EnumChatFormatting.RESET;
             
-            // 3. SAFE FALLBACK (Kill Feeds, System Invites)
-            String fallbackRegex = "(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*" + realName + "(?!\\w)";
-            String replacement;
+            String replacedMessage = originalMessage.replaceAll(fallbackRegex, simpleReplacement);
             
-            if (isNetwork) {
-                replacement = getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + EnumChatFormatting.RESET;
-            } else {
-                replacement = getCustomChatPitBracket() + " " + getCustomRankPrefix() + getRankColor(targetRank) + displayUsername + EnumChatFormatting.RESET;
+            if (!originalMessage.equals(replacedMessage)) {
+                event.message = new ChatComponentText(replacedMessage);
             }
-            
-            String replacedMessage = originalMessage.replaceAll(fallbackRegex, replacement);
-            event.message = new ChatComponentText(replacedMessage);
         }
     }
 
@@ -151,7 +142,7 @@ public class Ranks {
             // 1. Replace in Tab List
             for (NetworkPlayerInfo playerInfo : mc.getNetHandler().getPlayerInfoMap()) {
                 if (playerInfo.getGameProfile().getName().equals(realName)) {
-                    String tabName = getRankColor(targetRank) + displayUsername; // Uses custom username here!
+                    String tabName = getRankColor(targetRank) + displayUsername; 
                     if (changeLevel || changePrestige) {
                         tabName = getCustomTabPitBracket() + " " + tabName;
                     }
@@ -174,7 +165,7 @@ public class Ranks {
                         }
                     }
 
-                    // 3. SCOREBOARD PRESTIGE INJECTOR (For native Prestige 0 players)
+                    // 3. SCOREBOARD PRESTIGE INJECTOR
                     if (changePrestige) {
                         boolean hasPrestigeLine = false;
                         int levelScorePoints = -1;
@@ -187,7 +178,6 @@ public class Ranks {
                                 if (clean.contains("Prestige:")) hasPrestigeLine = true;
                                 if (clean.contains("Level:")) levelScorePoints = score.getScorePoints();
                                 
-                                // Find the invisible blank line right above Level
                                 if (clean.trim().isEmpty() && score.getScorePoints() == levelScorePoints + 1) {
                                     existingBlankScore = score;
                                 }
@@ -198,29 +188,24 @@ public class Ranks {
                         
                         if (targetPrestige > 0) {
                             if (!hasPrestigeLine && levelScorePoints != -1) {
-                                // Shift the blank line up to make room
                                 if (existingBlankScore != null) existingBlankScore.setScorePoints(levelScorePoints + 2);
                                 
-                                // Inject Prestige right above Level
                                 Score fakeScore = scoreboard.getValueFromObjective(fakePlayer, objective);
                                 fakeScore.setScorePoints(levelScorePoints + 1);
                                 
                                 ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
                                 if (fakeTeam == null) fakeTeam = scoreboard.createTeam("FakePrestige");
                                 
-                                // Force exact formatting so the Mixin doesn't have to catch it
                                 fakeTeam.setNamePrefix(EnumChatFormatting.WHITE + "Prestige: " + EnumChatFormatting.YELLOW + toRoman(targetPrestige));
                                 scoreboard.addPlayerToTeam(fakePlayer, "FakePrestige");
                                 
                             } else if (hasPrestigeLine) {
-                                // If we already injected it previously, just keep it updated
                                 ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
                                 if (fakeTeam != null) {
                                     fakeTeam.setNamePrefix(EnumChatFormatting.WHITE + "Prestige: " + EnumChatFormatting.YELLOW + toRoman(targetPrestige));
                                 }
                             }
                         } else {
-                            // If target is 0, clean up the fake line completely
                             scoreboard.removeObjectiveFromEntity(fakePlayer, null);
                             ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");
                             if (fakeTeam != null) scoreboard.removeTeam(fakeTeam);
@@ -228,7 +213,7 @@ public class Ranks {
                     }
                 }
 
-                // 4. Dynamic Tablist Hierarchy Sorter
+                // 4. Dynamic Tablist Hierarchy
                 if (changeLevel || changePrestige) {
                     ScorePlayerTeam currentTeam = scoreboard.getPlayersTeam(realName);
                     
@@ -254,7 +239,6 @@ public class Ranks {
                 }
             }
         } 
-        // CLEANUP
         else if (wasEnabled) {
             wasEnabled = false;
             String realName = mc.thePlayer.getName();
@@ -279,7 +263,6 @@ public class Ranks {
                     scoreboard.addPlayerToTeam(realName, originalTabTeam);
                 }
 
-                // Remove injected prestige line
                 String fakePlayer = EnumChatFormatting.BLACK + "" + EnumChatFormatting.RESET;
                 scoreboard.removeObjectiveFromEntity(fakePlayer, null);
                 ScorePlayerTeam fakeTeam = scoreboard.getTeam("FakePrestige");

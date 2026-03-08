@@ -1,5 +1,6 @@
 package com.linexstudios.foxtrot.Hud;
 
+import com.linexstudios.foxtrot.Misc.EnchantNames;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
@@ -29,15 +30,8 @@ public class NameTags {
         if (!enabled || mc.thePlayer == null || mc.theWorld == null) return;
 
         for (EntityPlayer player : mc.theWorld.playerEntities) {
-            if (player == mc.thePlayer) continue;
-            if (player.isDead || player.isInvisible()) continue; 
-            
-            // --- NPC FIX ---
-            // Citizens NPCs use Version 2 UUIDs. Real players use Version 4 (or 3).
-            // This prevents the mod from drawing custom nametags over the Item Shop, etc.
-            if (player.getUniqueID().version() == 2) continue;
+            if (player == mc.thePlayer || player.isDead || player.isInvisible() || player.getUniqueID().version() == 2) continue; 
 
-            // Calculate precise interpolated positions for smooth rendering
             double x = player.lastTickPosX + (player.posX - player.lastTickPosX) * event.partialTicks - mc.getRenderManager().viewerPosX;
             double y = player.lastTickPosY + (player.posY - player.lastTickPosY) * event.partialTicks - mc.getRenderManager().viewerPosY;
             double z = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * event.partialTicks - mc.getRenderManager().viewerPosZ;
@@ -48,79 +42,89 @@ public class NameTags {
 
     private void renderNameTag(EntityPlayer player, double x, double y, double z) {
         float distance = mc.thePlayer.getDistanceToEntity(player);
-        
-        // --- SCALE ADJUSTMENTS HERE ---
-        // Changed 0.015F to 0.010F to make the overall nametag scale smaller
-        float scale = (distance / 4.0F) * 0.010F;
-        // Changed 0.020F to 0.015F so they can shrink more when you are close
-        if (scale < 0.015F) scale = 0.015F; 
+        float scale = Math.max((distance / 4.0F) * 0.010F, 0.015F);
 
         GlStateManager.pushMatrix();
         GlStateManager.translate((float)x, (float)y + player.height + 0.6F, (float)z);
-        
         GL11.glNormal3f(0.0F, 1.0F, 0.0F);
         GlStateManager.rotate(-mc.getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
         GlStateManager.rotate(mc.getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-scale, -scale, scale);
 
-        // ====================================================
-        // CLEAN STATE SETUP (Using only GlStateManager)
-        // ====================================================
         GlStateManager.disableLighting();
-        GlStateManager.disableDepth(); // Render through walls
+        GlStateManager.disableDepth(); 
         GlStateManager.depthMask(false);
-        GlStateManager.disableFog(); // Prevents Shader/Distance gray-out
         GlStateManager.enableBlend();
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
-
-        // Reset color to pure white to wipe any lingering ESP tints
-        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
         String name = player.getDisplayName().getFormattedText();
         if (showHealth) {
             float health = player.getHealth() + player.getAbsorptionAmount();
-            float maxHealth = player.getMaxHealth();
-            float percentage = health / maxHealth;
-
-            String colorCode = "\u00a7a"; 
-            if (percentage <= 0.75f) colorCode = "\u00a7e"; 
-            if (percentage <= 0.50f) colorCode = "\u00a76"; 
-            if (percentage <= 0.25f) colorCode = "\u00a7c"; 
-
+            float percentage = health / player.getMaxHealth();
+            String colorCode = percentage <= 0.25f ? "\u00a7c" : percentage <= 0.50f ? "\u00a76" : percentage <= 0.75f ? "\u00a7e" : "\u00a7a"; 
             name = name + " " + colorCode + String.format("%.1f", health);
         }
 
         int width = mc.fontRendererObj.getStringWidth(name) / 2;
 
-        // 1. TURN TEXTURES OFF to draw the solid background box
+        // FETCH mystic enchants
+        String swordEnchants = EnchantNames.getEnchantsString(player.getHeldItem());
+        String pantsEnchants = EnchantNames.getEnchantsString(player.getCurrentArmor(1)); // Slot 1 is Leggings
+        
+        boolean hasSword = swordEnchants != null && !swordEnchants.isEmpty();
+        boolean hasPants = pantsEnchants != null && !pantsEnchants.isEmpty();
+        
+        int swordWidth = hasSword ? mc.fontRendererObj.getStringWidth(swordEnchants) / 2 : 0;
+        int pantsWidth = hasPants ? mc.fontRendererObj.getStringWidth(pantsEnchants) / 2 : 0;
+
         GlStateManager.disableTexture2D();
+        
+        // optimizing the shit out of this
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
         worldrenderer.begin(7, DefaultVertexFormats.POSITION_COLOR);
-        worldrenderer.pos(-width - 2, -2, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
-        worldrenderer.pos(-width - 2, 11, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
-        worldrenderer.pos(width + 2, 11, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
-        worldrenderer.pos(width + 2, -2, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
+        
+        // Background for Main Name (Bottom)
+        drawRect(worldrenderer, -width - 2, -2, width + 2, 11);
+
+        // Dynamic Stacking Logic for Backgrounds
+        int currentYOffset = -14;
+        if (hasSword) {
+            drawRect(worldrenderer, -swordWidth - 2, currentYOffset, swordWidth + 2, currentYOffset + 13);
+            currentYOffset -= 12;
+        }
+        if (hasPants) {
+            drawRect(worldrenderer, -pantsWidth - 2, currentYOffset, pantsWidth + 2, currentYOffset + 13);
+        }
+
         tessellator.draw();
         
-        // 2. TURN TEXTURES ON to draw the text (This fixes the black screen bug!)
         GlStateManager.enableTexture2D();
-        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F); // Ensure text is white
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F); 
+        
+        // Draw Text
         mc.fontRendererObj.drawStringWithShadow(name, -width, 0, -1);
+        
+        currentYOffset = -12;
+        if (hasSword) {
+            mc.fontRendererObj.drawStringWithShadow(swordEnchants, -swordWidth, currentYOffset, -1);
+            currentYOffset -= 12;
+        }
+        if (hasPants) {
+            mc.fontRendererObj.drawStringWithShadow(pantsEnchants, -pantsWidth, currentYOffset, -1);
+        }
 
-        // 3. RENDER ITEMS
+        // RENDER ITEMS
         if (showItems) {
             List<ItemStack> items = new ArrayList<>();
             if (player.getHeldItem() != null) items.add(player.getHeldItem());
-            
             for (int i = 3; i >= 0; i--) { 
-                ItemStack armor = player.inventory.armorInventory[i];
-                if (armor != null) items.add(armor);
+                if (player.inventory.armorInventory[i] != null) items.add(player.inventory.armorInventory[i]);
             }
 
             if (!items.isEmpty()) {
                 int startX = -(items.size() * 16) / 2;
-                int itemY = -18; 
+                int itemY = hasPants ? -44 : (hasSword ? -32 : -18); 
 
                 GlStateManager.enableRescaleNormal();
                 RenderHelper.enableGUIStandardItemLighting();
@@ -129,30 +133,23 @@ public class NameTags {
                     GlStateManager.pushMatrix();
                     GlStateManager.translate(startX, itemY, 0);
                     GlStateManager.scale(1.0F, 1.0F, 0.01F);
-                    
-                    // Force disable depth *right before* drawing the item so it stays visible through walls
                     GlStateManager.disableDepth();
                     
                     float prevZ = mc.getRenderItem().zLevel;
                     mc.getRenderItem().zLevel = -150.0F; 
-
                     mc.getRenderItem().renderItemIntoGUI(item, 0, 0);
                     mc.getRenderItem().renderItemOverlays(mc.fontRendererObj, item, 0, 0);
-                    
                     mc.getRenderItem().zLevel = prevZ;
-                    GlStateManager.popMatrix();
                     
+                    GlStateManager.popMatrix();
                     startX += 16;
                 }
-
                 RenderHelper.disableStandardItemLighting();
                 GlStateManager.disableRescaleNormal();
             }
         }
 
-        // ====================================================
-        // RESTORE VANILLA STATE
-        // ====================================================
+        // clean clean mr clean.
         GlStateManager.enableDepth();
         GlStateManager.depthMask(true);
         GlStateManager.enableLighting();
@@ -161,14 +158,17 @@ public class NameTags {
         GlStateManager.popMatrix();
     }
 
+    private void drawRect(WorldRenderer renderer, int minX, int minY, int maxX, int maxY) {
+        renderer.pos(minX, minY, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
+        renderer.pos(minX, maxY, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
+        renderer.pos(maxX, maxY, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
+        renderer.pos(maxX, minY, 0.0D).color(0.0F, 0.0F, 0.0F, 0.5F).endVertex();
+    }
+
     @SubscribeEvent
     public void onRenderVanillaNametag(RenderLivingEvent.Specials.Pre event) {
-        if (enabled && event.entity instanceof EntityPlayer) {
-            // Cancel vanilla nametags ONLY for real players. 
-            // This lets NPCs keep their default Hypixel hologram text!
-            if (event.entity.getUniqueID().version() != 2) {
-                event.setCanceled(true);
-            }
+        if (enabled && event.entity instanceof EntityPlayer && event.entity.getUniqueID().version() != 2) {
+            event.setCanceled(true);
         }
     }
 }

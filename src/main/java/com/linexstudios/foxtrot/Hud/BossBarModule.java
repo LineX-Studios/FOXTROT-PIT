@@ -3,11 +3,11 @@ package com.linexstudios.foxtrot.Hud;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.entity.boss.BossStatus;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import org.lwjgl.opengl.GL11;
 
 public class BossBarModule extends DraggableHUD {
     public static final BossBarModule instance = new BossBarModule();
@@ -17,6 +17,10 @@ public class BossBarModule extends DraggableHUD {
 
     public BossBarModule() {
         super("Boss Bar", 100, 10); // Default near the top middle
+        
+        // FIX: We MUST initialize the dimensions here so the dragging Hitbox exists!
+        this.width = 182;
+        this.height = 20;
     }
 
     @SubscribeEvent
@@ -47,16 +51,19 @@ public class BossBarModule extends DraggableHUD {
         String bossName = hasRealBoss ? BossStatus.bossName : EnumChatFormatting.YELLOW + "" + EnumChatFormatting.BOLD + "BOSS BAR";
         float bossHealth = hasRealBoss ? BossStatus.healthScale : 1.0f;
 
+        // Safely push Matrix so the Boss Bar doesn't tint other HUD elements
+        GlStateManager.pushMatrix();
+        GlStateManager.enableBlend();
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        
         mc.getTextureManager().bindTexture(Gui.icons);
         FontRenderer fr = mc.fontRendererObj;
         
         int barWidth = 182;
-        int filledWidth = (int)(bossHealth * (float)(barWidth + 1));
+        int filledWidth = (int)(bossHealth * (float)barWidth);
         int yOffset = 13;
         
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        
-        // Draw empty background bar
+        // Draw empty background bar (Drawn twice for vanilla shadow thickness)
         mc.ingameGUI.drawTexturedModalRect(0, yOffset, 0, 74, barWidth, 5);
         mc.ingameGUI.drawTexturedModalRect(0, yOffset, 0, 74, barWidth, 5);
         
@@ -68,10 +75,12 @@ public class BossBarModule extends DraggableHUD {
         // Draw Boss Name text centered above the bar
         fr.drawStringWithShadow(bossName, (barWidth / 2.0f) - (fr.getStringWidth(bossName) / 2.0f), yOffset - 10, 0xFFFFFF);
         
-        // Reset color to white so we don't mess up other HUD elements
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        mc.getTextureManager().bindTexture(Gui.icons);
+        // Safely pop Matrix
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        GlStateManager.disableBlend();
+        GlStateManager.popMatrix();
         
+        // Continually update dimensions just in case it scales
         this.width = 182;
         this.height = 20;
     }

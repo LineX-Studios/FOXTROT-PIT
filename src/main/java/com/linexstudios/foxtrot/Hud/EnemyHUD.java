@@ -53,7 +53,6 @@ public class EnemyHUD extends DraggableHUD {
             if (!(player instanceof EntityOtherPlayerMP)) continue;
             EntityOtherPlayerMP other = (EntityOtherPlayerMP) player;
 
-            // Uses the new strict UUID validator
             if (!isTarget(other)) continue;
             
             String name = other.getName();
@@ -75,11 +74,9 @@ public class EnemyHUD extends DraggableHUD {
                 displayName = EnumChatFormatting.GRAY + "[?] " + EnumChatFormatting.RED + name;
             }
 
-            // --- NAME CHANGE DETECTOR (ALIAS DISPLAY) ---
             String currentUUID = other.getUniqueID().toString();
             String cachedName = EnemyManager.enemyCache.get(currentUUID);
             
-            // If we have them cached, and their current name doesn't match the cache, display the alias!
             if (cachedName != null && !cachedName.equalsIgnoreCase(name)) {
                 displayName += EnumChatFormatting.YELLOW + " (" + EnumChatFormatting.YELLOW + cachedName + EnumChatFormatting.YELLOW + ")";
             }
@@ -158,7 +155,6 @@ public class EnemyHUD extends DraggableHUD {
         }
     }
 
-    // --- STRICT ANTI-SPOOF VALIDATOR ---
     public static boolean isTarget(EntityPlayer player) {
         if (player == null) return false;
         
@@ -179,7 +175,6 @@ public class EnemyHUD extends DraggableHUD {
         return false;
     }
 
-    // --- SECONDARY STRING VALIDATOR (For the Denick System) ---
     public static boolean isTarget(String name) {
         if (name == null) return false;
         return targetList.stream().anyMatch(t -> t.equalsIgnoreCase(name));

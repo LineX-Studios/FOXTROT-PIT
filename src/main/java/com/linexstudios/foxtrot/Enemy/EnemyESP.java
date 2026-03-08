@@ -1,12 +1,9 @@
 package com.linexstudios.foxtrot.Enemy;
 
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
+import com.linexstudios.foxtrot.Render.RenderUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderGlobal;
-import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.WorldRenderer;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
@@ -25,11 +22,9 @@ public class EnemyESP {
             if (player == mc.thePlayer) continue;
 
             // --- ANTI-GHOSTING FIX ---
-            // Ignores dead players, players with 0 health, and invisible bots
             if (player.isDead || player.getHealth() <= 0 || player.isInvisible()) continue;
 
-            // --- UUID SPOOF PROTECTION ---
-            // Uses EnemyHUD's strict validator to ensure the UUID matches the name
+            // UUID
             if (EnemyHUD.isTarget(player)) {
                 renderESP(player, event.partialTicks);
             }
@@ -39,47 +34,29 @@ public class EnemyESP {
     private void renderESP(EntityPlayer player, float partialTicks) {
         AxisAlignedBB bb = getInterpolatedBB(player, partialTicks);
 
-        // --- PREPARE GL STATE (Wallhack + Transparency) ---
-        GlStateManager.pushMatrix();
-        GlStateManager.enableBlend();
-        GlStateManager.disableDepth();
-        GlStateManager.disableTexture2D();
-        GlStateManager.disableLighting();
-        GlStateManager.depthMask(false);
-        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        // --- PREPARE GL STATE SAFELY ---
+        RenderUtils.setup3D();
 
         // 1. Render the translucent red fill
-        drawFilledBoundingBox(bb, 1.0F, 0.3F, 0.3F, 0.4F);
+        RenderUtils.drawFilledBox(bb, 1.0F, 0.3F, 0.3F, 0.4F);
 
-        // 2. Render the solid red outline (Uses Minecraft's native bounding box renderer)
-        GL11.glLineWidth(2.0F);
-        GlStateManager.color(1.0F, 0.3F, 0.3F, 1.0F);
-        RenderGlobal.drawOutlinedBoundingBox(bb, 255, 76, 76, 255);
+        // 2. Render the solid red outline
+        RenderUtils.drawOutlinedBox(bb, 1.0F, 0.3F, 0.3F, 1.0F, 2.0F);
 
         // 3. Render the white Skeleton Highlighter
         renderSkeleton(player, partialTicks);
 
-        // --- RESTORE GL STATE EXACTLY AS MINECRAFT EXPECTS IT ---
-        GlStateManager.depthMask(true);
-        GlStateManager.enableLighting();
-        GlStateManager.enableTexture2D();
-        GlStateManager.enableDepth();
-        GlStateManager.disableBlend();
-        
-        // CRITICAL FIX: Reset color back to pure white so it doesn't ghost/leak
-        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-        GL11.glLineWidth(1.0F);
-        GlStateManager.popMatrix();
+        // --- PERFECT OPENGL CLEANUP ---
+        RenderUtils.end3D();
     }
 
     private void renderSkeleton(EntityPlayer player, float partialTicks) {
-        // Calculate coordinates relative to the viewer
         double x = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks - mc.getRenderManager().viewerPosX;
         double y = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks - mc.getRenderManager().viewerPosY;
         double z = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks - mc.getRenderManager().viewerPosZ;
 
         GL11.glEnable(GL11.GL_LINE_SMOOTH);
-        GL11.glLineWidth(2.5F); // Thicker line for better visibility far away
+        GL11.glLineWidth(2.5F); 
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F); // Solid White
 
         GL11.glBegin(GL11.GL_LINES);
@@ -120,45 +97,5 @@ public class EnemyESP {
                 x - player.width / 2.0 - expand, y - expandy, z - player.width / 2.0 - expand,
                 x + player.width / 2.0 + expand, y + player.height + expandy, z + player.width / 2.0 + expand
         );
-    }
-
-    public static void drawFilledBoundingBox(AxisAlignedBB bb, float r, float g, float b, float a) {
-        Tessellator tessellator = Tessellator.getInstance();
-        WorldRenderer worldrenderer = tessellator.getWorldRenderer();
-        GlStateManager.color(r, g, b, a);
-        worldrenderer.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION);
-        
-        // Bottom
-        worldrenderer.pos(bb.minX, bb.minY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.minY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.minY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.minX, bb.minY, bb.maxZ).endVertex();
-        // Top
-        worldrenderer.pos(bb.minX, bb.maxY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.minX, bb.maxY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.maxY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.maxY, bb.minZ).endVertex();
-        // West
-        worldrenderer.pos(bb.minX, bb.minY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.minX, bb.maxY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.maxY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.minY, bb.minZ).endVertex();
-        // East
-        worldrenderer.pos(bb.minX, bb.minY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.minY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.maxY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.minX, bb.maxY, bb.maxZ).endVertex();
-        // North
-        worldrenderer.pos(bb.minX, bb.minY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.minX, bb.minY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.minX, bb.maxY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.minX, bb.maxY, bb.minZ).endVertex();
-        // South
-        worldrenderer.pos(bb.maxX, bb.minY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.maxY, bb.minZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.maxY, bb.maxZ).endVertex();
-        worldrenderer.pos(bb.maxX, bb.minY, bb.maxZ).endVertex();
-
-        tessellator.draw();
     }
 }

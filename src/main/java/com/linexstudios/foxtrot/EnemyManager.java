@@ -2,96 +2,128 @@ package com.linexstudios.foxtrot.Enemy;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.linexstudios.foxtrot.Hud.EnemyHUD;
-import net.minecraft.client.Minecraft;
-import net.minecraft.entity.player.EntityPlayer;
 
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class EnemyManager {
-    // Stores UUID -> Last Known Username
-    public static Map<String, String> enemyCache = new HashMap<>();
+    // UUID -> Name
+    public static final Map<String, String> enemyCache = new ConcurrentHashMap<>();
+    // Name (lowercase) -> UUID
+    public static final Map<String, String> nameToUuid = new ConcurrentHashMap<>();
+
     private static final File cacheFile = new File("config/Foxtrot/enemyuuid_cache.json");
+    private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     public static void loadCache() {
-        try {
-            if (cacheFile.exists()) {
-                FileReader reader = new FileReader(cacheFile);
-                enemyCache = new Gson().fromJson(reader, new TypeToken<HashMap<String, String>>(){}.getType());
-                reader.close();
+        if (!cacheFile.exists()) return;
+        try (FileReader reader = new FileReader(cacheFile)) {
+            Map<String, String> loaded = gson.fromJson(reader, new TypeToken<Map<String, String>>(){}.getType());
+            if (loaded != null) {
+                enemyCache.putAll(loaded);
+                for (Map.Entry<String, String> entry : loaded.entrySet()) {
+                    nameToUuid.put(entry.getValue().toLowerCase(), entry.getKey());
+                }
             }
-        } catch (Exception e) { e.printStackTrace(); }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static void saveCache() {
         try {
-            cacheFile.getParentFile().mkdirs();
-            FileWriter writer = new FileWriter(cacheFile);
-            new GsonBuilder().setPrettyPrinting().create().toJson(enemyCache, writer);
-            writer.close();
-        } catch (Exception e) { e.printStackTrace(); }
+            if (!cacheFile.getParentFile().exists()) cacheFile.getParentFile().mkdirs();
+            try (FileWriter writer = new FileWriter(cacheFile)) {
+                gson.toJson(enemyCache, writer);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    public static void addEnemy(String name) {
-        // 1. If they are in the lobby right now, instantly grab their UUID (Works on Nicked players too!)
-        if (Minecraft.getMinecraft().theWorld != null) {
-            for (EntityPlayer p : Minecraft.getMinecraft().theWorld.playerEntities) {
-                if (p.getName().equalsIgnoreCase(name)) {
-                    enemyCache.put(p.getUniqueID().toString(), p.getName());
-                    saveCache();
-                    return;
+    public static String getUUIDFromName(String name) {
+        return nameToUuid.get(name.toLowerCase());
+    }
+
+    // Called on startup to bulk-fetch anyone missing from the JSON
+    public static void fetchMissingUUIDs() {
+        new Thread(() -> {
+            boolean updated = false;
+            for (String target : EnemyHUD.targetList) {
+                if (!nameToUuid.containsKey(target.toLowerCase())) {
+                    String uuid = fetchUUIDFromMojang(target);
+                    if (uuid != null) {
+                        String formattedUUID = formatUUID(uuid);
+                        enemyCache.put(formattedUUID, target);
+                        nameToUuid.put(target.toLowerCase(), formattedUUID);
+                        updated = true;
+                        System.out.println("[Foxtrot] Cached UUID for " + target);
+                    }
+                    // Sleep to prevent Mojang API rate-limiting us
+                    try { Thread.sleep(600); } catch (InterruptedException ignored) {}
                 }
             }
-        }
+            if (updated) saveCache();
+        }).start();
+    }
 
-        // 2. If they are NOT in the lobby, silently ask Mojang's API for their real UUID in the background
+    // Called when you do /fx add <name>
+    public static void fetchSingleUUID(String name) {
+        if (nameToUuid.containsKey(name.toLowerCase())) return;
         new Thread(() -> {
-            try {
-                URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + name);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                
-                if (conn.getResponseCode() == 200) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) response.append(line);
-                    reader.close();
-
-                    // Parse basic JSON without heavy libraries
-                    String json = response.toString();
-                    if (json.contains("\"id\"") && json.contains("\"name\"")) {
-                        String rawUuid = json.split("\"id\"\\s*:\\s*\"")[1].split("\"")[0];
-                        String realName = json.split("\"name\"\\s*:\\s*\"")[1].split("\"")[0];
-                        
-                        // Mojang returns UUIDs without dashes. Java requires dashes. We inject them here.
-                        String formattedUuid = rawUuid.replaceFirst("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5");
-                        
-                        enemyCache.put(formattedUuid, realName);
-                        saveCache();
-                    }
-                }
-            } catch (Exception e) {
-                System.out.println("[Foxtrot] Failed to fetch UUID for " + name);
+            String uuid = fetchUUIDFromMojang(name);
+            if (uuid != null) {
+                String formattedUUID = formatUUID(uuid);
+                enemyCache.put(formattedUUID, name);
+                nameToUuid.put(name.toLowerCase(), formattedUUID);
+                saveCache();
+                System.out.println("[Foxtrot] Cached UUID for new enemy: " + name);
             }
         }).start();
     }
 
+    // Called when you do /fx remove <name>
     public static void removeEnemy(String name) {
-        enemyCache.entrySet().removeIf(entry -> entry.getValue().equalsIgnoreCase(name));
-        saveCache();
+        String uuid = nameToUuid.remove(name.toLowerCase());
+        if (uuid != null) {
+            enemyCache.remove(uuid);
+            saveCache();
+        }
     }
 
-    // Fetches the expected UUID for a name to stop nicked spoofers
-    public static String getUUIDFromName(String name) {
-        for (Map.Entry<String, String> entry : enemyCache.entrySet()) {
-            if (entry.getValue().equalsIgnoreCase(name)) return entry.getKey();
+    private static String fetchUUIDFromMojang(String name) {
+        try {
+            URL url = new URL("https://api.mojang.com/users/profiles/minecraft/" + name);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+
+            if (conn.getResponseCode() == 200) {
+                InputStreamReader reader = new InputStreamReader(conn.getInputStream());
+                JsonObject json = new JsonParser().parse(reader).getAsJsonObject();
+                reader.close();
+                return json.get("id").getAsString();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return null;
+    }
+
+    // Minecraft entity UUIDs use dashes, but Mojang API returns them without dashes. This fixes it.
+    private static String formatUUID(String dashless) {
+        if (dashless == null || dashless.length() != 32) return dashless;
+        return dashless.replaceFirst(
+            "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)",
+            "$1-$2-$3-$4-$5"
+        );
     }
 }

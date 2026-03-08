@@ -1,8 +1,10 @@
 package com.linexstudios.foxtrot.mixins;
 
 import com.linexstudios.foxtrot.Hud.TelebowHUD;
+import com.linexstudios.foxtrot.WhoGotBanned;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.network.play.server.S02PacketChat;
+import net.minecraft.network.play.server.S38PacketPlayerListItem;
 import net.minecraft.util.EnumChatFormatting;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,6 +17,9 @@ import java.util.regex.Pattern;
 @Mixin(NetHandlerPlayClient.class)
 public class MixinNetHandlerPlayClient {
 
+    // ==========================================
+    //           TELEBOW CHAT INJECTION
+    // ==========================================
     @Inject(method = "handleChat", at = @At("HEAD"), cancellable = true)
     public void onHandleChat(S02PacketChat packetIn, CallbackInfo ci) {
         if (packetIn == null || packetIn.getChatComponent() == null) return;
@@ -40,13 +45,32 @@ public class MixinNetHandlerPlayClient {
             if (!TelebowHUD.enabled) return;
             String cleanMessage = EnumChatFormatting.getTextWithoutFormattingCodes(packetIn.getChatComponent().getUnformattedText());
             
-            // ADDED: "DEATH!" to immediately clear the timer when you get killed or /oof
             if (cleanMessage.contains("NOPE! Can't teleport there") || 
                 cleanMessage.contains("You died!") || 
                 cleanMessage.contains("RESPAWNED!") ||
                 cleanMessage.contains("DEATH!")) {
                 
                 TelebowHUD.instance.clearCooldown();
+            }
+        }
+    }
+
+    // ==========================================
+    //        WHO GOT BANNED TABLIST INJECTION
+    // ==========================================
+    @Inject(method = "handlePlayerListItem", at = @At("HEAD"))
+    public void onPlayerListUpdate(S38PacketPlayerListItem packetIn, CallbackInfo ci) {
+        // FIXED: Using 1.8.9 MCP mapping names
+        if (packetIn.func_179768_b() == S38PacketPlayerListItem.Action.REMOVE_PLAYER) {
+            
+            for (S38PacketPlayerListItem.AddPlayerData data : packetIn.func_179767_a()) {
+                if (data.getProfile() != null && data.getProfile().getName() != null) {
+                    String name = data.getProfile().getName();
+                    
+                    if (!name.startsWith("§")) {
+                        WhoGotBanned.instance.logPlayerRemoval(name);
+                    }
+                }
             }
         }
     }

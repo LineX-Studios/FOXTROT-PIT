@@ -1,156 +1,120 @@
 package com.linexstudios.foxtrot;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public class WhoGotBanned {
     public static final WhoGotBanned instance = new WhoGotBanned();
     private final Minecraft mc = Minecraft.getMinecraft();
 
-    // Keeps track of the lobby from the previous tick
-    private final Set<String> previousPlayers = new HashSet<>();
-
-    // Memory bank of people who left in the last 5 seconds (Name -> Timestamp)
+    // Memory bank for players who just left (Mixin)
     private final Map<String, Long> recentlyLeft = new HashMap<>();
+    private long banWindowOpenUntil = 0L;
 
-    // ========================================================================
-    //                                  API
-    // ========================================================================
     private static final String PROXY_API_URL = "https://foxtrot-api.vercel.app/ban";
 
-    @SubscribeEvent
-    public void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || mc.theWorld == null || mc.getNetHandler() == null) return;
-
-        Set<String> currentPlayers = new HashSet<>();
-
-        // Grab everyone currently in the Tab List
-        for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
-            if (info != null && info.getGameProfile() != null && info.getGameProfile().getName() != null) {
-                String name = info.getGameProfile().getName();
-                // Filter out NPCs/Holograms (they usually start with color codes in the tab logic)
-                if (!name.startsWith("§")) {
-                    currentPlayers.add(name);
-                }
-            }
-        }
-
-        // If previousPlayers is empty, it means we just joined the lobby. Just sync and return to avoid false positives.
-        if (previousPlayers.isEmpty()) {
-            previousPlayers.addAll(currentPlayers);
-            return;
-        }
-
-        // Compare: Who was here a tick ago, but is gone now?
-        for (String prev : previousPlayers) {
-            if (!currentPlayers.contains(prev)) {
-                // They vanished! Log their name and the exact millisecond they disappeared.
-                recentlyLeft.put(prev, System.currentTimeMillis());
-            }
-        }
-
-        // Update the previous list for the next tick calculation
-        previousPlayers.clear();
-        previousPlayers.addAll(currentPlayers);
-
-        // Cleanup: Delete anyone from the memory bank who left more than 5 seconds ago
+    // --- CALLED INSTANTLY BY THE MIXIN ---
+    public void logPlayerRemoval(String playerName) {
         long now = System.currentTimeMillis();
-        recentlyLeft.entrySet().removeIf(entry -> now - entry.getValue() > 5000);
+
+        // SCENARIO B: Chat message already arrived, waiting for packet
+        if (now < banWindowOpenUntil) {
+            triggerBanAlert(playerName);
+            banWindowOpenUntil = 0L; // Close the window
+        } else {
+            // Normal disconnect. Store them just in case the chat packet is delayed.
+            recentlyLeft.put(playerName, now);
+        }
+
+        // Cleanup old entries (older than 2.5 seconds) so no memory leaks yay
+        recentlyLeft.entrySet().removeIf(entry -> now - entry.getValue() > 2500);
     }
 
     @SubscribeEvent
     public void onChat(ClientChatReceivedEvent event) {
-        if (event.type == 2) return; // Ignore action bar messages (like health or mana)
+        if (event.type == 2) return; 
 
-        // Strip the formatting so we can read the raw text easily
         String unformatted = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
 
-        // Check for Hypixel's exact Watchdog ban messages
         if (unformatted.contains("A player has been removed from your game") ||
-                unformatted.contains("A player has been removed from your lobby")) {
+            unformatted.contains("A player has been removed from your lobby")) {
 
-            // The ban message - too fast
-            String bannedPlayer = "Unknown (Too Fast)";
-            long closestTime = Long.MAX_VALUE;
+            // SCENARIO A: Tablist packet beat the chat packet, they are in our memory bank
+            if (!recentlyLeft.isEmpty()) {
+                String bannedPlayer = null;
+                long closestTime = Long.MAX_VALUE;
 
-            for (Map.Entry<String, Long> entry : recentlyLeft.entrySet()) {
-                long timeDiff = System.currentTimeMillis() - entry.getValue();
+                for (Map.Entry<String, Long> entry : recentlyLeft.entrySet()) {
+                    long timeDiff = System.currentTimeMillis() - entry.getValue();
+                    if (timeDiff < closestTime) {
+                        closestTime = timeDiff;
+                        bannedPlayer = entry.getKey();
+                    }
+                }
 
-                if (timeDiff < closestTime) {
-                    closestTime = timeDiff;
-                    bannedPlayer = entry.getKey();
+                if (bannedPlayer != null) {
+                    triggerBanAlert(bannedPlayer);
+                    recentlyLeft.clear();
+                    return; 
                 }
             }
 
-            // --- TRIGGER THE IN-GAME CHAT ALERT ---
-            if (mc.thePlayer != null) {
-                mc.thePlayer.addChatMessage(new ChatComponentText(
-                        EnumChatFormatting.GRAY + "[" + 
-                        EnumChatFormatting.RED + "Foxtrot" + 
-                        EnumChatFormatting.GRAY + "] " + 
-                        EnumChatFormatting.YELLOW + "\u26A0 " + // warning symbol
-                        EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + bannedPlayer + " " + 
-                        EnumChatFormatting.GOLD + "Has been banned!"
-                ));
-            }
-
-            // --- TRIGGER THE DISCORD WEBHOOK SECURELY ---
-            sendBanToDiscord(bannedPlayer);
-
-            // Clear the map so we don't accidentally flag the same person twice if the server lags
-            recentlyLeft.clear();
+            // SCENARIO B SETUP: Tablist packet hasn't arrived yet - this shit been a total
+            banWindowOpenUntil = System.currentTimeMillis() + 2000L;
         }
     }
 
-    private void sendBanToDiscord(String username) {
-        // Do not spam the API if the player couldn't be calculated
-        if (username == null || username.equals("Unknown (Too Fast)")) return;
+    private void triggerBanAlert(String bannedPlayer) {
+        if (mc.thePlayer != null) {
+            mc.thePlayer.addChatMessage(new ChatComponentText(
+                    EnumChatFormatting.GRAY + "[" + 
+                    EnumChatFormatting.RED + "Foxtrot" + 
+                    EnumChatFormatting.GRAY + "] " + 
+                    EnumChatFormatting.YELLOW + "\u26A0 " + 
+                    EnumChatFormatting.RED + "" + EnumChatFormatting.BOLD + bannedPlayer + " " + 
+                    EnumChatFormatting.GOLD + "Has been banned!"
+            ));
+        }
+        sendBanToDiscord(bannedPlayer);
+    }
 
-        // Run the HTTP request on a separate thread so it doesn't freeze Minecraft
+    private void sendBanToDiscord(String username) {
+        if (username == null) return;
+
         new Thread(() -> {
             try {
                 URL url = new URL(PROXY_API_URL);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 
-                // Configure connection for a POST request
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json; utf-8");
                 conn.setRequestProperty("Accept", "application/json");
                 conn.setDoOutput(true);
 
-                // Build the JSON payload
                 String jsonInputString = "{\"username\": \"" + username + "\"}";
 
-                // Send the payload
                 try (OutputStream os = conn.getOutputStream()) {
                     byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
                     os.write(input, 0, input.length);
                 }
 
-                // Execute the request and read the status code
                 int responseCode = conn.getResponseCode();
-                
                 if (responseCode != 200) {
                     System.out.println("[Foxtrot] Vercel API rejected the ban payload. Code: " + responseCode);
                 }
 
             } catch (Exception e) {
                 System.out.println("[Foxtrot] Failed to connect to Vercel API.");
-                e.printStackTrace();
             }
         }).start();
     }
