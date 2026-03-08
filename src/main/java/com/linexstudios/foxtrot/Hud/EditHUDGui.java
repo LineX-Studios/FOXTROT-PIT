@@ -112,31 +112,44 @@ public class EditHUDGui extends GuiScreen {
     private boolean isInside(float mX, float mY, float x, float y, float w, float h) { return mX>=x && mX<=x+w && mY>=y && mY<=y+h; }
 
     @Override protected void mouseClicked(int mX, int mY, int b) throws IOException {
-        if(b!=0)return;
-        if(panelCollapsed) { if(isInside(mX, mY, collapsedX+95, collapsedY, 20, 18)) panelCollapsed=false; else if(isInside(mX, mY, collapsedX, collapsedY, 95, 18)) { draggingPanel=true; lastX=mX; lastY=mY; } return; }
-        if(isInside(mX, mY, mainPanelX+panelW-25, mainPanelY, 25, 20)) { panelCollapsed=true; return; }
-        for(int i=0, y=mainPanelY+25; i<tabs.length; i++, y+=20) if(isInside(mX, mY, mainPanelX+6, y, 70, 16)) { selectedTab=i; return; }
-        int c1=mainPanelX+90, c2=mainPanelX+205, y1=mainPanelY+25, y2=y1;
-        if(selectedTab==0) {
-            if(AutoClicker.limitItems && whitelistField!=null) whitelistField.mouseClicked(mX, mY, b);
-            if(isInside(mX, mY, c1+5, y1+=16, 100, 12)) AutoClicker.enabled=!AutoClicker.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.leftClick=!AutoClicker.leftClick; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.holdToClick=!AutoClicker.holdToClick; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.fastPlaceEnabled=!AutoClicker.fastPlaceEnabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.breakBlocks=!AutoClicker.breakBlocks; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.inventoryFill=!AutoClicker.inventoryFill; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.limitItems=!AutoClicker.limitItems;
-            boolean cD=false; if(randomDropdownExpanded){ if(isInside(mX, mY, c2+5, y2+82, 90, 12)){ AutoClicker.randomMode=0; randomDropdownExpanded=false; cD=true; } else if(isInside(mX, mY, c2+5, y2+96, 90, 12)){ AutoClicker.randomMode=1; randomDropdownExpanded=false; cD=true; } else if(isInside(mX, mY, c2+5, y2+110, 90, 12)){ AutoClicker.randomMode=2; randomDropdownExpanded=false; cD=true; } }
-            if(!cD){ if(isInside(mX, mY, c2+5, y2+66, 90, 14)) randomDropdownExpanded=!randomDropdownExpanded; else if(!randomDropdownExpanded){ if(isInside(mX, mY, c2+5, y2+5, 90, 15)){ activeSlider=1; updateEditSlider(1, mX, c2+5); } else if(isInside(mX, mY, c2+5, y2+25, 90, 15)){ activeSlider=2; updateEditSlider(2, mX, c2+5); } else if(isInside(mX, mY, c2+5, y2+45, 90, 15)){ activeSlider=3; updateEditSlider(3, mX, c2+5); } } }
-        } else if(selectedTab==1) {
-            if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) NameTags.enabled=!NameTags.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) NameTags.showHealth=!NameTags.showHealth; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) NameTags.showItems=!NameTags.showItems;
-            if(isInside(mX, mY, c1+5, y1+=36, 100, 12)) EnemyESP.enabled=!EnemyESP.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) FriendsESP.enabled=!FriendsESP.enabled;
-            if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PitESP.espChests=!PitESP.espChests; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PitESP.espDragonEggs=!PitESP.espDragonEggs; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PitESP.espRaffleTickets=!PitESP.espRaffleTickets; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PitESP.espMystics=!PitESP.espMystics; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) LowLifeMystic.enabled=!LowLifeMystic.enabled;
-        } else if(selectedTab==2) { if(isInside(mX, mY, c1+5, y1+6, 100, 12)) AutoDenick.enabled=!AutoDenick.enabled; if(isInside(mX, mY, c1+5, y1+24, 100, 12)) NickedRender.enabled=!NickedRender.enabled;
-        } else if(selectedTab==3) {
-            if(isInside(mX, mY, c1+5, y1+=6, 100, 12)) EnemyHUD.enabled=!EnemyHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) NickedHUD.enabled=!NickedHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) FriendsHUD.enabled=!FriendsHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) SessionStatsHUD.enabled=!SessionStatsHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) EventHUD.enabled=!EventHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) BossBarModule.enabled=!BossBarModule.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) CPSModule.enabled=!CPSModule.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) FPSModule.enabled=!FPSModule.enabled;
-            if(isInside(mX, mY, c2+5, y2+=6, 100, 12)) RegHUD.enabled=!RegHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) DarksHUD.enabled=!DarksHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PotionHUD.enabled=!PotionHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) ArmorHUD.enabled=!ArmorHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) CoordsHUD.enabled=!CoordsHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) TelebowHUD.enabled=!TelebowHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PlayerCounterHUD.enabled=!PlayerCounterHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) VenomTimer.enabled=!VenomTimer.enabled;
-            if(isInside(mX, mY, c1+52, Math.max(y1, y2)+28, 110, 16)) mc.displayGuiScreen(new HUDSettingsGui(this));
-        } else if(selectedTab==4) {
-            if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoPantSwap.pantSwapEnabled=!AutoPantSwap.pantSwapEnabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoPantSwap.venomSwapEnabled=!AutoPantSwap.venomSwapEnabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoGhead.enabled=!AutoGhead.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoPantSwap.autoPodEnabled=!AutoPantSwap.autoPodEnabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoBulletTime.enabled=!AutoBulletTime.enabled;
-            if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) AutoQuickMath.enabled=!AutoQuickMath.enabled;
-        } else if(selectedTab==5) { if(isInside(mX, mY, c1+5, y1+6, 205, 12)) { ConfigHandler.telemetryEnabled=!ConfigHandler.telemetryEnabled; if(ConfigHandler.telemetryEnabled) TelemetryManager.initialize(); }
-        } else if(selectedTab==6) { if(isInside(mX, mY, c1+5, y1+20, 205, 12)) ConfigHandler.autoUpdateEnabled=!ConfigHandler.autoUpdateEnabled; if(!ConfigHandler.autoUpdateEnabled && FoxtrotTweaker.UPDATE_AVAILABLE && isInside(mX, mY, c1+5, y1+40, 205, 16)) FoxtrotTweaker.triggerManualUpdate(); }
-        ConfigHandler.saveConfig(); super.mouseClicked(mX, mY, b);
+        if(b!=0 && b!=2) return; 
+        
+        if (b == 0) {
+            if(panelCollapsed) { 
+                if(isInside(mX, mY, collapsedX+95, collapsedY, 20, 18)) { panelCollapsed=false; return; } 
+                if(isInside(mX, mY, collapsedX, collapsedY, 95, 18)) { draggingPanel=true; lastX=mX; lastY=mY; return; } 
+            } else {
+                if(isInside(mX, mY, mainPanelX+panelW-25, mainPanelY, 25, 20)) { panelCollapsed=true; return; }
+                for(int i=0, y=mainPanelY+25; i<tabs.length; i++, y+=20) if(isInside(mX, mY, mainPanelX+6, y, 70, 16)) { selectedTab=i; return; }
+                int c1=mainPanelX+90, c2=mainPanelX+205, y1=mainPanelY+25, y2=y1;
+                
+                if(selectedTab==0) {
+                    if(AutoClicker.limitItems && whitelistField!=null) whitelistField.mouseClicked(mX, mY, b);
+                    if(isInside(mX, mY, c1+5, y1+=16, 100, 12)) AutoClicker.enabled=!AutoClicker.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.leftClick=!AutoClicker.leftClick; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.holdToClick=!AutoClicker.holdToClick; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.fastPlaceEnabled=!AutoClicker.fastPlaceEnabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.breakBlocks=!AutoClicker.breakBlocks; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.inventoryFill=!AutoClicker.inventoryFill; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoClicker.limitItems=!AutoClicker.limitItems;
+                    boolean cD=false; if(randomDropdownExpanded){ if(isInside(mX, mY, c2+5, y2+82, 90, 12)){ AutoClicker.randomMode=0; randomDropdownExpanded=false; cD=true; } else if(isInside(mX, mY, c2+5, y2+96, 90, 12)){ AutoClicker.randomMode=1; randomDropdownExpanded=false; cD=true; } else if(isInside(mX, mY, c2+5, y2+110, 90, 12)){ AutoClicker.randomMode=2; randomDropdownExpanded=false; cD=true; } }
+                    if(!cD){ if(isInside(mX, mY, c2+5, y2+66, 90, 14)) randomDropdownExpanded=!randomDropdownExpanded; else if(!randomDropdownExpanded){ if(isInside(mX, mY, c2+5, y2+5, 90, 15)){ activeSlider=1; updateEditSlider(1, mX, c2+5); } else if(isInside(mX, mY, c2+5, y2+25, 90, 15)){ activeSlider=2; updateEditSlider(2, mX, c2+5); } else if(isInside(mX, mY, c2+5, y2+45, 90, 15)){ activeSlider=3; updateEditSlider(3, mX, c2+5); } } }
+                } else if(selectedTab==1) {
+                    if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) NameTags.enabled=!NameTags.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) NameTags.showHealth=!NameTags.showHealth; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) NameTags.showItems=!NameTags.showItems;
+                    if(isInside(mX, mY, c1+5, y1+=36, 100, 12)) EnemyESP.enabled=!EnemyESP.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) FriendsESP.enabled=!FriendsESP.enabled;
+                    if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PitESP.espChests=!PitESP.espChests; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PitESP.espDragonEggs=!PitESP.espDragonEggs; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PitESP.espRaffleTickets=!PitESP.espRaffleTickets; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PitESP.espMystics=!PitESP.espMystics; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) LowLifeMystic.enabled=!LowLifeMystic.enabled;
+                } else if(selectedTab==2) { if(isInside(mX, mY, c1+5, y1+6, 100, 12)) AutoDenick.enabled=!AutoDenick.enabled; if(isInside(mX, mY, c1+5, y1+24, 100, 12)) NickedRender.enabled=!NickedRender.enabled;
+                } else if(selectedTab==3) {
+                    if(isInside(mX, mY, c1+5, y1+=6, 100, 12)) EnemyHUD.enabled=!EnemyHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) NickedHUD.enabled=!NickedHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) FriendsHUD.enabled=!FriendsHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) SessionStatsHUD.enabled=!SessionStatsHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) EventHUD.enabled=!EventHUD.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) BossBarModule.enabled=!BossBarModule.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) CPSModule.enabled=!CPSModule.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) FPSModule.enabled=!FPSModule.enabled;
+                    if(isInside(mX, mY, c2+5, y2+=6, 100, 12)) RegHUD.enabled=!RegHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) DarksHUD.enabled=!DarksHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PotionHUD.enabled=!PotionHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) ArmorHUD.enabled=!ArmorHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) CoordsHUD.enabled=!CoordsHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) TelebowHUD.enabled=!TelebowHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) PlayerCounterHUD.enabled=!PlayerCounterHUD.enabled; if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) VenomTimer.enabled=!VenomTimer.enabled;
+                    if(isInside(mX, mY, c1+52, Math.max(y1, y2)+28, 110, 16)) mc.displayGuiScreen(new HUDSettingsGui(this));
+                } else if(selectedTab==4) {
+                    if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoPantSwap.pantSwapEnabled=!AutoPantSwap.pantSwapEnabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoPantSwap.venomSwapEnabled=!AutoPantSwap.venomSwapEnabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoGhead.enabled=!AutoGhead.enabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoPantSwap.autoPodEnabled=!AutoPantSwap.autoPodEnabled; if(isInside(mX, mY, c1+5, y1+=18, 100, 12)) AutoBulletTime.enabled=!AutoBulletTime.enabled;
+                    if(isInside(mX, mY, c2+5, y2+=18, 100, 12)) AutoQuickMath.enabled=!AutoQuickMath.enabled;
+                } else if(selectedTab==5) { if(isInside(mX, mY, c1+5, y1+6, 205, 12)) { ConfigHandler.telemetryEnabled=!ConfigHandler.telemetryEnabled; if(ConfigHandler.telemetryEnabled) TelemetryManager.initialize(); }
+                } else if(selectedTab==6) { if(isInside(mX, mY, c1+5, y1+20, 205, 12)) ConfigHandler.autoUpdateEnabled=!ConfigHandler.autoUpdateEnabled; if(!ConfigHandler.autoUpdateEnabled && FoxtrotTweaker.UPDATE_AVAILABLE && isInside(mX, mY, c1+5, y1+40, 205, 16)) FoxtrotTweaker.triggerManualUpdate(); }
+                ConfigHandler.saveConfig(); 
+            }
+        }
+        
+        super.mouseClicked(mX, mY, b);
+        
+        if (!panelCollapsed && isInside(mX, mY, mainPanelX, mainPanelY, panelW, panelH)) return; 
+        
         for(DraggableHUD h : DraggableHUD.getRegistry()) {
             if(!h.isEnabled()) continue;
             if(b==2 && h.isHovered(mX, mY)) { h.scale=1; ConfigHandler.saveConfig(); return; }
