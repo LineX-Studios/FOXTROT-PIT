@@ -2,12 +2,13 @@ package com.linexstudios.foxtrot.Combat;
 
 import com.linexstudios.foxtrot.Foxtrot;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.inventory.Slot;
 import net.minecraft.item.*;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -15,6 +16,7 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,10 +27,10 @@ public class AutoClicker {
     private final Minecraft mc = Minecraft.getMinecraft();
     private final Random rand = new Random();
     
-    // --- Reflection Fields ---
+    // --- Reflection Fields & Methods ---
     private Field leftClickCounterField;
     private Field isHittingBlockField; 
-    private Field theSlotField; // Safely gets the slot your mouse is hovering over
+    private Method mouseClickedMethod;
 
     // --- Toggles ---
     public static boolean enabled = false;
@@ -72,14 +74,14 @@ public class AutoClicker {
         }
         if (isHittingBlockField != null) isHittingBlockField.setAccessible(true);
 
-        // Reflection for GuiContainer.theSlot (Hovered Slot)
+        // NATIVE GUI CLICKING SETUP
         try {
-            theSlotField = GuiContainer.class.getDeclaredField("theSlot");
-        } catch (NoSuchFieldException e) {
-            try { theSlotField = GuiContainer.class.getDeclaredField("field_147006_u"); } catch (Exception ex) {}
+            mouseClickedMethod = GuiScreen.class.getDeclaredMethod("mouseClicked", int.class, int.class, int.class);
+        } catch (NoSuchMethodException e) {
+            try { mouseClickedMethod = GuiScreen.class.getDeclaredMethod("func_73864_a", int.class, int.class, int.class); } catch (Exception ex) {}
         }
-        if (theSlotField != null) {
-            theSlotField.setAccessible(true);
+        if (mouseClickedMethod != null) {
+            mouseClickedMethod.setAccessible(true);
         }
     }
 
@@ -88,15 +90,15 @@ public class AutoClicker {
         if (Foxtrot.toggleCombatKey != null && Foxtrot.toggleCombatKey.isPressed()) {
             enabled = !enabled;
             if (mc.thePlayer != null) {
-                String state = enabled ? "\u00a7aON" : "\u00a7cOFF";
-                mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[Foxtrot] \u00a77AutoClicker: " + state));
+                String state = enabled ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF";
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GRAY + "Auto-Clicker: " + state));
             }
         }
         if (Foxtrot.toggleInvFillKey != null && Foxtrot.toggleInvFillKey.isPressed()) {
             inventoryFill = !inventoryFill;
             if (mc.thePlayer != null) {
-                String state = inventoryFill ? "\u00a7aON" : "\u00a7cOFF";
-                mc.thePlayer.addChatMessage(new ChatComponentText("\u00a7c[Foxtrot] \u00a77Inventory Fill: " + state));
+                String state = inventoryFill ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF";
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "Foxtrot" + EnumChatFormatting.GRAY + "] " + EnumChatFormatting.GRAY + "Inventory-Fill: " + state));
             }
         }
     }
@@ -114,35 +116,26 @@ public class AutoClicker {
     public void onTick(TickEvent.ClientTickEvent event) {
         if (mc.thePlayer == null || mc.theWorld == null) return;
 
-        // --- NEW & IMPROVED INVENTORY SHIFT-CLICK LOGIC ---
+        // INV FILL
         if (mc.currentScreen instanceof GuiContainer) {
             boolean isShiftDown = Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
             
-            // Only trigger if Inventory Fill is ON, Left Mouse is held, AND Shift is held
             if (inventoryFill && Mouse.isButtonDown(0) && isShiftDown) {
                 long invDelay = inventoryFillCps >= 20.0F ? 20 : (long)(1000.0F / inventoryFillCps);
                 
                 if (System.currentTimeMillis() - lastInvClick >= invDelay) {
                     GuiContainer gui = (GuiContainer) mc.currentScreen;
-                    Slot hoveredSlot = null;
                     
-                    if (theSlotField != null) {
-                        try {
-                            hoveredSlot = (Slot) theSlotField.get(gui);
-                        } catch (Exception e) {}
-                    }
+                    int mouseX = Mouse.getX() * gui.width / mc.displayWidth;
+                    int mouseY = gui.height - Mouse.getY() * gui.height / mc.displayHeight - 1;
                     
-                    // Only click if we are hovering over a slot AND that slot actually has an item in it
-                    if (hoveredSlot != null && hoveredSlot.getHasStack()) {
-                        mc.playerController.windowClick(
-                                gui.inventorySlots.windowId, 
-                                hoveredSlot.slotNumber, 
-                                0, // 0 = Left Click
-                                1, // 1 = Shift-Click Mode (Instantly moves item)
-                                mc.thePlayer
-                        );
-                        lastInvClick = System.currentTimeMillis();
-                    }
+                    try {
+                        if (mouseClickedMethod != null) {
+                            mouseClickedMethod.invoke(gui, mouseX, mouseY, 0);
+                        }
+                    } catch (Exception e) {}
+                    
+                    lastInvClick = System.currentTimeMillis();
                 }
             }
             return; 

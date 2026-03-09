@@ -9,8 +9,10 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public class AutoQuickMath {
     public static final AutoQuickMath instance = new AutoQuickMath();
     
-    // GUI Toggle
+    // GUI Toggles
     public static boolean enabled = true;
+    public static int randomMode = 1; // 0 = Normal, 1 = Extra, 2 = Extra+
+    public static float baseDelayMs = 1500f; // Slider value (0 to 5000)
 
     @SubscribeEvent
     public void solveQuickMath(ClientChatReceivedEvent event){
@@ -21,8 +23,18 @@ public class AutoQuickMath {
                 String mathProblem = rawMessage.replace("QUICK MATHS! Solve: ", "");
                 new Thread(()->{
                     try {
-                        int randomInt = (int) (Math.random() * 1000);
-                        Thread.sleep(1500 + randomInt); // Natural delay to avoid anti-cheat
+                        int delay = (int) baseDelayMs;
+                        
+                        // Apply selected randomization mode
+                        if (randomMode == 1) {
+                            delay += (int) (Math.random() * 1000);
+                        } else if (randomMode == 2) {
+                            delay += (int) (Math.random() * 2000);
+                        }
+                        
+                        if (delay > 0) {
+                            Thread.sleep(delay); // Natural delay to avoid anti-cheat
+                        }
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }

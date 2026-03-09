@@ -19,6 +19,7 @@ package com.linexstudios.foxtrot.Update;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.minecraft.client.Minecraft;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
@@ -39,12 +40,12 @@ public class FoxtrotTweaker implements ITweaker {
     public static String DOWNLOAD_URL = "";
     
     public static boolean DEV_TEST_MODE = false; 
+    public static boolean isChecking = false;
     public static File foxtrotDir;
 
     @SuppressWarnings("unchecked")
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
-        
         List<String> tweakClasses = (List<String>) Launch.blackboard.get("TweakClasses");
         if (tweakClasses != null && !tweakClasses.contains("org.spongepowered.asm.launch.MixinTweaker")) {
             tweakClasses.add("org.spongepowered.asm.launch.MixinTweaker");
@@ -72,73 +73,73 @@ public class FoxtrotTweaker implements ITweaker {
                 if (duplicateJars != null) {
                     for (File dup : duplicateJars) {
                         try { 
-                            if (!dup.delete()) {
-                                dup.renameTo(new File(dup.getAbsolutePath() + ".old"));
-                            } 
+                            if (!dup.delete()) dup.renameTo(new File(dup.getAbsolutePath() + ".old"));
                         } catch (Exception ignored) {}
                     }
                 }
             }
         } catch (Exception ignored) {}
-
-        boolean autoUpdateEnabled = true;
-        try {
-            File configDir = new File(gameDir, "config");
-            if (configDir.exists()) {
-                File[] files = configDir.listFiles();
-                if (files != null) {
-                    for (File file : files) {
-                        if (file.getName().toLowerCase().contains("foxtrot")) {
-                            BufferedReader br = new BufferedReader(new FileReader(file));
-                            String line;
-                            while ((line = br.readLine()) != null) {
-                                String cleanLine = line.replace(" ", "");
-                                if (cleanLine.contains("autoUpdateEnabled=false") || cleanLine.contains("\"autoUpdateEnabled\":false") || cleanLine.contains("autoUpdateEnabled:false")) {
-                                    autoUpdateEnabled = false;
-                                }
-                            }
-                            br.close();
-                        }
-                    }
-                }
-            }
-        } catch (Throwable t) {}
-
-        if (DEV_TEST_MODE) {
-            UPDATE_AVAILABLE = true;
-            LATEST_VERSION = "0.7.9-TEST";
-            return;
-        }
-
-        try {
-            URL url = new URL("https://api.github.com/repos/LineX-Studios/FOXTROT-PIT/releases/latest");
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("User-Agent", "Foxtrot-Updater"); 
-            
-            if (conn.getResponseCode() == 200) {
-                InputStreamReader reader = new InputStreamReader(conn.getInputStream());
-                JsonObject response = new JsonParser().parse(reader).getAsJsonObject();
-                reader.close();
-
-                String latestVersion = response.get("tag_name").getAsString().replace("v", "");
-                
-                if (isNewerVersion(CURRENT_VERSION, latestVersion)) {
-                    UPDATE_AVAILABLE = true;
-                    LATEST_VERSION = latestVersion;
-                    DOWNLOAD_URL = response.getAsJsonArray("assets").get(0).getAsJsonObject().get("browser_download_url").getAsString();
-                    
-                    if (autoUpdateEnabled) {
-                        runRealDownload(DOWNLOAD_URL);
-                    }
-                }
-            }
-        } catch (Throwable t) {
-            System.out.println("[Foxtrot] Failed to check GitHub for updates.");
-        }
     }
 
-    private boolean isNewerVersion(String current, String latest) {
+    public static void checkUpdatesAsync() {
+        if (isChecking) return;
+        isChecking = true;
+        LATEST_VERSION = "Checking...";
+
+        new Thread(() -> {
+            if (DEV_TEST_MODE) {
+                UPDATE_AVAILABLE = true;
+                LATEST_VERSION = "v0.7.9-TEST";
+                isChecking = false;
+                return;
+            }
+
+            try {
+                URL url = new URL("https://api.github.com/repos/LineX-Studios/FOXTROT-PIT/releases/latest");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("User-Agent", "Foxtrot-Updater"); 
+                
+                if (conn.getResponseCode() == 200) {
+                    InputStreamReader reader = new InputStreamReader(conn.getInputStream());
+                    JsonObject response = new JsonParser().parse(reader).getAsJsonObject();
+                    reader.close();
+
+                    LATEST_VERSION = response.get("tag_name").getAsString(); // Captures exactly "v0.8.2"
+                    
+                    String cleanLatest = LATEST_VERSION.replace("v", "");
+                    String cleanCurrent = CURRENT_VERSION.replace("v", "");
+                    
+                    if (isNewerVersion(cleanCurrent, cleanLatest)) {
+                        UPDATE_AVAILABLE = true;
+                        DOWNLOAD_URL = response.getAsJsonArray("assets").get(0).getAsJsonObject().get("browser_download_url").getAsString();
+                        
+                        boolean auto = true;
+                        try {
+                            File file = new File(foxtrotDir, "settings.txt");
+                            if (file.exists()) {
+                                BufferedReader br = new BufferedReader(new FileReader(file));
+                                String line;
+                                while ((line = br.readLine()) != null) {
+                                    if (line.replace(" ", "").contains("autoUpdateEnabled=false")) auto = false;
+                                }
+                                br.close();
+                            }
+                        } catch (Exception ignored) {}
+                        
+                        if (auto) runRealDownload(DOWNLOAD_URL);
+                    }
+                } else {
+                    LATEST_VERSION = "API Limit";
+                }
+            } catch (Throwable t) {
+                LATEST_VERSION = "Failed";
+            }
+            isChecking = false;
+        }).start();
+    }
+
+    private static boolean isNewerVersion(String current, String latest) {
         try {
             String[] cParts = current.replaceAll("[^0-9.]", "").split("\\.");
             String[] lParts = latest.replaceAll("[^0-9.]", "").split("\\.");
@@ -167,7 +168,6 @@ public class FoxtrotTweaker implements ITweaker {
 
             try (InputStream in = new BufferedInputStream(conn.getInputStream());
                  OutputStream out = new BufferedOutputStream(new FileOutputStream(tempJar))) {
-
                 byte[] buffer = new byte[8192];
                 int bytesRead = 0, nRead;
                 while ((nRead = in.read(buffer)) != -1) {
@@ -180,7 +180,7 @@ public class FoxtrotTweaker implements ITweaker {
             Thread.sleep(500); 
 
             File currentJar = new File(FoxtrotTweaker.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            File destinationInMods = new File(currentJar.getParentFile(), "Foxtrot-" + LATEST_VERSION + ".jar");
+            File destinationInMods = new File(currentJar.getParentFile(), "Foxtrot-" + LATEST_VERSION.replace("v", "") + ".jar");
 
             Files.copy(currentJar.toPath(), updaterJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
@@ -188,12 +188,9 @@ public class FoxtrotTweaker implements ITweaker {
             String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + (isWindows ? "javaw.exe" : "java");
 
             ProcessBuilder pb = new ProcessBuilder(
-                    javaBin, 
-                    "-cp", updaterJar.getAbsolutePath(), 
+                    javaBin, "-cp", updaterJar.getAbsolutePath(), 
                     "com.linexstudios.foxtrot.Update.FoxtrotRelocator", 
-                    currentJar.getAbsolutePath(), 
-                    tempJar.getAbsolutePath(), 
-                    destinationInMods.getAbsolutePath()
+                    currentJar.getAbsolutePath(), tempJar.getAbsolutePath(), destinationInMods.getAbsolutePath()
             );
 
             pb.redirectError(new File(foxtrotDir, "updater_error.log"));
@@ -206,8 +203,14 @@ public class FoxtrotTweaker implements ITweaker {
                 successWindow.setVisible(true);
             });
 
+            // Force close the game after 3 seconds so the user can read the success window
+            new Thread(() -> {
+                try { Thread.sleep(3000); } catch (Exception ignored) {}
+                try { Minecraft.getMinecraft().shutdown(); } catch (Exception ignored) {}
+                System.exit(0);
+            }).start();
+
         } catch (Exception e) {
-            e.printStackTrace();
             SwingUtilities.invokeLater(window::dispose);
         }
     }

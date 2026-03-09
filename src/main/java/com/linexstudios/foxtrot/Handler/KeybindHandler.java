@@ -39,7 +39,7 @@ public class KeybindHandler {
             ConfigHandler.saveConfig();
 
             String status = NameTags.enabled ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF";
-            String prefix = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "PIT" + EnumChatFormatting.GRAY + "] ";
+            String prefix = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.RED + "FOXTROT" + EnumChatFormatting.GRAY + "] ";
             
             mc.thePlayer.addChatMessage(new ChatComponentText(
                     prefix + EnumChatFormatting.YELLOW + "NameTags: " + status

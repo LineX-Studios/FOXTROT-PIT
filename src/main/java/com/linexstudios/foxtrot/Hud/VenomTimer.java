@@ -58,7 +58,7 @@ public class VenomTimer extends DraggableHUD {
         long timeLeft = venomEndTime - System.currentTimeMillis();
         if (timeLeft > 0) {
             int seconds = (int) Math.ceil(timeLeft / 1000.0);
-            event.displayname = event.displayname + " " + EnumChatFormatting.GRAY + "[" + EnumChatFormatting.DARK_PURPLE + "Venomed: " + EnumChatFormatting.RED + seconds + "s" + EnumChatFormatting.GRAY + "]";
+            event.displayname = event.displayname + EnumChatFormatting.DARK_PURPLE + "Venomed: " + EnumChatFormatting.RED + seconds + "s";
         }
     }
 
@@ -83,11 +83,10 @@ public class VenomTimer extends DraggableHUD {
         String text;
 
         if (isEditing) {
-            // Updated HUD element to match the Gray/Dark Purple/Red theme
-            text = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.DARK_PURPLE + "Venomed: " + EnumChatFormatting.RED + "12.0s" + EnumChatFormatting.GRAY + "]";
+            text = EnumChatFormatting.DARK_PURPLE + "Venomed: " + EnumChatFormatting.RED + "12.0s";
         } else if (targetPlayer != null && timeLeft > 0) {
             double seconds = Math.round((timeLeft / 1000.0) * 10.0) / 10.0;
-            text = EnumChatFormatting.GRAY + "[" + EnumChatFormatting.DARK_PURPLE + "Venomed: " + EnumChatFormatting.RED + seconds + "s" + EnumChatFormatting.GRAY + "]";
+            text = EnumChatFormatting.DARK_PURPLE + "Venomed: " + EnumChatFormatting.RED + seconds + "s";
         } else {
             return;
         }
