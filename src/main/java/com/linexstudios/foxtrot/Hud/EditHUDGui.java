@@ -13,7 +13,6 @@ import net.minecraft.util.EnumChatFormatting;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 import java.io.IOException;
-import java.io.File;
 
 public class EditHUDGui extends GuiScreen {
     public static int collapsedX = -1, collapsedY = -1;
@@ -29,14 +28,34 @@ public class EditHUDGui extends GuiScreen {
     private float guideAlphaX = 0.0f, guideAlphaY = 0.0f;
     private final int COLOR_ENABLED = 0xFF28A061, COLOR_DISABLED = 0xFFB82C35, COLOR_BTN_HOVER_OVERLAY = 0x22FFFFFF;
 
-    private void safeCheck() { if (!ConfigHandler.autoUpdateEnabled) { FoxtrotTweaker.checkUpdatesAsync(); return; } new Thread(() -> { ConfigHandler.autoUpdateEnabled = false; ConfigHandler.saveConfig(); FoxtrotTweaker.checkUpdatesAsync(); try { Thread.sleep(3000); } catch (Exception e) {} ConfigHandler.autoUpdateEnabled = true; ConfigHandler.saveConfig(); }).start(); }
+    private void silentApiCheck() {
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL("https://api.github.com/repos/LineX-Studios/FOXTROT-PIT/releases/latest").openConnection();
+                c.setRequestProperty("User-Agent", "Foxtrot-Updater");
+                if (c.getResponseCode() == 200) {
+                    java.io.InputStreamReader r = new java.io.InputStreamReader(c.getInputStream());
+                    com.google.gson.JsonObject j = new com.google.gson.JsonParser().parse(r).getAsJsonObject(); r.close();
+                    String l = j.get("tag_name").getAsString();
+                    String cV = FoxtrotTweaker.CURRENT_VERSION.replace("v", ""), lV = l.replace("v", ""); boolean isNew = false;
+                    String[] cP = cV.replaceAll("[^0-9.]", "").split("\\."), lP = lV.replaceAll("[^0-9.]", "").split("\\.");
+                    for (int i = 0; i < Math.max(cP.length, lP.length); i++) {
+                        int cI = i < cP.length && !cP[i].isEmpty() ? Integer.parseInt(cP[i]) : 0; int lI = i < lP.length && !lP[i].isEmpty() ? Integer.parseInt(lP[i]) : 0;
+                        if (lI > cI) { isNew = true; break; } if (lI < cI) break;
+                    }
+                    if (isNew) { FoxtrotTweaker.UPDATE_AVAILABLE = true; FoxtrotTweaker.LATEST_VERSION = l; FoxtrotTweaker.DOWNLOAD_URL = j.getAsJsonArray("assets").get(0).getAsJsonObject().get("browser_download_url").getAsString(); } 
+                    else FoxtrotTweaker.LATEST_VERSION = l;
+                } else FoxtrotTweaker.LATEST_VERSION = "API Limit";
+            } catch (Exception e) { FoxtrotTweaker.LATEST_VERSION = "Failed"; }
+        }).start();
+    }
 
     @Override public void initGui() {
         super.initGui(); Keyboard.enableRepeatEvents(true); if (this.width <= 0) return;
         mainPanelX = (this.width - panelW) / 2; mainPanelY = (this.height - panelH) / 2;
         if (collapsedX == -1) { collapsedX = mainPanelX + panelW - 115; collapsedY = mainPanelY - 20; }
         if (whitelistField == null) { whitelistField = new GuiTextField(100, this.fontRendererObj, 0, 0, 125, 12); whitelistField.setMaxStringLength(256); whitelistField.setText(String.join(", ", AutoClicker.itemWhitelist)); whitelistField.setVisible(false); }
-        if (FoxtrotTweaker.LATEST_VERSION.isEmpty() || FoxtrotTweaker.LATEST_VERSION.equals("Unknown")) safeCheck();
+        if (FoxtrotTweaker.LATEST_VERSION.isEmpty() || FoxtrotTweaker.LATEST_VERSION.equals("Unknown")) silentApiCheck();
     }
 
     @Override public void drawScreen(int mouseX, int mouseY, float partialTicks) {
@@ -150,7 +169,7 @@ public class EditHUDGui extends GuiScreen {
                 } else if(selectedTab==5) { if(isInside(mX, mY, c1+5, y1+6, 270, 12)) { ConfigHandler.telemetryEnabled=!ConfigHandler.telemetryEnabled; if(ConfigHandler.telemetryEnabled) TelemetryManager.initialize(); }
                 } else if(selectedTab==6) { 
                     if(isInside(mX, mY, c1+5, y1+32, 270, 12)) ConfigHandler.autoUpdateEnabled=!ConfigHandler.autoUpdateEnabled; 
-                    if(FoxtrotTweaker.UPDATE_AVAILABLE && isInside(mX, mY, c1+5, y1+52, 270, 16)) { mc.getSoundHandler().playSound(net.minecraft.client.audio.PositionedSoundRecord.create(new net.minecraft.util.ResourceLocation("gui.button.press"), 1.0F)); FoxtrotTweaker.triggerManualUpdate(); mc.displayGuiScreen(null); new Thread(() -> { try { File log = new File(new File(mc.mcDataDir, "Foxtrot"), "updater_output.log"); long lm = log.exists() ? log.lastModified() : 0; for(int i=0; i<120; i++) { Thread.sleep(1000); if(log.exists() && log.lastModified() > lm) { Thread.sleep(3000); if(System.getProperty("os.name").toLowerCase().contains("win")) Runtime.getRuntime().exec("taskkill /F /PID " + java.lang.management.ManagementFactory.getRuntimeMXBean().getName().split("@")[0]); Runtime.getRuntime().halt(0); } } } catch(Exception e){} }).start(); }
+                    if(FoxtrotTweaker.UPDATE_AVAILABLE && isInside(mX, mY, c1+5, y1+52, 270, 16)) { mc.getSoundHandler().playSound(net.minecraft.client.audio.PositionedSoundRecord.create(new net.minecraft.util.ResourceLocation("gui.button.press"), 1.0F)); FoxtrotTweaker.triggerManualUpdate(); mc.displayGuiScreen(null); }
                 }
             }
         } super.mouseClicked(mouseX, mouseY, mouseButton);

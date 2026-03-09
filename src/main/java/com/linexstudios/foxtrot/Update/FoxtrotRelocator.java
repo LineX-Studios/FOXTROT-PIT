@@ -18,67 +18,25 @@
 package com.linexstudios.foxtrot.Update;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 
 public class FoxtrotRelocator {
-    
     public static void main(String[] args) {
         System.out.println("[FoxtrotRelocator] Starting background updater...");
-        
-        if (args.length < 3) {
-            System.err.println("[FoxtrotRelocator] ERROR: Missing arguments.");
-            System.exit(1);
-        }
-
-        File oldJar = new File(args[0]);
-        File tempJar = new File(args[1]);
-        File finalJar = new File(args[2]);
-
-        System.out.println("[FoxtrotRelocator] Target Old Jar: " + oldJar.getAbsolutePath());
-        System.out.println("[FoxtrotRelocator] Target Final Jar: " + finalJar.getAbsolutePath());
-
-        if (!tempJar.exists()) {
-            System.err.println("[FoxtrotRelocator] ERROR: Downloaded temp jar does not exist.");
-            System.exit(1);
-        }
-
+        if (args.length < 3) { System.err.println("[FoxtrotRelocator] ERROR: Missing arguments."); System.exit(1); }
+        File oldJar = new File(args[0]), tempJar = new File(args[1]), finalJar = new File(args[2]);
+        System.out.println("[FoxtrotRelocator] Target Old Jar: " + oldJar.getAbsolutePath()); System.out.println("[FoxtrotRelocator] Target Final Jar: " + finalJar.getAbsolutePath());
+        if (!tempJar.exists()) { System.err.println("[FoxtrotRelocator] ERROR: Downloaded temp jar does not exist."); System.exit(1); }
         System.out.println("[FoxtrotRelocator] Waiting for Minecraft to drop the file lock...");
-
-        // Loop up to 20 seconds waiting for the zombie JVM process to be killed
         int attempts = 0;
         while (oldJar.exists() && attempts < 40) {
-            try {
-                Files.delete(oldJar.toPath());
-                System.out.println("[FoxtrotRelocator] SUCCESS: Old jar deleted natively.");
-                break;
-            } catch (Exception e) {
-                // If deletion fails due to lock, attempt to rename the file to bypass Forge loading
-                File oldRenamed = new File(oldJar.getAbsolutePath() + ".old");
-                if (oldJar.renameTo(oldRenamed)) {
-                    System.out.println("[FoxtrotRelocator] SUCCESS: Old jar renamed to .old as fallback.");
-                    break;
-                }
-            }
-            attempts++;
-            try { Thread.sleep(500); } catch (Exception ignored) {}
+            try { Files.delete(oldJar.toPath()); System.out.println("[FoxtrotRelocator] SUCCESS: Old jar deleted natively."); break; } 
+            catch (Exception e) { File oldRenamed = new File(oldJar.getAbsolutePath() + ".old"); if (oldJar.renameTo(oldRenamed)) { System.out.println("[FoxtrotRelocator] SUCCESS: Old jar renamed to .old as fallback."); break; } }
+            attempts++; try { Thread.sleep(500); } catch (Exception e) {}
         }
-
         System.out.println("[FoxtrotRelocator] Proceeding to move new update into mods folder.");
-
-        try {
-            Files.move(tempJar.toPath(), finalJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("[FoxtrotRelocator] SUCCESS: New mod jar placed.");
-        } catch (Exception e) {
-            System.err.println("[FoxtrotRelocator] WARNING: Files.move failed. Attempting fallback rename.");
-            if (tempJar.renameTo(finalJar)) {
-                System.out.println("[FoxtrotRelocator] SUCCESS: Fallback rename completed.");
-            } else {
-                System.err.println("[FoxtrotRelocator] FATAL ERROR: Could not move temp jar.");
-            }
-        }
-
-        System.out.println("[FoxtrotRelocator] Execution complete. Exiting.");
-        System.exit(0);
+        try { Files.move(tempJar.toPath(), finalJar.toPath(), StandardCopyOption.REPLACE_EXISTING); System.out.println("[FoxtrotRelocator] SUCCESS: New mod jar placed."); } 
+        catch (Exception e) { System.err.println("[FoxtrotRelocator] WARNING: Files.move failed. Attempting fallback rename."); if (tempJar.renameTo(finalJar)) System.out.println("[FoxtrotRelocator] SUCCESS: Fallback rename completed."); else System.err.println("[FoxtrotRelocator] FATAL ERROR: Could not move temp jar."); }
+        System.out.println("[FoxtrotRelocator] Execution complete. Exiting."); System.exit(0);
     }
 }
