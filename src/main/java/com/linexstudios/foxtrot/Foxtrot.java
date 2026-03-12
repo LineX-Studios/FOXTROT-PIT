@@ -83,6 +83,7 @@ public class Foxtrot {
         MinecraftForge.EVENT_BUS.register(NickScanner.instance);
         MinecraftForge.EVENT_BUS.register(new EnemyAlert());
         MinecraftForge.EVENT_BUS.register(new KeybindHandler());
+        MinecraftForge.EVENT_BUS.register(new HUDController());
         MinecraftForge.EVENT_BUS.register(Ranks.instance);
         MinecraftForge.EVENT_BUS.register(new SpawnShortcut());
         MinecraftForge.EVENT_BUS.register(DeadLobbyFinder.instance);

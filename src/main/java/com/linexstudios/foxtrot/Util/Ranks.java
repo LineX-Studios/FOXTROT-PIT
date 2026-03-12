@@ -25,21 +25,21 @@ public class Ranks {
     // ==========================================
     //              MODULE SETTINGS
     // ==========================================
-    public static boolean isEnabled = true;
+    public static boolean isEnabled = false;
 
     public static boolean changeName = false;
     public static String targetName = "";
 
-    public static boolean changeLevel = true;
+    public static boolean changeLevel = false;
     public static int targetLevel = 120;
 
-    public static boolean changePrestige = true;
+    public static boolean changePrestige = false;
     public static int targetPrestige = 30; 
 
-    public static boolean changeRank = true;
+    public static boolean changeRank = false;
     public static String targetRank = "admin"; 
 
-    public static boolean hideLobby = true;
+    public static boolean hideLobby = false;
 
     private boolean wasEnabled = false;
     private String originalScoreboardTitle = null;
@@ -84,13 +84,7 @@ public class Ranks {
             }
 
             if (isAuthor) {
-                boolean isNetwork = unformattedMessage.startsWith("Party >") || 
-                                    unformattedMessage.startsWith("Guild >") || 
-                                    unformattedMessage.startsWith("Officer >") || 
-                                    unformattedMessage.startsWith("Co-op >") ||
-                                    unformattedMessage.startsWith("Friend >") ||
-                                    unformattedMessage.startsWith("From ") ||
-                                    unformattedMessage.startsWith("To ");
+                boolean isNetwork = isNetworkOrPrivateChat(unformattedMessage);
 
                 String chatRegex = "^((?:\\u00A7[0-9a-fk-or])*(?:(?:Party|Guild|Officer|Co\\-op|Friend) \\> |(?:From|To) |\\[SHOUT\\] )?)(?:\\u00A7[0-9a-fk-or]|\\[[^\\]]+\\]|\\s)*(" + realName + ")((?:\\u00A7[0-9a-fk-or])*\\s*\\:)(.*)$";
                 Matcher m = Pattern.compile(chatRegex).matcher(originalMessage);
@@ -123,6 +117,18 @@ public class Ranks {
                 event.message = new ChatComponentText(replacedMessage);
             }
         }
+    }
+
+    private boolean isNetworkOrPrivateChat(String unformattedMessage) {
+        if (unformattedMessage == null) return false;
+        String msg = unformattedMessage.trim();
+        return msg.startsWith("Party >") ||
+               msg.startsWith("Guild >") ||
+               msg.startsWith("Officer >") ||
+               msg.startsWith("Co-op >") ||
+               msg.startsWith("Friend >") ||
+               msg.startsWith("From ") ||
+               msg.startsWith("To ");
     }
 
     // ==========================================

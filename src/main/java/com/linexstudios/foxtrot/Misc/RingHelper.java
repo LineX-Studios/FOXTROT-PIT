@@ -2,6 +2,7 @@ package com.linexstudios.foxtrot.Misc;
 
 import com.linexstudios.foxtrot.Render.RenderUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.scoreboard.ScoreObjective;
 import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.BlockPos;
@@ -31,6 +32,7 @@ public class RingHelper {
 
     public List<BlockPos> activeRingCache = CLASSIC_RING;
     private long lastMapCheck = 0;
+    private WorldClient lastDetectedWorld = null;
 
     static {
         // Classic / Corals (Abyss) / Seasons (Y=82 shifted to 83)
@@ -45,11 +47,11 @@ public class RingHelper {
         };
         for (int[] c : elementsCoords) ELEMENTS_RING.add(new BlockPos(c[0], c[1] + 1, c[2]));
 
-        // Genesis (Y=43 shifted to 44)
+        // Genesis (keep lower than prior offset; previous +1 rendered too high)
         int[][] genesisCoords = {
             {11,43,-1},{11,43,-2},{11,43,0},{11,43,1},{11,43,2},{11,43,3},{10,43,4},{10,43,5},{9,43,6},{9,43,7},{8,43,8},{7,43,9},{6,43,9},{5,43,10},{4,43,10},{3,43,11},{2,43,11},{1,43,11},{0,43,11},{-1,43,11},{-2,43,11},{-3,43,10},{-4,43,10},{-5,43,9},{-6,43,9},{-7,43,8},{-8,43,7},{-8,43,6},{-9,43,5},{-9,43,4},{-10,43,3},{-10,43,2},{-10,43,1},{-10,43,0},{-10,43,-1},{-10,43,-2},{-9,43,-3},{-9,43,-4},{-8,43,-5},{-8,43,-6},{-7,43,-7},{-6,43,-8},{-4,43,-9},{-3,43,-9},{-5,43,-8},{-2,43,-10},{-1,43,-10},{0,43,-10},{1,43,-10},{2,43,-10},{3,43,-10},{5,43,-9},{4,43,-9},{7,43,-8},{6,43,-8},{8,43,-7},{10,43,-4},{9,43,-5},{9,43,-6},{10,43,-3}
         };
-        for (int[] c : genesisCoords) GENESIS_RING.add(new BlockPos(c[0], c[1] + 1, c[2]));
+        for (int[] c : genesisCoords) GENESIS_RING.add(new BlockPos(c[0], c[1] - 1, c[2]));
     }
 
     private boolean isInPit() {
@@ -67,8 +69,14 @@ public class RingHelper {
     public void updateMapDetection() {
         if (!enabled || mc.theWorld == null || !isInPit()) return;
 
+        if (mc.theWorld != lastDetectedWorld) {
+            lastDetectedWorld = mc.theWorld;
+            lastMapCheck = 0;
+            activeRingCache = CLASSIC_RING;
+        }
+
         long now = System.currentTimeMillis();
-        if (now - lastMapCheck < 2000) return; 
+        if (now - lastMapCheck < 500) return;
         lastMapCheck = now;
 
         if (!mc.theWorld.isAirBlock(new BlockPos(11, 43, 0))) {
@@ -81,6 +89,7 @@ public class RingHelper {
     }
 
     public boolean shouldBlockPlacement(BlockPos clickedPos, EnumFacing face) {
+        updateMapDetection();
         if (!enabled || !preventMisplace || mc.thePlayer == null || mc.theWorld == null || !isInPit()) return false;
         if (Math.abs(clickedPos.getX()) > 30 || Math.abs(clickedPos.getZ()) > 30) return false;
 
@@ -104,6 +113,7 @@ public class RingHelper {
 
     @SubscribeEvent
     public void onRenderWorld(RenderWorldLastEvent event) {
+        updateMapDetection();
         if (!enabled || !renderRing || mc.thePlayer == null || mc.theWorld == null || !isInPit()) return;
 
         for (BlockPos pos : activeRingCache) {
@@ -128,5 +138,11 @@ public class RingHelper {
             String status = enabled ? EnumChatFormatting.GREEN + "ON" : EnumChatFormatting.RED + "OFF";
             Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(prefix + EnumChatFormatting.YELLOW + "Ring Helper: " + status));
         }
+    }
+
+    public void onWorldChanged() {
+        lastDetectedWorld = null;
+        lastMapCheck = 0;
+        activeRingCache = CLASSIC_RING;
     }
 }

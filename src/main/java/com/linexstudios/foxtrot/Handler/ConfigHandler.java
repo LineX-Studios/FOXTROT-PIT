@@ -18,6 +18,50 @@ public class ConfigHandler {
     private static boolean getBool(Properties p, String k, boolean d) { try { return Boolean.parseBoolean(p.getProperty(k, String.valueOf(d))); } catch(Exception e) { return d; } }
     private static void initHUDs() { Object[] f = {PotionHUD.instance, ArmorHUD.instance, CoordsHUD.instance, EnemyHUD.instance, NickedHUD.instance, FriendsHUD.instance, SessionStatsHUD.instance, EventHUD.instance, RegHUD.instance, DarksHUD.instance, ToggleSprintModule.instance, CPSModule.instance, FPSModule.instance, BossBarModule.instance, TelebowHUD.instance, PlayerCounterHUD.instance, VenomTimer.instance}; }
 
+    private static void applyFirstRunDefaults() {
+        ToggleSprintModule.instance.enabled = false;
+        AutoClicker.enabled = false;
+        Wtap.enabled = false;
+        ChestStealer.enabled = false;
+        AutoDenick.enabled = false;
+        NickedRender.enabled = false;
+        PitESP.espChests = false;
+        PitESP.espDragonEggs = false;
+        PitESP.espRaffleTickets = false;
+        PitESP.espMystics = false;
+        LowLifeMystic.enabled = false;
+        AutoPantSwap.pantSwapEnabled = false;
+        AutoPantSwap.venomSwapEnabled = false;
+        AutoPantSwap.autoPodEnabled = false;
+        AutoGhead.enabled = false;
+        AutoQuickMath.enabled = false;
+        AutoBulletTime.enabled = false;
+        EnemyHUD.enabled = false;
+        EnemyHUD.notificationsEnabled = false;
+        NickedHUD.enabled = false;
+        SessionStatsHUD.enabled = false;
+        EventHUD.enabled = false;
+        RegHUD.enabled = false;
+        DarksHUD.enabled = false;
+        PotionHUD.enabled = false;
+        ArmorHUD.enabled = false;
+        CoordsHUD.enabled = false;
+        BossBarModule.enabled = false;
+        CPSModule.enabled = false;
+        FPSModule.enabled = false;
+        TelebowHUD.enabled = false;
+        PlayerCounterHUD.enabled = false;
+        NameTags.enabled = false;
+        FriendsHUD.enabled = false;
+        FriendsESP.enabled = false;
+        Ranks.isEnabled = false;
+        RingHelper.enabled = false;
+        DeadLobbyFinder.enabled = false;
+        NonHighlighter.enabled = false;
+        VenomTimer.enabled = false;
+        EnchantNames.enabled = false;
+    }
+
     public static void loadConfig() {
         initHUDs(); EnemyManager.loadCache();
         try {
@@ -28,19 +72,22 @@ public class ConfigHandler {
                 Properties p = new Properties(); try (FileInputStream i = new FileInputStream(settingsFile)) { p.load(i); }
                 for (DraggableHUD h : DraggableHUD.getRegistry()) { String n = h.name.replaceAll("\\s+", ""); h.x = getInt(p, n + "X", h.x); h.y = getInt(p, n + "Y", h.y); h.scale = getFloat(p, n + "Scale", h.scale); }
                 PotionHUD.instance.isHorizontal = getBool(p, "potionHorizontal", false); PotionHUD.nameColor = getInt(p, "potionNameColor", 16777215); PotionHUD.durationColor = getInt(p, "potionDurationColor", 11184810); ArmorHUD.durabilityColor = getInt(p, "armorDurabilityColor", 16777215); ArmorHUD.instance.isHorizontal = getBool(p, "armorHorizontal", false); CoordsHUD.instance.isHorizontal = getBool(p, "coordsHorizontal", false); CoordsHUD.axisColor = getInt(p, "coordsAxisColor", 16733525); CoordsHUD.numberColor = getInt(p, "coordsNumberColor", 16777215);
-                ToggleSprintModule.instance.enabled = getBool(p, "toggleSprintEnabled", true); ToggleSprintModule.instance.toggleSprint = getBool(p, "tsSprint", true); ToggleSprintModule.instance.toggleSneak = getBool(p, "tsSneak", false); ToggleSprintModule.instance.wTapFix = getBool(p, "tsWTapFix", true); ToggleSprintModule.instance.flyBoost = getBool(p, "tsFlyBoost", true); ToggleSprintModule.instance.flyBoostAmount = getFloat(p, "tsFlyBoostAmount", 4.0f); ToggleSprintModule.instance.textColor = getInt(p, "tsTextColor", 16777215);
+                ToggleSprintModule.instance.enabled = getBool(p, "toggleSprintEnabled", false); ToggleSprintModule.instance.toggleSprint = getBool(p, "tsSprint", true); ToggleSprintModule.instance.toggleSneak = getBool(p, "tsSneak", false); ToggleSprintModule.instance.wTapFix = getBool(p, "tsWTapFix", true); ToggleSprintModule.instance.flyBoost = getBool(p, "tsFlyBoost", true); ToggleSprintModule.instance.flyBoostAmount = getFloat(p, "tsFlyBoostAmount", 4.0f); ToggleSprintModule.instance.textColor = getInt(p, "tsTextColor", 16777215);
                 CPSModule.showBackground = getBool(p, "cpsShowBg", true); CPSModule.textColor = getInt(p, "cpsTextColor", 16777215); FPSModule.showBackground = getBool(p, "fpsShowBg", true); FPSModule.textColor = getInt(p, "fpsTextColor", 16777215);
                 EditHUDGui.collapsedX = getInt(p, "panelX", -1); EditHUDGui.collapsedY = getInt(p, "panelY", -1); EditHUDGui.panelCollapsed = getBool(p, "panelCollapsed", false);
                 AutoClicker.enabled = getBool(p, "clickerEnabled", false); AutoClicker.leftClick = getBool(p, "clickerLeft", true); AutoClicker.fastPlaceEnabled = getBool(p, "fastPlace", false); AutoClicker.holdToClick = getBool(p, "clickerHoldToClick", true); AutoClicker.inventoryFill = getBool(p, "clickerInvFill", true); AutoClicker.breakBlocks = getBool(p, "clickerBreakBlocks", true); AutoClicker.limitItems = getBool(p, "clickerLimitItems", true); AutoClicker.inventoryFillCps = getFloat(p, "clickerInvFillCps", 15.0f); AutoClicker.minCps = getFloat(p, "clickerMinCps", 9.0f); AutoClicker.maxCps = getFloat(p, "clickerMaxCps", 13.0f); AutoClicker.randomMode = getInt(p, "clickerRandomMode", 1); AutoClicker.itemWhitelist = new ArrayList<>(Arrays.asList(p.getProperty("clickerWhitelist", "sword,axe,pickaxe").split(",")));
                 Wtap.enabled = getBool(p, "wtapEnabled", false); Wtap.delay = getFloat(p, "wtapDelay", 5.5f); Wtap.duration = getFloat(p, "wtapDuration", 1.5f);
                 ChestStealer.enabled = getBool(p, "csEnabled", false); ChestStealer.minDelay = getFloat(p, "csMinDelay", 1.0f); ChestStealer.maxDelay = getFloat(p, "csMaxDelay", 2.0f); ChestStealer.openDelay = getFloat(p, "csOpenDelay", 1.0f); ChestStealer.autoClose = getBool(p, "csAutoClose", false); ChestStealer.nameCheck = getBool(p, "csNameCheck", true); ChestStealer.skipTrash = getBool(p, "csSkipTrash", true); ChestStealer.moreArmor = getBool(p, "csMoreArmor", false); ChestStealer.moreSword = getBool(p, "csMoreSword", false);
-                AutoDenick.enabled = getBool(p, "autoDenick", false); NickedRender.enabled = getBool(p, "nickedNametags", true); PitESP.espChests = getBool(p, "pitEspChests", true); PitESP.espDragonEggs = getBool(p, "pitEspDragonEggs", true); PitESP.espRaffleTickets = getBool(p, "pitEspRaffleTickets", true); PitESP.espMystics = getBool(p, "pitEspMystics", true); LowLifeMystic.enabled = getBool(p, "lowLifeMysticEnabled", true);
-                AutoPantSwap.pantSwapEnabled = getBool(p, "autoPantSwap", true); AutoPantSwap.venomSwapEnabled = getBool(p, "autoVenomSwap", true); AutoPantSwap.autoPodEnabled = getBool(p, "autoPod", true); AutoGhead.enabled = getBool(p, "autoGhead", true); AutoQuickMath.enabled = getBool(p, "autoQuickMath", true); AutoBulletTime.enabled = getBool(p, "autoBulletTime", false); AutoQuickMath.randomMode = getInt(p, "aqmRandomMode", 1); AutoQuickMath.baseDelayMs = getFloat(p, "aqmBaseDelay", 1500f);
-                EnemyHUD.enabled = getBool(p, "enemyHudEnabled", true); EnemyHUD.notificationsEnabled = getBool(p, "enemyHudAlerts", true); EnemyHUD.debugMode = getBool(p, "enemyHudDebug", false); NickedHUD.enabled = getBool(p, "nickedHudEnabled", true); SessionStatsHUD.enabled = getBool(p, "sessionStatsEnabled", true); EventHUD.enabled = getBool(p, "eventHudEnabled", true); RegHUD.enabled = getBool(p, "regHudEnabled", true); DarksHUD.enabled = getBool(p, "darksHudEnabled", true); PotionHUD.enabled = getBool(p, "potionHudEnabled", true); ArmorHUD.enabled = getBool(p, "armorHudEnabled", true); CoordsHUD.enabled = getBool(p, "coordsHudEnabled", true); BossBarModule.enabled = getBool(p, "bossBarEnabled", true); CPSModule.enabled = getBool(p, "cpsEnabled", true); FPSModule.enabled = getBool(p, "fpsEnabled", true); TelebowHUD.enabled = getBool(p, "telebowHudEnabled", true); PlayerCounterHUD.enabled = getBool(p, "playerCounterEnabled", true); PlayerCounterHUD.prefixColor = getInt(p, "playerCounterPrefixColor", 0xFFFFFF); PlayerCounterHUD.countColor = getInt(p, "playerCounterCountColor", 0xAAAAAA);
-                NameTags.enabled = getBool(p, "nameTagsEnabled", false); NameTags.showHealth = getBool(p, "nameTagsShowHealth", true); NameTags.showItems = getBool(p, "nameTagsShowItems", true); FriendsHUD.enabled = getBool(p, "friendsHudEnabled", true); FriendsESP.enabled = getBool(p, "friendsEspEnabled", true);
-                Ranks.isEnabled = getBool(p, "ranksEnabled", false); Ranks.changeLevel = getBool(p, "ranksChangeLevel", true); Ranks.targetLevel = getInt(p, "ranksTargetLevel", 120); Ranks.changePrestige = getBool(p, "ranksChangePrestige", true); Ranks.targetPrestige = getInt(p, "ranksTargetPrestige", 35); Ranks.changeRank = getBool(p, "ranksChangeRank", true); Ranks.targetRank = p.getProperty("ranksTargetRank", "staff"); Ranks.changeName = getBool(p, "ranksChangeName", false); Ranks.targetName = p.getProperty("ranksTargetName", "");
+                AutoDenick.enabled = getBool(p, "autoDenick", false); NickedRender.enabled = getBool(p, "nickedNametags", false); PitESP.espChests = getBool(p, "pitEspChests", false); PitESP.espDragonEggs = getBool(p, "pitEspDragonEggs", false); PitESP.espRaffleTickets = getBool(p, "pitEspRaffleTickets", false); PitESP.espMystics = getBool(p, "pitEspMystics", false); LowLifeMystic.enabled = getBool(p, "lowLifeMysticEnabled", false);
+                AutoPantSwap.pantSwapEnabled = getBool(p, "autoPantSwap", false); AutoPantSwap.venomSwapEnabled = getBool(p, "autoVenomSwap", false); AutoPantSwap.autoPodEnabled = getBool(p, "autoPod", false); AutoGhead.enabled = getBool(p, "autoGhead", false); AutoQuickMath.enabled = getBool(p, "autoQuickMath", false); AutoBulletTime.enabled = getBool(p, "autoBulletTime", false); AutoQuickMath.randomMode = getInt(p, "aqmRandomMode", 1); AutoQuickMath.baseDelayMs = getFloat(p, "aqmBaseDelay", 1500f);
+                EnemyHUD.enabled = getBool(p, "enemyHudEnabled", false); EnemyHUD.notificationsEnabled = getBool(p, "enemyHudAlerts", false); EnemyHUD.debugMode = getBool(p, "enemyHudDebug", false); NickedHUD.enabled = getBool(p, "nickedHudEnabled", false); SessionStatsHUD.enabled = getBool(p, "sessionStatsEnabled", false); EventHUD.enabled = getBool(p, "eventHudEnabled", false); RegHUD.enabled = getBool(p, "regHudEnabled", false); DarksHUD.enabled = getBool(p, "darksHudEnabled", false); PotionHUD.enabled = getBool(p, "potionHudEnabled", false); ArmorHUD.enabled = getBool(p, "armorHudEnabled", false); CoordsHUD.enabled = getBool(p, "coordsHudEnabled", false); BossBarModule.enabled = getBool(p, "bossBarEnabled", false); CPSModule.enabled = getBool(p, "cpsEnabled", false); FPSModule.enabled = getBool(p, "fpsEnabled", false); TelebowHUD.enabled = getBool(p, "telebowHudEnabled", false); PlayerCounterHUD.enabled = getBool(p, "playerCounterEnabled", false); PlayerCounterHUD.prefixColor = getInt(p, "playerCounterPrefixColor", 0xFFFFFF); PlayerCounterHUD.countColor = getInt(p, "playerCounterCountColor", 0xAAAAAA);
+                NameTags.enabled = getBool(p, "nameTagsEnabled", false); NameTags.showHealth = getBool(p, "nameTagsShowHealth", false); NameTags.showItems = getBool(p, "nameTagsShowItems", false); FriendsHUD.enabled = getBool(p, "friendsHudEnabled", false); FriendsESP.enabled = getBool(p, "friendsEspEnabled", false);
+                Ranks.isEnabled = getBool(p, "ranksEnabled", false); Ranks.changeLevel = getBool(p, "ranksChangeLevel", false); Ranks.targetLevel = getInt(p, "ranksTargetLevel", 120); Ranks.changePrestige = getBool(p, "ranksChangePrestige", false); Ranks.targetPrestige = getInt(p, "ranksTargetPrestige", 30); Ranks.changeRank = getBool(p, "ranksChangeRank", false); Ranks.targetRank = p.getProperty("ranksTargetRank", "admin"); Ranks.changeName = getBool(p, "ranksChangeName", false); Ranks.targetName = p.getProperty("ranksTargetName", "");
                 RingHelper.enabled = getBool(p, "ringHelperEnabled", false); DeadLobbyFinder.enabled = getBool(p, "deadLobbyEnabled", false); DeadLobbyFinder.targetPlayers = getInt(p, "deadLobbyTarget", 10); DeadLobbyFinder.warpDelayMs = getInt(p, "deadLobbyDelay", 4500); NonHighlighter.enabled = getBool(p, "nonHighlighterEnabled", false); VenomTimer.enabled = getBool(p, "venomTimerEnabled", false); EnchantNames.enabled = getBool(p, "enchantNamesEnabled", false);
                 telemetryEnabled = getBool(p, "telemetryEnabled", true); TelemetryManager.anonymousClientId = p.getProperty("telemetryId", ""); autoUpdateEnabled = getBool(p, "autoUpdateEnabled", true);
+            } else {
+                applyFirstRunDefaults();
+                saveConfig();
             }
             EnemyManager.fetchMissingUUIDs(); 
         } catch (Exception e) { e.printStackTrace(); }
