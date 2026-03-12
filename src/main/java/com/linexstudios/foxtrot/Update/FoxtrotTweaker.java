@@ -29,6 +29,7 @@ public class FoxtrotTweaker implements ITweaker {
     public static boolean UPDATE_AVAILABLE = false;
     public static String LATEST_VERSION = "", DOWNLOAD_URL = "";
     public static boolean DEV_TEST_MODE = false, isChecking = false;
+    public static volatile boolean isManualUpdateRunning = false;
     public static File foxtrotDir;
 
     @SuppressWarnings("unchecked") @Override public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
@@ -88,16 +89,30 @@ public class FoxtrotTweaker implements ITweaker {
     }
 
     public static void runRealDownload(String downloadUrl) {
+        if (downloadUrl == null || downloadUrl.trim().isEmpty()) {
+            System.err.println("[Foxtrot-Updater] ERROR: Missing download URL for update.");
+            return;
+        }
+
         FoxtrotUpdateWindow window = new FoxtrotUpdateWindow(LATEST_VERSION);
         SwingUtilities.invokeLater(() -> window.setVisible(true));
         try {
             File tempJar = new File(foxtrotDir, "update_temp.jar"), updaterJar = new File(foxtrotDir, "updater.jar");
             HttpURLConnection conn = (HttpURLConnection) new URL(downloadUrl).openConnection(); conn.setRequestProperty("User-Agent", "Foxtrot-Updater");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(30000);
             int totalBytes = conn.getContentLength();
             try (InputStream in = new BufferedInputStream(conn.getInputStream()); OutputStream out = new BufferedOutputStream(new FileOutputStream(tempJar))) {
                 byte[] buffer = new byte[8192]; int bytesRead = 0, nRead;
-                while ((nRead = in.read(buffer)) != -1) { out.write(buffer, 0, nRead); bytesRead += nRead; window.setProgress((int) (((double) bytesRead / totalBytes) * 100)); }
+                while ((nRead = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, nRead);
+                    bytesRead += nRead;
+                    if (totalBytes > 0) {
+                        window.setProgress((int) (((double) bytesRead / totalBytes) * 100));
+                    }
+                }
             }
+            window.setProgress(100);
             Thread.sleep(500); 
             File currentJar = new File(FoxtrotTweaker.class.getProtectionDomain().getCodeSource().getLocation().toURI());
             File destinationInMods = new File(currentJar.getParentFile(), "Foxtrot-" + LATEST_VERSION.replace("v", "") + ".jar");
@@ -106,11 +121,34 @@ public class FoxtrotTweaker implements ITweaker {
             ProcessBuilder pb = new ProcessBuilder(javaBin, "-cp", updaterJar.getAbsolutePath(), "com.linexstudios.foxtrot.Update.FoxtrotRelocator", currentJar.getAbsolutePath(), tempJar.getAbsolutePath(), destinationInMods.getAbsolutePath());
             pb.redirectError(new File(foxtrotDir, "updater_error.log")); pb.redirectOutput(new File(foxtrotDir, "updater_output.log")); pb.start();
             SwingUtilities.invokeLater(() -> { window.dispose(); new FoxtrotSuccessWindow(LATEST_VERSION, null).setVisible(true); });
-            new Thread(() -> { try { Thread.sleep(3000); } catch (Exception e) {} Runtime.getRuntime().halt(0); }).start();
-        } catch (Exception e) { SwingUtilities.invokeLater(window::dispose); }
+            new Thread(() -> { try { Thread.sleep(5000); } catch (Exception e) {} Runtime.getRuntime().halt(0); }).start();
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                File log = foxtrotDir != null ? new File(foxtrotDir, "updater_error.log") : null;
+                if (log != null) {
+                    try (FileWriter fw = new FileWriter(log, true)) {
+                        fw.write("[Foxtrot-Updater] Manual update failed: " + e + "\n");
+                    }
+                }
+            } catch (Exception ignored) {}
+            SwingUtilities.invokeLater(window::dispose);
+        } finally {
+            isManualUpdateRunning = false;
+        }
     }
 
-    public static void triggerManualUpdate() { new Thread(() -> runRealDownload(DOWNLOAD_URL)).start(); }
+    public static boolean triggerManualUpdate() {
+        if (isManualUpdateRunning) {
+            return false;
+        }
+        if (DOWNLOAD_URL == null || DOWNLOAD_URL.trim().isEmpty()) {
+            return false;
+        }
+        isManualUpdateRunning = true;
+        new Thread(() -> runRealDownload(DOWNLOAD_URL), "Foxtrot-Manual-Updater").start();
+        return true;
+    }
 
     @Override public void injectIntoClassLoader(LaunchClassLoader classLoader) {}
     @Override public String getLaunchTarget() { return "net.minecraft.client.main.Main"; }

@@ -169,7 +169,13 @@ public class EditHUDGui extends GuiScreen {
                 } else if(selectedTab==5) { if(isInside(mX, mY, c1+5, y1+6, 270, 12)) { ConfigHandler.telemetryEnabled=!ConfigHandler.telemetryEnabled; if(ConfigHandler.telemetryEnabled) TelemetryManager.initialize(); }
                 } else if(selectedTab==6) { 
                     if(isInside(mX, mY, c1+5, y1+32, 270, 12)) ConfigHandler.autoUpdateEnabled=!ConfigHandler.autoUpdateEnabled; 
-                    if(FoxtrotTweaker.UPDATE_AVAILABLE && isInside(mX, mY, c1+5, y1+52, 270, 16)) { mc.getSoundHandler().playSound(net.minecraft.client.audio.PositionedSoundRecord.create(new net.minecraft.util.ResourceLocation("gui.button.press"), 1.0F)); FoxtrotTweaker.triggerManualUpdate(); mc.displayGuiScreen(null); }
+                    if(FoxtrotTweaker.UPDATE_AVAILABLE && isInside(mX, mY, c1+5, y1+52, 270, 16)) {
+                        mc.getSoundHandler().playSound(net.minecraft.client.audio.PositionedSoundRecord.create(new net.minecraft.util.ResourceLocation("gui.button.press"), 1.0F));
+                        boolean started = FoxtrotTweaker.triggerManualUpdate();
+                        if (started) {
+                            mc.displayGuiScreen(null);
+                        }
+                    }
                 }
             }
         } super.mouseClicked(mouseX, mouseY, mouseButton);
